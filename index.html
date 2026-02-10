@@ -1290,7 +1290,6 @@
                 
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     const enemy = enemies[i];
-                    const enemyId = enemies[i];
                     
                     if (checkCollision(marble, enemy)) {
                         const dx = enemy.x - marble.x;
@@ -1313,7 +1312,7 @@
                         marble.x -= overlap * cos;
                         marble.y -= overlap * sin;
                         
-                        if (!marble.hitEnemies.has(enemyId)) {
+                        if (!marble.hitEnemies.has(enemy.id)) {
                             const speed = marble.getSpeed();
                             
                             const minSpeed = marble.type === MARBLE_TYPES.SPEED ? 0.3 : 
@@ -1336,11 +1335,11 @@
                                     showMessage(`${marble.type.name}ヒット！(-${marble.damage}HP)`, 'info');
                                 }
                                 
-                                marble.hitEnemies.add(enemyId);
+                                marble.hitEnemies.add(enemy.id);
                                 marble.applyHitSlowdown();
                                 
                                 setTimeout(() => {
-                                    marble.hitEnemies.delete(enemyId);
+                                    marble.hitEnemies.delete(enemy.id);
                                 }, 300);
                             }
                         }
