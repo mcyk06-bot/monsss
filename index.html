@@ -343,6 +343,53 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
+            // 画像オブジェクトの作成
+    const marbleImages = {
+        NORMAL: new Image(),
+        POWER: new Image(),
+        SPEED: new Image()
+    };
+
+    const enemyImages = {
+        SMALL: new Image(),
+        MEDIUM: new Image(),
+        LARGE: new Image()
+    };
+
+    // 画像パスの設定
+    marbleImages.NORMAL.src = '001.png';
+    marbleImages.POWER.src = '002.png';
+    marbleImages.SPEED.src = '003.png';
+    enemyImages.SMALL.src = '004.png';
+    enemyImages.MEDIUM.src = '005.png';
+    enemyImages.LARGE.src = '006.png';
+
+    // 画像読み込み完了チェック
+    let imagesLoaded = 0;
+    const totalImages = 6;
+
+    function checkAllImagesLoaded() {
+        imagesLoaded++;
+        if (imagesLoaded === totalImages) {
+            console.log('✅ 全ての画像が読み込まれました！');
+        }
+    }
+
+    marbleImages.NORMAL.onload = checkAllImagesLoaded;
+    marbleImages.POWER.onload = checkAllImagesLoaded;
+    marbleImages.SPEED.onload = checkAllImagesLoaded;
+    enemyImages.SMALL.onload = checkAllImagesLoaded;
+    enemyImages.MEDIUM.onload = checkAllImagesLoaded;
+    enemyImages.LARGE.onload = checkAllImagesLoaded;
+
+    // エラーハンドリング
+    marbleImages.NORMAL.onerror = () => console.error('❌ 001.pngが読み込めません');
+    marbleImages.POWER.onerror = () => console.error('❌ 002.pngが読み込めません');
+    marbleImages.SPEED.onerror = () => console.error('❌ 003.pngが読み込めません');
+    enemyImages.SMALL.onerror = () => console.error('❌ 004.pngが読み込めません');
+    enemyImages.MEDIUM.onerror = () => console.error('❌ 005.pngが読み込めません');
+    enemyImages.LARGE.onerror = () => console.error('❌ 006.pngが読み込めません');
+
         function resizeCanvas() {
             const container = document.querySelector('.canvas-container');
             const rect = container.getBoundingClientRect();
@@ -688,81 +735,28 @@
                     ctx.stroke();
                 }
                 
-                const gradient = ctx.createRadialGradient(
-                    this.x - this.radius/3, 
-                    this.y - this.radius/3, 
-                    0,
-                    this.x, 
-                    this.y, 
-                    this.radius
-                );
-                
-                if (this.isStopped) {
-                    gradient.addColorStop(0, this.secondaryColor);
-                    gradient.addColorStop(1, this.color);
-                    ctx.globalAlpha = 0.7;
-                } else if (this.isActive) {
-                    gradient.addColorStop(0, this.secondaryColor);
-                    gradient.addColorStop(1, this.color);
-                } else if (this.isUsed) {
-                    gradient.addColorStop(0, '#e0e0e0');
-                    gradient.addColorStop(1, '#bdbdbd');
-                    ctx.globalAlpha = 0.5;
-                } else {
-                    gradient.addColorStop(0, this.secondaryColor);
-                    gradient.addColorStop(1, this.color);
-                    if (isCurrentTurn) {
-                        ctx.globalAlpha = 1;
-                    }
-                }
-                
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                
-                if ((!this.isUsed || this.isActive || this.isStopped) && this.type === MARBLE_TYPES.POWER) {
-                    const pulse = Math.sin(this.animationFrame * 0.1) * 0.3 + 0.7;
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius + 3, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(244, 67, 54, ${pulse * 0.5 * (this.isStopped ? 0.7 : 1)})`;
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                    
-                    ctx.strokeStyle = `rgba(255, 255, 100, ${0.5 * (this.isStopped ? 0.7 : 1)})`;
-                    ctx.lineWidth = 2;
-                    for (let i = 0; i < 3; i++) {
-                        const angle = (this.animationFrame * 0.05 + i * Math.PI * 2 / 3);
-                        ctx.beginPath();
-                        ctx.moveTo(this.x, this.y);
-                        ctx.lineTo(
-                            this.x + Math.cos(angle) * this.radius * 0.8,
-                            this.y + Math.sin(angle) * this.radius * 0.8
-                        );
-                        ctx.stroke();
-                    }
-                } else if ((!this.isUsed || this.isActive || this.isStopped) && this.type === MARBLE_TYPES.SPEED) {
-                    const rotation = this.animationFrame * 0.15;
-                    ctx.strokeStyle = `rgba(33, 150, 243, ${0.4 * (this.isStopped ? 0.7 : 1)})`;
-                    ctx.lineWidth = 2;
-                    for (let i = 0; i < 4; i++) {
-                        const angle = rotation + i * Math.PI / 2;
-                        ctx.beginPath();
-                        ctx.arc(
-                            this.x + Math.cos(angle) * this.radius * 0.5,
-                            this.y + Math.sin(angle) * this.radius * 0.5,
-                            this.radius * 0.3,
-                            0,
-                            Math.PI * 2
-                        );
-                        ctx.stroke();
-                    }
-                } else if ((!this.isUsed || this.isActive || this.isStopped) && this.type === MARBLE_TYPES.NORMAL) {
-                    ctx.beginPath();
-                    ctx.arc(this.x - this.radius/3, this.y - this.radius/3, this.radius/3, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255,255,255,${0.5 * (this.isStopped ? 0.7 : 1)})`;
-                    ctx.fill();
-                }
+                let img;
+        if (this.type === MARBLE_TYPES.NORMAL) img = marbleImages.NORMAL;
+        else if (this.type === MARBLE_TYPES.POWER) img = marbleImages.POWER;
+        else if (this.type === MARBLE_TYPES.SPEED) img = marbleImages.SPEED;
+
+        if (this.isUsed && !this.isActive && !this.isStopped) {
+            ctx.globalAlpha = 0.5; // 使用済みは半透明
+        }
+
+        if (img && img.complete) {
+            // 画像を中心に描画
+            ctx.drawImage(img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+        } else {
+            // 画像がない場合のフォールバック（既存の描画ロジックを維持）
+            const gradient = ctx.createRadialGradient(this.x - this.radius/3, this.y - this.radius/3, 0, this.x, this.y, this.radius);
+            gradient.addColorStop(0, this.secondaryColor);
+            gradient.addColorStop(1, this.color);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            }
                 
                 ctx.globalAlpha = 1;
                 ctx.strokeStyle = isCurrentTurn ? 'rgba(255, 215, 0, 0.8)' : 'rgba(0,0,0,0.3)';
@@ -876,34 +870,22 @@
                 this.animationFrame++;
                 
                 ctx.save();
-                const gradient = ctx.createRadialGradient(
-                    this.x - this.radius/3, 
-                    this.y - this.radius/3, 
-                    0,
-                    this.x, 
-                    this.y, 
-                    this.radius
-                );
-                gradient.addColorStop(0, this.secondaryColor);
-                gradient.addColorStop(1, this.color);
-                
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                ctx.lineWidth = 2;
-                const angle = this.animationFrame * 0.05;
-                for (let i = 0; i < 6; i++) {
-                    const a = angle + i * Math.PI / 3;
+                let img;
+                if (this.size === ENEMY_SIZES.SMALL) img = enemyImages.SMALL;
+                else if (this.size === ENEMY_SIZES.MEDIUM) img = enemyImages.MEDIUM;
+                else if (this.size === ENEMY_SIZES.LARGE) img = enemyImages.LARGE;
+
+                if (img && img.complete) {
+                    ctx.drawImage(img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+                } else {
+                    // フォールバック
+                    const gradient = ctx.createRadialGradient(this.x - this.radius/3, this.y - this.radius/3, 0, this.x, this.y, this.radius);
+                    gradient.addColorStop(0, this.secondaryColor);
+                    gradient.addColorStop(1, this.color);
                     ctx.beginPath();
-                    ctx.moveTo(this.x, this.y);
-                    ctx.lineTo(
-                        this.x + Math.cos(a) * this.radius * 0.7,
-                        this.y + Math.sin(a) * this.radius * 0.7
-                    );
-                    ctx.stroke();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
                 }
                 
                 ctx.strokeStyle = 'rgba(0,0,0,0.5)';
