@@ -299,10 +299,10 @@
             <p>1. 画面の好きな場所をタップ（A地点）</p>
             <p>2. そのまま指をスライド</p>
             <p>3. 好きな場所で指を離す（B地点）</p>
-            <p>4. B→A の方向にmonsssが飛びます！</p>
+            <p>4. B→A の方向におはじきが飛びます！</p>
             
             <p><strong>✨ 友情攻撃:</strong></p>
-            <p>味方monsssに初めて当たると、8個の弾丸が放出されます！</p>
+            <p>味方おはじきに初めて当たると、8個の弾丸が放出されます！</p>
             
             <div class="marble-types">
                 <div class="marble-type">
@@ -399,7 +399,7 @@
                 secondaryColor: '#81C784',
                 radius: 15,
                 damage: 1,
-                speedMultiplier: 1.0,
+                speedMultiplier: 2.0,
                 symbol: '●'
             },
             POWER: {
@@ -408,7 +408,7 @@
                 secondaryColor: '#e57373',
                 radius: 18,
                 damage: 2,
-                speedMultiplier: 0.7,
+                speedMultiplier: 1.2,
                 symbol: '◆'
             },
             SPEED: {
@@ -417,7 +417,7 @@
                 secondaryColor: '#64B5F6',
                 radius: 12,
                 damage: 0.5,
-                speedMultiplier: 1.4,
+                speedMultiplier: 12.5,
                 symbol: '★'
             }
         };
@@ -840,7 +840,7 @@
             }
             
             createBullets() {
-                const bulletSpeed = 3;
+                const bulletSpeed = 6;
                 const newBullets = [];
                 
                 for (let i = 0; i < 8; i++) {
@@ -1082,7 +1082,7 @@
                 const marble = playerMarbles[currentTurn];
                 indicator.textContent = `ターン ${currentTurn + 1}: ${marble.type.name}を発射`;
             } else {
-                indicator.textContent = '全てのmonsssを使用しました';
+                indicator.textContent = '全てのおはじきを使用しました';
             }
         }
         
@@ -1168,7 +1168,7 @@
                 const arrowEndX = marbleX + Math.cos(angle) * arrowLength;
                 const arrowEndY = marbleY + Math.sin(angle) * arrowLength;
                 
-                // monsssの元の位置に半透明表示
+                // おはじきの元の位置に半透明表示
                 ctx.globalAlpha = 0.3;
                 ctx.beginPath();
                 ctx.arc(marbleX, marbleY, currentMarble.radius, 0, Math.PI * 2);
@@ -1186,7 +1186,7 @@
                 ctx.fill();
                 ctx.globalAlpha = 1;
                 
-                // 🎯 monsssから飛んでいく方向に矢印を描画
+                // 🎯 おはじきから飛んでいく方向に矢印を描画
                 // 矢印の太さもドラッグ距離に応じて変化
                 const lineWidth = Math.min(3 + distance / 30, 8);  // 3〜8の範囲で太くなる
                 
@@ -1380,7 +1380,7 @@
                     updateTurnIndicator();
                     
                     if (currentTurn >= MAX_MARBLES && enemies.length > 0) {
-                        showMessage('monsssを使い切りました。新しいゲームを始めましょう。', 'info');
+                        showMessage('おはじきを使い切りました。新しいゲームを始めましょう。', 'info');
                     }
                 }
             }
