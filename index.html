@@ -23,31 +23,14 @@
             position: fixed;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             font-family: 'Arial', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
-
+        
         .game-container {
             width: 100vw;
             height: 100vh;
             display: flex;
             flex-direction: column;
             background: white;
-            aspect-ratio: 640 / 720;
-            max-width: 100vw;
-            max-height: 100vh;
-            margin: auto;
-        }
-
-        .canvas-container {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #adff87;
-            overflow: hidden;
-            position: relative;
         }
         
         .header {
@@ -409,36 +392,9 @@
 
         function resizeCanvas() {
             const container = document.querySelector('.canvas-container');
-            const gameContainer = document.querySelector('.game-container');
+            const rect = container.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
             
-            // ブラウザの利用可能なスペースを計算
-            const availableWidth = window.innerWidth;
-            const availableHeight = window.innerHeight;
-            
-            // 640:720の比率を維持しながらフィットさせる
-            let containerWidth = availableWidth;
-            let containerHeight = availableHeight;
-            
-            const targetRatio = 640 / 720; // 0.889
-            const availableRatio = availableWidth / availableHeight;
-            
-            if (availableRatio > targetRatio) {
-                // 幅が相対的に大きい場合、高さに合わせる
-                containerHeight = availableHeight;
-                containerWidth = availableHeight * targetRatio;
-            } else {
-                // 高さが相対的に大きい場合、幅に合わせる
-                containerWidth = availableWidth;
-                containerHeight = availableWidth / targetRatio;
-            }
-            
-            // ゲームコンテナのサイズを設定
-            gameContainer.style.width = containerWidth + 'px';
-            gameContainer.style.height = containerHeight + 'px';
-            
-            // キャンバスのサイズ設定
-            const rect = container.getBoundingClientRect();
             canvas.width = rect.width * dpr;
             canvas.height = rect.height * dpr;
             canvas.style.width = rect.width + 'px';
@@ -488,7 +444,7 @@
                 name: 'ノーマル',
                 color: '#4CAF50',
                 secondaryColor: '#81C784',
-                radius: 23,
+                radius: 15,
                 damage: 1,
                 speedMultiplier: 2.0,
                 symbol: '●'
@@ -497,7 +453,7 @@
                 name: 'パワー',
                 color: '#f44336',
                 secondaryColor: '#e57373',
-                radius: 23,
+                radius: 18,
                 damage: 2,
                 speedMultiplier: 1.2,
                 symbol: '◆'
@@ -506,7 +462,7 @@
                 name: 'スピード',
                 color: '#2196F3',
                 secondaryColor: '#64B5F6',
-                radius: 23,
+                radius: 12,
                 damage: 0.7,
                 speedMultiplier: 12.5,
                 symbol: '★'
@@ -516,21 +472,21 @@
         const ENEMY_SIZES = {
             SMALL: {
                 name: '小',
-                radius: 20,
+                radius: 15,
                 maxHp: 1,
                 color: '#43a047',
                 secondaryColor: '#66bb6a'
             },
             MEDIUM: {
                 name: '中',
-                radius: 25,
+                radius: 20,
                 maxHp: 3,
                 color: '#fb8c00',
                 secondaryColor: '#ffa726'
             },
             LARGE: {
                 name: '大',
-                radius: 40,
+                radius: 25,
                 maxHp: 5,
                 color: '#e53935',
                 secondaryColor: '#ef5350'
