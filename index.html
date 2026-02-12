@@ -532,6 +532,7 @@
         const COLLISION_DAMPING = 0.88;
         const HIT_SLOWDOWN = 0.8;
         const STOP_THRESHOLD = 0.2;
+        const VELOCITY_SCALE = 0.5;
         
         class Explosion {
             constructor(x, y, radius, color) {
@@ -683,23 +684,35 @@
             }
             
             update() {
-                this.vx *= 0.99;
-                this.vy *= 0.99;
+                if (!this.isActive) return;
                 
-                this.x += this.vx;
-                this.y += this.vy;
+                this.vx *= FRICTION;
+                this.vy *= FRICTION;
                 
-                if (this.x - this.radius < 0 || this.x + this.radius > canvasSize.width) {
-                    this.vx *= -0.8;
-                    this.x = Math.max(this.radius, Math.min(canvasSize.width - this.radius, this.x));
+                // 🔧 移動距離をスケーリング
+                this.x += this.vx * VELOCITY_SCALE;
+                this.y += this.vy * VELOCITY_SCALE;
+                
+                if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.vx *= -BOUNCE;
+                } else if (this.x + this.radius > canvasSize.width) {
+                    this.x = canvasSize.width - this.radius;
+                    this.vx *= -BOUNCE;
                 }
                 
-                if (this.y - this.radius < 0 || this.y + this.radius > canvasSize.height) {
-                    this.vy *= -0.8;
-                    this.y = Math.max(this.radius, Math.min(canvasSize.height - this.radius, this.y));
+                if (this.y - this.radius < 0) {
+                    this.y = this.radius;
+                    this.vy *= -BOUNCE;
+                } else if (this.y + this.radius > canvasSize.height) {
+                    this.y = canvasSize.height - this.radius;
+                    this.vy *= -BOUNCE;
                 }
                 
-                this.life--;
+                if (Math.abs(this.vx) < STOP_THRESHOLD && Math.abs(this.vy) < STOP_THRESHOLD) {
+                    this.vx = 0;
+                    this.vy = 0;
+                }
             }
             
             isAlive() {
