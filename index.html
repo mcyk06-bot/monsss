@@ -88,16 +88,20 @@
             background: #adff87;
             overflow: hidden;
             position: relative;
+            min-height: 0; /* flexboxの縮小を許可 */
         }
-        
+
         #gameCanvas {
-            max-width: 100%;
-            max-height: 100%;
-            width: 100%;
-            height: 100%;
             display: block;
             cursor: crosshair;
             touch-action: none;
+            /* 8:9のアスペクト比を維持 */
+            width: 100%;
+            height: auto;
+            aspect-ratio: 8 / 9;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
         
         .controls {
@@ -395,15 +399,29 @@
             const rect = container.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
             
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            canvas.style.width = rect.width + 'px';
-            canvas.style.height = rect.height + 'px';
+            // 8:9のアスペクト比を維持
+            const aspectRatio = 8 / 9;
+            let width = rect.width;
+            let height = rect.height;
+            
+            // コンテナのサイズに合わせて、アスペクト比を保ちながら最大化
+            if (width / height > aspectRatio) {
+                // 高さ基準
+                width = height * aspectRatio;
+            } else {
+                // 幅基準
+                height = width / aspectRatio;
+            }
+            
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
             ctx.scale(dpr, dpr);
             
             return {
-                width: rect.width,
-                height: rect.height
+                width: width,
+                height: height
             };
         }
         
@@ -444,7 +462,7 @@
                 name: 'ノーマル',
                 color: '#4CAF50',
                 secondaryColor: '#81C784',
-                radius: 15,
+                radius: 23,
                 damage: 1,
                 speedMultiplier: 2.0,
                 symbol: '●'
@@ -453,7 +471,7 @@
                 name: 'パワー',
                 color: '#f44336',
                 secondaryColor: '#e57373',
-                radius: 18,
+                radius: 23,
                 damage: 2,
                 speedMultiplier: 1.2,
                 symbol: '◆'
@@ -462,7 +480,7 @@
                 name: 'スピード',
                 color: '#2196F3',
                 secondaryColor: '#64B5F6',
-                radius: 12,
+                radius: 23,
                 damage: 0.7,
                 speedMultiplier: 12.5,
                 symbol: '★'
@@ -472,21 +490,21 @@
         const ENEMY_SIZES = {
             SMALL: {
                 name: '小',
-                radius: 15,
+                radius: 20,
                 maxHp: 1,
                 color: '#43a047',
                 secondaryColor: '#66bb6a'
             },
             MEDIUM: {
                 name: '中',
-                radius: 20,
+                radius: 25,
                 maxHp: 3,
                 color: '#fb8c00',
                 secondaryColor: '#ffa726'
             },
             LARGE: {
                 name: '大',
-                radius: 25,
+                radius: 40,
                 maxHp: 5,
                 color: '#e53935',
                 secondaryColor: '#ef5350'
