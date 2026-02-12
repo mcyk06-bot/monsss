@@ -323,8 +323,8 @@
         
         <div class="info-panel">
             <div class="info-item">
-                <div class="info-label">ターン</div>
-                <div class="info-value" id="currentTurn">1</div>
+                <div class="info-label">ステージ</div>
+                <div class="info-value" id="currentStage">1</div>
             </div>
             <div class="info-item">
                 <div class="info-label">倒した敵</div>
@@ -346,7 +346,7 @@
         
         <!-- HP バー追加 -->
         <div class="hp-panel">
-            <div class="hp-label">🛡️ 味方HP</div>
+            <div class="hp-label">💚 味方HP</div>
             <div class="hp-bar-container">
                 <div class="hp-bar-fill" id="hpBarFill"></div>
                 <div class="hp-text" id="hpText">10 / 10</div>
@@ -404,7 +404,7 @@
             </div>
             
             <div class="enemy-info">
-                <strong>🎯 敵のサイズ:</strong><br>
+                <strong>👾 敵のサイズ:</strong><br>
                 <span style="color: #e53935;">● 大サイズ (HP: 5)</span><br>
                 <span style="color: #fb8c00;">● 中サイズ (HP: 3)</span><br>
                 <span style="color: #43a047;">● 小サイズ (HP: 1)</span>
@@ -578,13 +578,15 @@
             }
         };
         
+        const MAX_STAGES = 4;
+        let currentStage = 1;
         let playerMarbles = [];
         let stoppedMarbles = [];
         let activeMarbles = [];
         let enemies = [];
         let bullets = [];
         let explosions = [];
-        let enemyBeams = []; // 敵のビーム配列追加
+        let enemyBeams = [];
         let isDragging = false;
         let dragStart = { x: 0, y: 0 };
         let dragEnd = { x: 0, y: 0 };
@@ -592,22 +594,20 @@
         let currentTurn = 0;
         const MAX_MARBLES = 4;
         
-        // ★ HP システム追加
         let teamHP = 10;
         const MAX_TEAM_HP = 10;
         let isGameOver = false;
-        let isEnemyTurn = false; // 敵のターンフラグ
+        let isEnemyTurn = false;
         
         let friendshipAttackHistory = new Set();
         
-        const FRICTION = 0.98;
+        const FRICTION = 0.96;
         const BOUNCE = 0.8;
         const COLLISION_DAMPING = 0.88;
         const HIT_SLOWDOWN = 0.5;
-        const STOP_THRESHOLD = 0.01;
+        const STOP_THRESHOLD = 0.3;
         const VELOCITY_SCALE = 18.0;
         
-        // ★ 敵のビームクラス追加
         class EnemyBeam {
             constructor(startX, startY, endX, endY, enemyColor) {
                 this.startX = startX;
@@ -616,7 +616,7 @@
                 this.endY = endY;
                 this.color = enemyColor;
                 this.frame = 0;
-                this.maxFrames = 40; // ビーム表示時間
+                this.maxFrames = 40;
                 this.width = 8;
             }
             
@@ -625,7 +625,6 @@
                 const progress = this.frame / this.maxFrames;
                 const alpha = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
                 
-                // ビーム本体
                 ctx.save();
                 ctx.globalAlpha = alpha;
                 ctx.strokeStyle = this.color;
@@ -636,7 +635,6 @@
                 ctx.lineTo(this.endX, this.endY);
                 ctx.stroke();
                 
-                // 外側のグロー
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = this.width + 4;
                 ctx.globalAlpha = alpha * 0.3;
@@ -848,7 +846,8 @@
                 this.hitEnemies = new Set();
                 this.animationFrame = 0;
                 this.id = Math.random().toString(36).substr(2, 9);
-                this.damageFrame = 0; // ダメージ演出用
+                this.damageFrame = 0;
+                this.isDestroyed = false;
             }
             
             draw() {
@@ -884,7 +883,6 @@
                     ctx.globalAlpha = 0.5;
                 }
 
-                // ★ ダメージ演出
                 if (this.damageFrame > 0) {
                     this.damageFrame--;
                     if (this.damageFrame % 4 < 2) {
@@ -999,9 +997,8 @@
                 return newBullets;
             }
 
-            // ★ ダメージを受ける
             takeDamage() {
-                this.damageFrame = 20; // 20フレーム点滅
+                this.damageFrame = 20;
             }
         }
         
@@ -1110,53 +1107,10 @@
             }
         }
         
-        function initGame() {
-            playerMarbles = [];
-            stoppedMarbles = [];
-            activeMarbles = [];
-            enemies = [];
-            bullets = [];
-            explosions = [];
-            enemyBeams = [];
-            defeated = 0;
-            currentTurn = 0;
-            friendshipAttackHistory = new Set();
-            teamHP = MAX_TEAM_HP;
-            isGameOver = false;
-            isEnemyTurn = false;
-            
-            const types = [
-                MARBLE_TYPES.NORMAL,
-                MARBLE_TYPES.POWER,
-                MARBLE_TYPES.SPEED,
-                MARBLE_TYPES.NORMAL
-            ];
-            
-            const spacing = Math.min(80, canvasSize.width / 5);
-            const startX = (canvasSize.width - (spacing * 3)) / 2;
-            const yPos = canvasSize.height - 50;
-            
-            for (let i = 0; i < MAX_MARBLES; i++) {
-                const marble = new Marble(
-                    startX + (i * spacing), 
-                    yPos, 
-                    types[i]
-                );
-                playerMarbles.push(marble);
-            }
-            
-            const enemyCount = 5;
-            const sizeOptions = [
-                ENEMY_SIZES.SMALL,
-                ENEMY_SIZES.SMALL,
-                ENEMY_SIZES.MEDIUM,
-                ENEMY_SIZES.MEDIUM,
-                ENEMY_SIZES.LARGE
-            ];
-            
-            for (let i = 0; i < enemyCount; i++) {
+        function createEnemies(sizeArray) {
+            for (let i = 0; i < sizeArray.length; i++) {
                 let x, y, valid;
-                const size = sizeOptions[i];
+                const size = sizeArray[i];
                 
                 do {
                     valid = true;
@@ -1177,14 +1131,98 @@
                 
                 enemies.push(new Enemy(x, y, size));
             }
+        }
+        
+        function createBossStage() {
+            const BOSS_SIZE = {
+                name: 'ボス',
+                radius: 60,
+                maxHp: 20,
+                color: '#9c27b0',
+                secondaryColor: '#ba68c8'
+            };
+            
+            const boss = new Enemy(canvasSize.width / 2, canvasSize.height * 0.25, BOSS_SIZE);
+            enemies.push(boss);
+            
+            for (let i = 0; i < 4; i++) {
+                const angle = (Math.PI * 2 / 4) * i;
+                const distance = 120;
+                const x = canvasSize.width / 2 + Math.cos(angle) * distance;
+                const y = canvasSize.height * 0.25 + Math.sin(angle) * distance;
+                enemies.push(new Enemy(x, y, ENEMY_SIZES.SMALL));
+            }
+        }
+        
+        function initStage(stageNumber) {
+            playerMarbles = [];
+            stoppedMarbles = [];
+            activeMarbles = [];
+            enemies = [];
+            bullets = [];
+            explosions = [];
+            enemyBeams = [];
+            currentTurn = 0;
+            friendshipAttackHistory = new Set();
+            
+            teamHP = MAX_TEAM_HP;
+            isGameOver = false;
+            isEnemyTurn = false;
+            
+            const types = [
+                MARBLE_TYPES.NORMAL,
+                MARBLE_TYPES.POWER,
+                MARBLE_TYPES.SPEED,
+                MARBLE_TYPES.NORMAL
+            ];
+            
+            const spacing = Math.min(80, canvasSize.width / 5);
+            const startX = (canvasSize.width - (spacing * 3)) / 2;
+            const yPos = canvasSize.height - 50;
+            
+            for (let i = 0; i < 4; i++) {
+                const marble = new Marble(
+                    startX + (i * spacing), 
+                    yPos, 
+                    types[i]
+                );
+                playerMarbles.push(marble);
+            }
+            
+            if (stageNumber === 1) {
+                createEnemies([
+                    ENEMY_SIZES.SMALL,
+                    ENEMY_SIZES.SMALL,
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.LARGE
+                ]);
+            } else if (stageNumber === 2) {
+                createEnemies([
+                    ENEMY_SIZES.SMALL,
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.LARGE,
+                    ENEMY_SIZES.LARGE
+                ]);
+            } else if (stageNumber === 3) {
+                createEnemies([
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.LARGE,
+                    ENEMY_SIZES.LARGE,
+                    ENEMY_SIZES.LARGE
+                ]);
+            } else if (stageNumber === 4) {
+                createBossStage();
+            }
             
             updateUI();
             updateHPBar();
             updateTurnIndicator();
-            showMessage('画面をタップ＆ドラッグで発射！', 'info');
+            showMessage(`ステージ ${stageNumber} 開始！`, 'info');
         }
         
-        // ★ HP バー更新関数
         function updateHPBar() {
             const hpBarFill = document.getElementById('hpBarFill');
             const hpText = document.getElementById('hpText');
@@ -1193,7 +1231,6 @@
             hpBarFill.style.width = hpPercent + '%';
             hpText.textContent = `${Math.max(0, teamHP)} / ${MAX_TEAM_HP}`;
             
-            // HP に応じて色変更
             hpBarFill.classList.remove('low', 'critical');
             if (hpPercent <= 30) {
                 hpBarFill.classList.add('critical');
@@ -1202,7 +1239,6 @@
             }
         }
 
-        // ★ 敵の攻撃処理
         function executeEnemyAttack() {
             if (enemies.length === 0) {
                 endEnemyTurn();
@@ -1212,10 +1248,8 @@
             isEnemyTurn = true;
             updateTurnIndicator();
 
-            // ランダムな敵を選択
             const attackerEnemy = enemies[Math.floor(Math.random() * enemies.length)];
             
-            // ランダムな味方を選択（未使用 or 停止中のみ）
             const availableTargets = playerMarbles.filter(m => !m.isUsed || m.isStopped);
             if (availableTargets.length === 0) {
                 endEnemyTurn();
@@ -1223,7 +1257,6 @@
             }
             const targetMarble = availableTargets[Math.floor(Math.random() * availableTargets.length)];
 
-            // ビーム生成
             const beam = new EnemyBeam(
                 attackerEnemy.x,
                 attackerEnemy.y,
@@ -1233,20 +1266,17 @@
             );
             enemyBeams.push(beam);
 
-            showMessage(`💥 敵がビーム攻撃！`, 'danger');
+            showMessage(`⚡ 敵がビーム攻撃！`, 'danger');
 
-            // ビーム上の味方を判定してダメージ
             setTimeout(() => {
                 checkBeamHits(beam);
             }, 200);
 
-            // 敵のターン終了
             setTimeout(() => {
                 endEnemyTurn();
             }, 1500);
         }
 
-        // ★ ビームと味方の当たり判定
         function checkBeamHits(beam) {
             let hitCount = 0;
             const allMarbles = [...playerMarbles, ...stoppedMarbles];
@@ -1273,7 +1303,6 @@
             }
         }
 
-        // ★ 点が線分に近いかチェック（ビーム判定用）
         function isPointOnLine(px, py, x1, y1, x2, y2, threshold) {
             const dx = x2 - x1;
             const dy = y2 - y1;
@@ -1293,7 +1322,6 @@
             return distance <= threshold;
         }
 
-        // ★ 敵のターン終了
         function endEnemyTurn() {
             isEnemyTurn = false;
             currentTurn++;
@@ -1346,20 +1374,16 @@
             } else if (isEnemyTurn) {
                 indicator.textContent = '⚡ 敵のターン';
                 indicator.style.background = 'linear-gradient(135deg, #f44336 0%, #e53935 100%)';
-            } else if (currentTurn < MAX_MARBLES) {
-                const marble = playerMarbles[currentTurn];
-                indicator.textContent = `ターン ${currentTurn + 1}: ${marble.type.name}を発射`;
-                indicator.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
             } else {
-                indicator.textContent = '全てのおはじきを使用しました';
-                indicator.style.background = 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)';
+                const aliveMarbles = playerMarbles.filter(m => !m.isDestroyed).length;
+                indicator.textContent = `ステージ${currentStage} | 残り味方: ${aliveMarbles}`;
+                indicator.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
             }
         }
         
         function update() {
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
             
-            // ★ 敵のビーム描画
             for (let i = enemyBeams.length - 1; i >= 0; i--) {
                 enemyBeams[i].draw();
                 if (enemyBeams[i].isComplete()) {
@@ -1379,7 +1403,9 @@
             }
             
             for (let marble of stoppedMarbles) {
-                marble.draw();
+                if (!marble.isDestroyed) {
+                    marble.draw();
+                }
             }
             
             for (let i = bullets.length - 1; i >= 0; i--) {
@@ -1392,185 +1418,96 @@
                 }
                 
                 for (let j = enemies.length - 1; j >= 0; j--) {
-                    const enemy = enemies[j];
-                    
-                    if (!bullets[i].hitEnemies.has(enemy) && checkBulletCollision(bullets[i], enemy)) {
-                        bullets[i].hitEnemies.add(enemy);
+                    if (checkBulletCollision(bullets[i], enemies[j]) && 
+                        !bullets[i].hitEnemies.has(enemies[j].id)) {
                         
-                        if (enemy.takeDamage(0.3)) {
+                        bullets[i].hitEnemies.add(enemies[j].id);
+                        
+                        if (enemies[j].takeDamage(0.5)) {
                             defeated++;
-                            explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
+                            explosions.push(new Explosion(enemies[j].x, enemies[j].y, enemies[j].radius, enemies[j].color));
                             enemies.splice(j, 1);
-                            showMessage(`🎯 弾丸で${enemy.size.name}サイズの敵を撃破！`, 'success');
                             updateUI();
                             
                             if (enemies.length === 0) {
                                 setTimeout(() => {
-                                    showMessage('🎉 全ての敵を倒しました！おめでとう！', 'success');
+                                    if (currentStage < MAX_STAGES) {
+                                        showMessage(`🎉 ステージ${currentStage}クリア！`, 'success');
+                                        setTimeout(() => {
+                                            currentStage++;
+                                            defeated = 0;
+                                            initStage(currentStage);
+                                        }, 2000);
+                                    } else {
+                                        showMessage('🎉 全ステージクリア！おめでとう！', 'success');
+                                    }
                                 }, 500);
                             }
                         }
-                        
-                        bullets.splice(i, 1);
                         break;
                     }
                 }
             }
             
             for (let marble of activeMarbles) {
+                if (!marble.isActive || marble.isDestroyed) continue;
+                
                 marble.update();
-                marble.draw();
-            }
-            
-            for (let marble of playerMarbles) {
-                if (!marble.isUsed) {
-                    marble.draw();
-                }
-            }
-            
-            if (isDragging && !isEnemyTurn && !isGameOver) {
-                const currentMarble = playerMarbles[currentTurn];
-                const marbleX = currentMarble.x;
-                const marbleY = currentMarble.y;
                 
-                const dx = dragStart.x - dragEnd.x;
-                const dy = dragStart.y - dragEnd.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                const arrowLength = distance * 2;
-                
-                const angle = Math.atan2(dy, dx);
-                const arrowEndX = marbleX + Math.cos(angle) * arrowLength;
-                const arrowEndY = marbleY + Math.sin(angle) * arrowLength;
-                
-                ctx.globalAlpha = 0.3;
-                ctx.beginPath();
-                ctx.arc(marbleX, marbleY, currentMarble.radius, 0, Math.PI * 2);
-                const gradient = ctx.createRadialGradient(
-                    marbleX - currentMarble.radius/3, 
-                    marbleY - currentMarble.radius/3, 
-                    0,
-                    marbleX, 
-                    marbleY, 
-                    currentMarble.radius
-                );
-                gradient.addColorStop(0, currentMarble.secondaryColor);
-                gradient.addColorStop(1, currentMarble.color);
-                ctx.fillStyle = gradient;
-                ctx.fill();
-                ctx.globalAlpha = 1;
-                
-                const lineWidth = Math.min(3 + distance / 30, 8);
-                
-                ctx.setLineDash([10, 5]);
-                ctx.beginPath();
-                ctx.moveTo(marbleX, marbleY);
-                ctx.lineTo(arrowEndX, arrowEndY);
-                ctx.strokeStyle = `rgba(${
-                    currentMarble.type === MARBLE_TYPES.POWER ? '244, 67, 54' :
-                    currentMarble.type === MARBLE_TYPES.SPEED ? '33, 150, 243' :
-                    '76, 175, 80'
-                }, ${Math.min(0.5 + distance / 200, 0.9)})`;
-                ctx.lineWidth = lineWidth;
-                ctx.stroke();
-                ctx.setLineDash([]);
-                
-                const arrowSize = Math.min(15 + distance / 15, 35);
-                ctx.beginPath();
-                ctx.moveTo(arrowEndX, arrowEndY);
-                ctx.lineTo(
-                    arrowEndX - arrowSize * Math.cos(angle - Math.PI / 6),
-                    arrowEndY - arrowSize * Math.sin(angle - Math.PI / 6)
-                );
-                ctx.lineTo(
-                    arrowEndX - arrowSize * Math.cos(angle + Math.PI / 6),
-                    arrowEndY - arrowSize * Math.sin(angle + Math.PI / 6)
-                );
-                ctx.closePath();
-                ctx.fillStyle = ctx.strokeStyle;
-                ctx.fill();
-                
-                ctx.globalAlpha = 0.3;
-                ctx.setLineDash([5, 10]);
-                ctx.beginPath();
-                
-                const trajectoryLength = arrowLength * 1.5;
-                const trajectoryEndX = marbleX + Math.cos(angle) * trajectoryLength;
-                const trajectoryEndY = marbleY + Math.sin(angle) * trajectoryLength;
-                
-                ctx.moveTo(arrowEndX, arrowEndY);
-                ctx.lineTo(trajectoryEndX, trajectoryEndY);
-                ctx.strokeStyle = ctx.strokeStyle;
-                ctx.lineWidth = Math.max(lineWidth - 2, 2);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.globalAlpha = 1;
-                
-                const power = Math.min(distance / 10, 10);
-                const boxWidth = Math.min(100 + distance / 3, 150);
-                const boxHeight = Math.min(40 + distance / 10, 55);
-                
-                ctx.fillStyle = 'rgba(0,0,0,0.8)';
-                ctx.fillRect(arrowEndX - boxWidth/2, arrowEndY - boxHeight - 10, boxWidth, boxHeight);
-                
-                ctx.fillStyle = 'white';
-                ctx.font = `bold ${Math.min(12 + distance / 30, 18)}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.fillText(`${currentMarble.type.name}`, arrowEndX, arrowEndY - boxHeight + 5);
-                ctx.font = `${Math.min(10 + distance / 40, 14)}px Arial`;
-                ctx.fillText(`パワー: ${Math.round(power * 10)}%`, arrowEndX, arrowEndY - boxHeight + 25);
-                
-                const gaugeWidth = Math.min(80 + distance / 2, 130);
-                const gaugeHeight = Math.min(6 + distance / 50, 10);
-                const gaugeX = arrowEndX - gaugeWidth / 2;
-                const gaugeY = arrowEndY - 12;
-                
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.fillRect(gaugeX, gaugeY, gaugeWidth, gaugeHeight);
-                
-                const gaugeFill = (power / 10) * gaugeWidth;
-                const gaugeColor = power < 3 ? '#4caf50' : power < 7 ? '#ff9800' : '#f44336';
-                ctx.fillStyle = gaugeColor;
-                ctx.fillRect(gaugeX, gaugeY, gaugeFill, gaugeHeight);
-                
-                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(gaugeX, gaugeY, gaugeWidth, gaugeHeight);
-                
-                if (distance > 50) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('🚀', marbleX, marbleY - currentMarble.radius - 25);
-                }
-            }
-            
-            if (activeMarbles.length > 0) {
-                const activeMarble = activeMarbles[0];
-                
-                for (let marble of playerMarbles) {
-                    if (marble === activeMarble) continue;
+                if (!marble.isMoving() && marble.isActive) {
+                    marble.isActive = false;
+                    marble.isStopped = true;
+                    stoppedMarbles.push(marble);
+                    activeMarbles.splice(activeMarbles.indexOf(marble), 1);
                     
-                    if (checkCollision(activeMarble, marble)) {
-                        const newBullets = triggerFriendshipAttack(activeMarble, marble);
+                    const allStopped = activeMarbles.length === 0;
+                    
+                    if (allStopped && !isEnemyTurn && !isGameOver) {
+                        setTimeout(() => {
+                            executeEnemyAttack();
+                        }, 500);
+                    }
+                }
+            }
+            
+            for (let marble of activeMarbles) {
+                if (!marble.isActive || !marble.isMoving() || marble.isDestroyed) continue;
+                
+                for (let other of stoppedMarbles) {
+                    if (other.isDestroyed) continue;
+                    if (checkCollision(marble, other)) {
+                        const newBullets = triggerFriendshipAttack(marble, other);
                         if (newBullets) {
                             bullets.push(...newBullets);
                         }
-                    }
-                }
-                
-                for (let marble of stoppedMarbles) {
-                    if (checkCollision(activeMarble, marble)) {
-                        const newBullets = triggerFriendshipAttack(activeMarble, marble);
-                        if (newBullets) {
-                            bullets.push(...newBullets);
+                        
+                        const dx = other.x - marble.x;
+                        const dy = other.y - marble.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const overlap = marble.radius + other.radius - distance;
+                        
+                        if (overlap > 0) {
+                            const nx = dx / distance;
+                            const ny = dy / distance;
+                            
+                            marble.x -= nx * overlap;
+                            marble.y -= ny * overlap;
+                            
+                            const relativeVx = marble.vx;
+                            const relativeVy = marble.vy;
+                            const impulse = (relativeVx * nx + relativeVy * ny) * COLLISION_DAMPING;
+                            
+                            marble.vx -= impulse * nx * 2;
+                            marble.vy -= impulse * ny * 2;
+                            
+                            marble.applyHitSlowdown();
                         }
                     }
                 }
             }
             
             for (let marble of activeMarbles) {
-                if (!marble.isActive || !marble.isMoving()) continue;
+                if (!marble.isActive || !marble.isMoving() || marble.isDestroyed) continue;
                 
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     const enemy = enemies[i];
@@ -1580,7 +1517,6 @@
                         const dy = enemy.y - marble.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        // ダメージ処理
                         if (enemy.takeDamage(marble.damage)) {
                             defeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
@@ -1590,30 +1526,31 @@
                             
                             if (enemies.length === 0) {
                                 setTimeout(() => {
-                                    showMessage('🎉 全ての敵を倒しました！おめでとう！', 'success');
+                                    if (currentStage < MAX_STAGES) {
+                                        showMessage(`🎉 ステージ${currentStage}クリア！`, 'success');
+                                        setTimeout(() => {
+                                            currentStage++;
+                                            defeated = 0;
+                                            initStage(currentStage);
+                                        }, 2000);
+                                    } else {
+                                        showMessage('🎉 全ステージクリア！おめでとう！', 'success');
+                                    }
                                 }, 500);
                             }
                         }
                         
-                        // 衝突処理（味方だけ跳ね返る）
                         const overlap = marble.radius + enemy.radius - distance;
                         if (overlap > 0) {
-                            // 法線ベクトル（敵の中心から味方の中心へ）
                             const nx = dx / distance;
                             const ny = dy / distance;
                             
-                            // 味方を敵の外側まで押し戻す
-                            marble.x -= nx * (overlap + 1);  // +1で確実に離す
+                            marble.x -= nx * (overlap + 1);
                             marble.y -= ny * (overlap + 1);
                             
-                            // 味方の速度を法線方向と接線方向に分解
                             const dotProduct = marble.vx * nx + marble.vy * ny;
-                            
-                            // 法線方向の速度を反転（反射）
                             marble.vx -= 2 * dotProduct * nx;
                             marble.vy -= 2 * dotProduct * ny;
-                            
-                            // 反射後の減速（ビリヤードらしさのため）
                             marble.vx *= 0.8;
                             marble.vy *= 0.8;
                         }
@@ -1621,27 +1558,42 @@
                 }
             }
             
-            // ★ 停止判定 → 敵のターンへ
-            if (activeMarbles.length > 0 && !activeMarbles[0].isMoving() && !isEnemyTurn && !isGameOver) {
-                const marble = activeMarbles[0];
-                marble.isActive = false;
-                marble.isStopped = true;
-                stoppedMarbles.push(marble);
-                activeMarbles = [];
+            for (let marble of activeMarbles) {
+                if (marble.isActive && !marble.isDestroyed) {
+                    marble.draw();
+                }
+            }
+            
+            for (let marble of playerMarbles) {
+                if (!marble.isUsed && !marble.isDestroyed) {
+                    marble.draw();
+                }
+            }
+            
+            if (isDragging) {
+                const marble = playerMarbles[currentTurn];
                 
-                // 敵の攻撃を実行
-                setTimeout(() => {
-                    executeEnemyAttack();
-                }, 500);
+                ctx.save();
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(dragStart.x, dragStart.y);
+                ctx.lineTo(dragEnd.x, dragEnd.y);
+                ctx.stroke();
+                ctx.restore();
+                
+                const power = Math.sqrt((dragEnd.x - dragStart.x) ** 2 + (dragEnd.y - dragStart.y) ** 2);
+                const maxPower = 200;
+                const powerPercent = Math.min(power / maxPower * 100, 100);
+                
+                ctx.fillStyle = powerPercent > 70 ? '#4caf50' : powerPercent > 40 ? '#ff9800' : '#f44336';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`パワー: ${Math.round(powerPercent)}%`, dragEnd.x, dragEnd.y - 20);
             }
             
             requestAnimationFrame(update);
-        }
-        
-        function updateUI() {
-            document.getElementById('defeated').textContent = defeated;
-            document.getElementById('enemyCount').textContent = enemies.length;
-            document.getElementById('currentTurn').textContent = currentTurn + 1;
         }
         
         function showMessage(text, type = 'info') {
@@ -1655,80 +1607,84 @@
             }, 2000);
         }
         
+        function updateUI() {
+            document.getElementById('currentStage').textContent = currentStage;
+            document.getElementById('defeated').textContent = defeated;
+            document.getElementById('enemyCount').textContent = enemies.length;
+        }
+        
         function getCanvasCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvasSize.width / rect.width;
-            const scaleY = canvasSize.height / rect.height;
-            
-            let clientX, clientY;
-            
-            if (e.touches && e.touches.length > 0) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-            
+            const touch = e.touches ? e.touches[0] : e;
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: (touch.clientX - rect.left) * (canvasSize.width / rect.width),
+                y: (touch.clientY - rect.top) * (canvasSize.height / rect.height)
             };
         }
         
         function handleStart(e) {
-            if (isEnemyTurn || isGameOver) return; // ★ 敵のターン中は操作不可
-            if (currentTurn >= MAX_MARBLES) return;
+            if (currentTurn >= MAX_MARBLES || isEnemyTurn || isGameOver) return;
             if (activeMarbles.length > 0) return;
             
-            e.preventDefault();
             const coords = getCanvasCoordinates(e);
             dragStart = coords;
             dragEnd = coords;
             isDragging = true;
+            
+            e.preventDefault();
         }
         
         function handleMove(e) {
             if (!isDragging) return;
+            
+            const coords = getCanvasCoordinates(e);
+            dragEnd = coords;
+            
             e.preventDefault();
-            dragEnd = getCanvasCoordinates(e);
         }
         
         function handleEnd(e) {
             if (!isDragging) return;
-            if (isEnemyTurn || isGameOver) return; // ★ 敵のターン中は操作不可
-            e.preventDefault();
+            if (currentTurn >= MAX_MARBLES || isEnemyTurn || isGameOver) return;
             
-            const marble = playerMarbles[currentTurn];
+            isDragging = false;
+            
             const dx = dragStart.x - dragEnd.x;
             const dy = dragStart.y - dragEnd.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            if (distance > 10) {
-                const power = Math.min(distance / 50, 3);
-                marble.vx = (dx / distance) * power * marble.speedMultiplier;
-                marble.vy = (dy / distance) * power * marble.speedMultiplier;
-                marble.isActive = true;
-                marble.isUsed = true;
-                activeMarbles.push(marble);
-            }
+            if (distance < 10) return;
             
-            isDragging = false;
+            const marble = playerMarbles[currentTurn];
+            const speed = Math.min(distance / 50, 3) * marble.speedMultiplier;
+            const angle = Math.atan2(dy, dx);
+            
+            marble.vx = Math.cos(angle) * speed;
+            marble.vy = Math.sin(angle) * speed;
+            marble.isActive = true;
+            marble.isUsed = true;
+            
+            activeMarbles.push(marble);
+            
+            e.preventDefault();
         }
         
         canvas.addEventListener('mousedown', handleStart);
         canvas.addEventListener('mousemove', handleMove);
         canvas.addEventListener('mouseup', handleEnd);
-        canvas.addEventListener('mouseleave', handleEnd);
-        
         canvas.addEventListener('touchstart', handleStart, { passive: false });
         canvas.addEventListener('touchmove', handleMove, { passive: false });
-        canvas.addEventListener('touchend', handleEnd);
-        canvas.addEventListener('touchcancel', handleEnd);
+        canvas.addEventListener('touchend', handleEnd, { passive: false });
         
-        document.getElementById('resetBtn').addEventListener('click', initGame);
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (confirm('新しいゲームを開始しますか？')) {
+                currentStage = 1;
+                defeated = 0;
+                initStage(currentStage);
+            }
+        });
         
-        initGame();
+        initStage(1);
         update();
     </script>
 </body>
