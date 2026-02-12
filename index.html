@@ -709,7 +709,8 @@
                     this.vy *= -BOUNCE;
                 }
                 
-                if (Math.abs(this.vx) < STOP_THRESHOLD && Math.abs(this.vy) < STOP_THRESHOLD) {
+                if (Math.abs(this.vx * VELOCITY_SCALE) < STOP_THRESHOLD && 
+                    Math.abs(this.vy * VELOCITY_SCALE) < STOP_THRESHOLD) {
                     this.vx = 0;
                     this.vy = 0;
                 }
