@@ -1792,9 +1792,9 @@
                             
                             // HP回復判定（20%の確率）
                             const healChance = Math.random() < 0.20;
-                            if (healChance && playerHP < maxHP) {
+                            if (healChance && teamHP < MAX_TEAM_HP) {
                                 const healAmount = 10;
-                                playerHP = Math.min(playerHP + healAmount, maxHP);
+                                teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                                 // HP回復エフェクトを追加
                                 explosions.push(new HealEffect(enemy.x, enemy.y));
                                 showMessage(`💚 HP回復！ +${healAmount}`, 'success');
@@ -1991,9 +1991,9 @@
                             
                             // HP回復判定（20%の確率）
                             const healChance = Math.random() < 0.20;
-                            if (healChance && playerHP < maxHP) {
+                            if (healChance && teamHP < MAX_TEAM_HP) {
                                 const healAmount = 10;
-                                playerHP = Math.min(playerHP + healAmount, maxHP);
+                                teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                                 // HP回復エフェクトを追加
                                 explosions.push(new HealEffect(enemy.x, enemy.y));
                                 showMessage(`💚 HP回復！ +${healAmount}`, 'success');
