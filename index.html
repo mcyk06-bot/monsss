@@ -349,6 +349,10 @@
                 <div class="info-label">総撃破</div>
                 <div class="info-value" id="totalDefeated">0</div>
             </div>
+            <div class="info-item">
+                <div class="info-label">⚔️攻撃力</div>
+                <div class="info-value" id="attackBonus">+0</div>
+            </div>
         </div>
         
         <div class="turn-indicator" id="turnIndicator">
@@ -635,10 +639,14 @@
         
         // ★ HP システム追加
         let teamHP = 10;
-        const MAX_TEAM_HP = 10;
+        let MAX_TEAM_HP = 10; // HP上限（アイテムで増加可能）
         let isGameOver = false;
         let isEnemyTurn = false; // 敵のターンフラグ
         let enemyDamage = 1; // 敵の攻撃力（10ステージごとに増加）
+        
+        // ★ RPG要素：プレイヤーのステータス
+        let playerAttackBonus = 0; // 攻撃力ボーナス（アイテムで増加）
+        let items = []; // フィールドのアイテム配列
         
         let friendshipAttackHistory = new Set();
         
@@ -974,6 +982,81 @@
             
             isComplete() {
                 return this.frame >= this.maxFrames;
+            }
+        }
+        
+        // ★ アイテムクラス
+        class Item {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'hp' or 'attack'
+                this.radius = 15;
+                this.frame = 0;
+                this.collected = false;
+                
+                // アイテムタイプごとの設定
+                if (type === 'hp') {
+                    this.emoji = '❤️';
+                    this.color = '#ff1744';
+                    this.effect = 'HP上限+5';
+                } else if (type === 'attack') {
+                    this.emoji = '⚔️';
+                    this.color = '#ffd600';
+                    this.effect = '攻撃力+1';
+                }
+            }
+            
+            update() {
+                this.frame++;
+            }
+            
+            draw() {
+                ctx.save();
+                
+                // 浮遊アニメーション
+                const floatOffset = Math.sin(this.frame * 0.05) * 5;
+                const currentY = this.y + floatOffset;
+                
+                // 光る円のエフェクト
+                const pulseSize = 1 + Math.sin(this.frame * 0.1) * 0.2;
+                
+                // 外側の光
+                const gradient = ctx.createRadialGradient(
+                    this.x, currentY, 0,
+                    this.x, currentY, this.radius * pulseSize * 1.5
+                );
+                gradient.addColorStop(0, this.color + 'aa');
+                gradient.addColorStop(0.5, this.color + '44');
+                gradient.addColorStop(1, this.color + '00');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, currentY, this.radius * pulseSize * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 内側の円
+                ctx.fillStyle = this.color + 'dd';
+                ctx.beginPath();
+                ctx.arc(this.x, currentY, this.radius * pulseSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 絵文字
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'white';
+                ctx.fillText(this.emoji, this.x, currentY);
+                
+                // キラキラ効果
+                if (this.frame % 20 < 10) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillText('✨', this.x - 20, currentY - 20);
+                    ctx.fillText('✨', this.x + 20, currentY - 20);
+                }
+                
+                ctx.restore();
             }
         }
         
@@ -1383,7 +1466,9 @@
             currentStage = 1;
             totalTurns = 0;
             totalDefeated = 0;
+            MAX_TEAM_HP = 10; // HP上限をリセット
             teamHP = MAX_TEAM_HP;
+            playerAttackBonus = 0; // 攻撃力ボーナスをリセット
             startStage();
         }
         
@@ -1405,6 +1490,7 @@
             bullets = [];
             explosions = [];
             enemyBeams = [];
+            items = []; // アイテム配列をリセット
             defeated = 0;
             currentTurn = 0;
             friendshipAttackHistory = new Set();
@@ -1568,7 +1654,53 @@
                 console.log(`👾 通常敵生成完了: ${enemyCount}体`);
             }
             
-            console.log(`✅ ステージ ${currentStage} の準備完了 - 味方:${playerMarbles.length}個, 敵:${enemies.length}体`);
+            // ★ アイテム生成（30%の確率で1-2個出現）
+            if (Math.random() < 0.30) {
+                const itemCount = Math.random() < 0.7 ? 1 : 2; // 70%で1個、30%で2個
+                for (let i = 0; i < itemCount; i++) {
+                    const itemType = Math.random() < 0.5 ? 'hp' : 'attack';
+                    let x, y, valid;
+                    let attempts = 0;
+                    
+                    do {
+                        valid = true;
+                        x = 80 + Math.random() * (canvasSize.width - 160);
+                        y = 100 + Math.random() * (canvasSize.height * 0.5);
+                        
+                        // 敵と重ならないようにチェック
+                        for (let enemy of enemies) {
+                            const dx = x - enemy.x;
+                            const dy = y - enemy.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < enemy.radius + 30) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                        
+                        // 他のアイテムと重ならないようにチェック
+                        for (let item of items) {
+                            const dx = x - item.x;
+                            const dy = y - item.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < 40) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                        
+                        attempts++;
+                        if (attempts >= 50) {
+                            valid = true;
+                        }
+                    } while (!valid);
+                    
+                    items.push(new Item(x, y, itemType));
+                }
+                console.log(`🎁 アイテム生成: ${itemCount}個`);
+            }
+            
+            console.log(`✅ ステージ ${currentStage} の準備完了 - 味方:${playerMarbles.length}個, 敵:${enemies.length}体, アイテム:${items.length}個`);
             updateUI();
             updateStageDisplay();
             updateHPBar();
@@ -1822,6 +1954,12 @@
                 enemies[i].draw();
             }
             
+            // ★ アイテムの描画と更新
+            for (let i = items.length - 1; i >= 0; i--) {
+                items[i].update();
+                items[i].draw();
+            }
+            
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].update();
                 bullets[i].draw();
@@ -1837,7 +1975,8 @@
                     if (!bullets[i].hitEnemies.has(enemy) && checkBulletCollision(bullets[i], enemy)) {
                         bullets[i].hitEnemies.add(enemy);
                         
-                        if (enemy.takeDamage(0.3)) {
+                        const bulletDamage = 0.3 + playerAttackBonus * 0.1; // 攻撃力ボーナスを弾丸にも反映
+                        if (enemy.takeDamage(bulletDamage)) {
                             defeated++;
                             totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
@@ -2016,6 +2155,36 @@
             for (let marble of activeMarbles) {
                 if (!marble.isActive || !marble.isMoving()) continue;
                 
+                // ★ アイテムとの当たり判定
+                for (let i = items.length - 1; i >= 0; i--) {
+                    const item = items[i];
+                    if (item.collected) continue;
+                    
+                    const dx = item.x - marble.x;
+                    const dy = item.y - marble.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < marble.radius + item.radius) {
+                        // アイテム取得！
+                        item.collected = true;
+                        items.splice(i, 1);
+                        
+                        if (item.type === 'hp') {
+                            MAX_TEAM_HP += 5;
+                            teamHP = Math.min(teamHP + 5, MAX_TEAM_HP);
+                            explosions.push(new HealEffect(item.x, item.y));
+                            showMessage(`❤️ HP上限+5！ (${MAX_TEAM_HP})`, 'success');
+                            updateHPBar();
+                        } else if (item.type === 'attack') {
+                            playerAttackBonus += 1;
+                            explosions.push(new CriticalEffect(item.x, item.y));
+                            showMessage(`⚔️ 攻撃力+1！ (ボーナス:+${playerAttackBonus})`, 'success');
+                        }
+                        
+                        console.log(`🎁 アイテム取得: ${item.emoji} ${item.effect}`);
+                    }
+                }
+                
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     const enemy = enemies[i];
                     
@@ -2026,7 +2195,8 @@
                         
                         // クリティカルヒット判定（15%の確率）
                         const isCritical = Math.random() < 0.15;
-                        const damageToApply = isCritical ? marble.damage + 10 : marble.damage;
+                        const baseDamage = marble.damage + playerAttackBonus; // 攻撃力ボーナスを加算
+                        const damageToApply = isCritical ? baseDamage + 10 : baseDamage;
                         
                         if (isCritical) {
                             // クリティカルヒットエフェクトを追加
@@ -2110,6 +2280,7 @@
             document.getElementById('defeated').textContent = defeated;
             document.getElementById('totalDefeated').textContent = totalDefeated;
             document.getElementById('currentTurn').textContent = currentTurn + 1;
+            document.getElementById('attackBonus').textContent = '+' + playerAttackBonus;
         }
         
         function showMessage(text, type = 'info') {
