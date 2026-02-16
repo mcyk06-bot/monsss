@@ -1066,12 +1066,13 @@
                 if (this.isBoss) {
                     img = enemyImages.BOSS;
                 } else {
-                    if (this.size === ENEMY_SIZES.SMALL) img = enemyImages.SMALL;
-                    else if (this.size === ENEMY_SIZES.MEDIUM) img = enemyImages.MEDIUM;
-                    else if (this.size === ENEMY_SIZES.LARGE) img = enemyImages.LARGE;
+                    // nameプロパティで比較（オブジェクト参照ではなく）
+                    if (this.size.name === '小') img = enemyImages.SMALL;
+                    else if (this.size.name === '中') img = enemyImages.MEDIUM;
+                    else if (this.size.name === '大') img = enemyImages.LARGE;
                 }
 
-                if (img && img.complete) {
+                if (img && img.complete && img.naturalWidth > 0) {
                     ctx.drawImage(img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
                 } else {
                     const gradient = ctx.createRadialGradient(this.x - this.radius/3, this.y - this.radius/3, 0, this.x, this.y, this.radius);
@@ -1179,6 +1180,7 @@
         }
         
         function startStage() {
+            console.log(`🎮 ステージ ${currentStage} を開始します`);
             playerMarbles = [];
             stoppedMarbles = [];
             activeMarbles = [];
@@ -1204,6 +1206,7 @@
             const startX = (canvasSize.width - (spacing * 3)) / 2;
             const yPos = canvasSize.height - 50;
             
+            console.log(`👥 味方を${MAX_MARBLES}個生成します`);
             for (let i = 0; i < MAX_MARBLES; i++) {
                 const marble = new Marble(
                     startX + (i * spacing), 
@@ -1212,23 +1215,28 @@
                 );
                 playerMarbles.push(marble);
             }
+            console.log(`✅ 味方生成完了: ${playerMarbles.length}個`);
             
             // ★ ステージに応じた敵生成
             const isBossStage = currentStage % 5 === 0;
             
             if (isBossStage) {
+                console.log(`🔥 ボスステージ ${currentStage} の敵を生成します`);
                 // ボスステージ（5,10,15...）
                 // ボスは007.pngを使用する大型の敵
                 const bossSize = {
                     name: 'ボス',
                     radius: 50,
-                    hp: 10 + currentStage * 2  // ボスHP: ステージごとに増加
+                    maxHp: 10 + currentStage * 2,  // ボスHP: ステージごとに増加
+                    color: '#8b0000',  // ダークレッド
+                    secondaryColor: '#ff0000'  // 明るいレッド
                 };
                 const bossX = canvasSize.width / 2;
                 const bossY = 150;
                 const boss = new Enemy(bossX, bossY, bossSize);
                 boss.isBoss = true;  // ボスフラグ
                 enemies.push(boss);
+                console.log(`👹 ボス生成完了: HP=${boss.maxHp}`);
                 
                 // ボスの取り巻き
                 const minionCount = Math.min(2 + Math.floor(currentStage / 5), 4);
@@ -1257,6 +1265,7 @@
                     
                     enemies.push(new Enemy(x, y, size));
                 }
+                console.log(`🐉 取り巻き生成完了: ${minionCount}体`);
             } else {
                 // 通常ステージ
                 const baseEnemyCount = 5;
@@ -1275,7 +1284,7 @@
                     const sizeIndex = i % sizeOptions.length;
                     const size = { ...sizeOptions[sizeIndex] };
                     // ステージごとにHP増加
-                    size.hp = size.hp + Math.floor(currentStage / 2);
+                    size.maxHp = size.maxHp + Math.floor(currentStage / 2);
                     
                     do {
                         valid = true;
@@ -1296,8 +1305,10 @@
                     
                     enemies.push(new Enemy(x, y, size));
                 }
+                console.log(`👾 通常敵生成完了: ${enemyCount}体`);
             }
             
+            console.log(`✅ ステージ ${currentStage} の準備完了 - 味方:${playerMarbles.length}個, 敵:${enemies.length}体`);
             updateUI();
             updateStageDisplay();
             updateHPBar();
@@ -1404,7 +1415,7 @@
         // ★ ビームと味方の当たり判定
         function checkBeamHits(beam) {
             let hitCount = 0;
-            const allMarbles = [...playerMarbles, ...stoppedMarbles];
+            const allMarbles = playerMarbles;
 
             for (let marble of allMarbles) {
                 if (isPointOnLine(marble.x, marble.y, beam.startX, beam.startY, beam.endX, beam.endY, marble.radius)) {
@@ -1458,15 +1469,23 @@
             isEnemyTurn = false;
             currentTurn++;
             totalTurns++;
-            updateTurnIndicator();
-
+            
+            // ★ モンスト方式：4個使い終わったら1個目に戻る
             if (currentTurn >= MAX_MARBLES) {
-                setTimeout(() => {
-                    if (enemies.length > 0 && teamHP > 0) {
-                        showMessage('⚠️ 全てのおはじきを使用しました！敵が残っています...', 'info');
-                    }
-                }, 500);
+                currentTurn = 0;
+                // 全ての玉を再利用可能にする（停止位置はそのまま）
+                for (let marble of playerMarbles) {
+                    marble.isUsed = false;
+                    marble.isActive = false;
+                    // 友情攻撃の履歴をリセット
+                    marble.hitEnemies = new Set();
+                }
+                // stoppedMarblesをクリア（玉は位置を保持したまま再利用）
+                stoppedMarbles = [];
+                showMessage('🔄 1個目の玉に戻ります！', 'info');
             }
+            
+            updateTurnIndicator();
         }
         
         function checkCollision(m1, m2) {
@@ -1507,13 +1526,10 @@
             } else if (isEnemyTurn) {
                 indicator.textContent = '⚡ 敵のターン';
                 indicator.style.background = 'linear-gradient(135deg, #f44336 0%, #e53935 100%)';
-            } else if (currentTurn < MAX_MARBLES) {
+            } else {
                 const marble = playerMarbles[currentTurn];
                 indicator.textContent = `ターン ${currentTurn + 1}: ${marble.type.name}を発射`;
                 indicator.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-            } else {
-                indicator.textContent = '全てのおはじきを使用しました';
-                indicator.style.background = 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)';
             }
         }
         
@@ -1537,10 +1553,6 @@
             
             for (let i = enemies.length - 1; i >= 0; i--) {
                 enemies[i].draw();
-            }
-            
-            for (let marble of stoppedMarbles) {
-                marble.draw();
             }
             
             for (let i = bullets.length - 1; i >= 0; i--) {
@@ -1585,7 +1597,7 @@
             }
             
             for (let marble of playerMarbles) {
-                if (!marble.isUsed) {
+                if (!marble.isActive) {
                     marble.draw();
                 }
             }
@@ -1720,15 +1732,6 @@
                         }
                     }
                 }
-                
-                for (let marble of stoppedMarbles) {
-                    if (checkCollision(activeMarble, marble)) {
-                        const newBullets = triggerFriendshipAttack(activeMarble, marble);
-                        if (newBullets) {
-                            bullets.push(...newBullets);
-                        }
-                    }
-                }
             }
             
             for (let marble of activeMarbles) {
@@ -1842,7 +1845,6 @@
         
         function handleStart(e) {
             if (isEnemyTurn || isGameOver || isStageClear) return; // ★ 敵のターン中・ステージクリア中は操作不可
-            if (currentTurn >= MAX_MARBLES) return;
             if (activeMarbles.length > 0) return;
             
             e.preventDefault();
