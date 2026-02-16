@@ -999,11 +999,11 @@
                 if (type === 'hp') {
                     this.emoji = '❤️';
                     this.color = '#ff1744';
-                    this.effect = 'HP上限+5';
+                    this.effect = 'HP上限+2';
                 } else if (type === 'attack') {
                     this.emoji = '⚔️';
                     this.color = '#ffd600';
-                    this.effect = '攻撃力+1';
+                    this.effect = '攻撃力+0.5';
                 }
             }
             
@@ -1479,8 +1479,8 @@
             const cycleNumber = Math.floor((currentStage - 1) / 10); // 何周目か (0, 1, 2...)
             const stageInCycle = ((currentStage - 1) % 10) + 1; // 1-10のサイクル内のステージ
             
-            // ★ 敵の攻撃力を10ステージごとに増加（1, 2, 3...）
-            enemyDamage = 1 + cycleNumber;
+            // ★ 敵の攻撃力を5ステージごとに増加（より早く強化）
+            enemyDamage = 1 + Math.floor(currentStage / 5);
             console.log(`⚔️ ステージ ${currentStage} (サイクル${cycleNumber + 1}, ${stageInCycle}/10) - 敵の攻撃力: ${enemyDamage}`);
             
             playerMarbles = [];
@@ -1530,7 +1530,7 @@
                 const bossSize = {
                     name: 'ボス',
                     radius: 50,
-                    maxHp: 12 + currentStage,  // ボスHP: ステージ+12（より緩やか）
+                    maxHp: 15 + currentStage * 1.5,  // ボスHP: より強化（ステージ5で22.5, 10で30, 15で37.5）
                     color: '#8b0000',  // ダークレッド
                     secondaryColor: '#ff0000'  // 明るいレッド
                 };
@@ -1621,8 +1621,8 @@
                     let x, y, valid;
                     const sizeIndex = i % sizeOptions.length;
                     const size = { ...sizeOptions[sizeIndex] };
-                    // ステージごとにHP増加（増加量を緩やかに）
-                    size.maxHp = size.maxHp + Math.floor(currentStage / 3);
+                    // ステージごとにHP増加（増加量を上げる）
+                    size.maxHp = size.maxHp + Math.floor(currentStage / 2) + cycleNumber * 2;
                     let attempts = 0;
                     const maxAttempts = 100;
                     
@@ -1654,11 +1654,11 @@
                 console.log(`👾 通常敵生成完了: ${enemyCount}体`);
             }
             
-            // ★ アイテム生成（30%の確率で1-2個出現）
-            if (Math.random() < 0.30) {
-                const itemCount = Math.random() < 0.7 ? 1 : 2; // 70%で1個、30%で2個
+            // ★ アイテム生成（12%の確率で1個のみ出現）
+            if (Math.random() < 0.12) {
+                const itemCount = 1; // 1個のみ
                 for (let i = 0; i < itemCount; i++) {
-                    const itemType = Math.random() < 0.5 ? 'hp' : 'attack';
+                    const itemType = Math.random() < 0.4 ? 'hp' : 'attack'; // HP40%, 攻撃60%
                     let x, y, valid;
                     let attempts = 0;
                     
@@ -2170,15 +2170,15 @@
                         items.splice(i, 1);
                         
                         if (item.type === 'hp') {
-                            MAX_TEAM_HP += 5;
-                            teamHP = Math.min(teamHP + 5, MAX_TEAM_HP);
+                            MAX_TEAM_HP += 2;
+                            teamHP = Math.min(teamHP + 2, MAX_TEAM_HP);
                             explosions.push(new HealEffect(item.x, item.y));
-                            showMessage(`❤️ HP上限+5！ (${MAX_TEAM_HP})`, 'success');
+                            showMessage(`❤️ HP上限+2！ (${MAX_TEAM_HP})`, 'success');
                             updateHPBar();
                         } else if (item.type === 'attack') {
-                            playerAttackBonus += 1;
+                            playerAttackBonus += 0.5;
                             explosions.push(new CriticalEffect(item.x, item.y));
-                            showMessage(`⚔️ 攻撃力+1！ (ボーナス:+${playerAttackBonus})`, 'success');
+                            showMessage(`⚔️ 攻撃力+0.5！ (ボーナス:+${playerAttackBonus})`, 'success');
                         }
                         
                         console.log(`🎁 アイテム取得: ${item.emoji} ${item.effect}`);
