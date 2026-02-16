@@ -1312,12 +1312,40 @@
                 ctx.fillText(`${this.hp.toFixed(1)}/${this.maxHp}`, this.x, barY - 2);
                 
                 const now = Date.now();
-                if (now - this.lastHitTime < 200) {
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-                    ctx.lineWidth = 4;
-                    ctx.stroke();
+                const timeSinceHit = now - this.lastHitTime;
+                if (timeSinceHit < 200) {
+                    // ヒットエフェクトのアニメーション進行度
+                    const progress = timeSinceHit / 200;
+                    
+                    // ボスの場合はより派手なエフェクト
+                    if (this.isBoss) {
+                        // 複数の拡大する円
+                        for (let i = 0; i < 3; i++) {
+                            const offset = i * 8;
+                            const alpha = (1 - progress) * (1 - i * 0.2);
+                            ctx.beginPath();
+                            ctx.arc(this.x, this.y, this.radius + 10 + offset + progress * 20, 0, Math.PI * 2);
+                            ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;
+                            ctx.lineWidth = 6 - i;
+                            ctx.stroke();
+                        }
+                        
+                        // 点滅する白いフラッシュ
+                        if (Math.floor(timeSinceHit / 50) % 2 === 0) {
+                            ctx.beginPath();
+                            ctx.arc(this.x, this.y, this.radius + 8, 0, Math.PI * 2);
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${1 - progress})`;
+                            ctx.lineWidth = 8;
+                            ctx.stroke();
+                        }
+                    } else {
+                        // 通常の敵のエフェクト
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius + 5 + progress * 10, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(255, 255, 0, ${1 - progress})`;
+                        ctx.lineWidth = 5;
+                        ctx.stroke();
+                    }
                 }
             }
             
