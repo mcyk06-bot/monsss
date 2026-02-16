@@ -844,7 +844,10 @@
                     p.life = 1 - progress;
                     p.size *= 0.98;
                     
-                    if (p.life > 0) {
+                    // サイズが十分にあり、ライフが残っている場合のみ描画
+                    if (p.life > 0 && p.size > 0.5) {
+                        ctx.save();
+                        
                         // 輝くハートのような効果
                         const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
                         gradient.addColorStop(0, `hsla(${p.hue}, 100%, 70%, ${p.life})`);
@@ -857,11 +860,13 @@
                         ctx.fill();
                         
                         // キラキラ効果
-                        if (this.frame % 3 === 0) {
+                        if (this.frame % 3 === 0 && p.size > 2) {
                             ctx.fillStyle = `rgba(255, 255, 255, ${p.life * 0.8})`;
                             ctx.fillRect(p.x - 1, p.y - p.size * 1.5, 2, p.size);
                             ctx.fillRect(p.x - p.size * 0.7, p.y - 1, p.size * 1.4, 2);
                         }
+                        
+                        ctx.restore();
                     }
                 }
             }
@@ -945,7 +950,9 @@
                     p.life = 1 - progress;
                     p.size *= 0.97;
                     
-                    if (p.life > 0) {
+                    // サイズが十分にあり、ライフが残っている場合のみ描画
+                    if (p.life > 0 && p.size > 0.5) {
+                        ctx.save();
                         const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
                         gradient.addColorStop(0, p.color === '#ff0000' ? `rgba(255, 0, 0, ${p.life})` : `rgba(255, 255, 0, ${p.life})`);
                         gradient.addColorStop(0.5, p.color === '#ff0000' ? `rgba(255, 136, 0, ${p.life * 0.8})` : `rgba(255, 255, 136, ${p.life * 0.8})`);
@@ -955,6 +962,7 @@
                         ctx.beginPath();
                         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                         ctx.fill();
+                        ctx.restore();
                     }
                 }
                 
