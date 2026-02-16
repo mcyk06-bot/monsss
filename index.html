@@ -501,30 +501,37 @@
         enemyImages.LARGE.onerror = () => console.error('❌ 006.pngが読み込めません');
         enemyImages.BOSS.onerror = () => console.error('❌ 007.pngが読み込めません');
 
+        // ★ 基準解像度（すべてのゲーム要素はこのサイズで定義）
+        const BASE_WIDTH = 800;
+        const BASE_HEIGHT = 900; // 8:9の比率
+        
         function resizeCanvas() {
             const container = document.querySelector('.canvas-container');
             const rect = container.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
             
             const aspectRatio = 8 / 9;
-            let width = rect.width;
-            let height = rect.height;
+            let displayWidth = rect.width;
+            let displayHeight = rect.height;
             
-            if (width / height > aspectRatio) {
-                width = height * aspectRatio;
+            // 表示サイズを8:9の比率に調整
+            if (displayWidth / displayHeight > aspectRatio) {
+                displayWidth = displayHeight * aspectRatio;
             } else {
-                height = width / aspectRatio;
+                displayHeight = displayWidth / aspectRatio;
             }
             
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            canvas.style.width = width + 'px';
-            canvas.style.height = height + 'px';
+            // Canvasは常に基準解像度で描画
+            canvas.width = BASE_WIDTH * dpr;
+            canvas.height = BASE_HEIGHT * dpr;
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
             ctx.scale(dpr, dpr);
             
+            // ゲーム内では常に基準解像度を使用
             return {
-                width: width,
-                height: height
+                width: BASE_WIDTH,
+                height: BASE_HEIGHT
             };
         }
         
@@ -1654,8 +1661,8 @@
                 console.log(`👾 通常敵生成完了: ${enemyCount}体`);
             }
             
-            // ★ アイテム生成（30%の確率で1個のみ出現）
-            if (Math.random() < 0.30) {
+            // ★ アイテム生成（12%の確率で1個のみ出現）
+            if (Math.random() < 0.12) {
                 const itemCount = 1; // 1個のみ
                 for (let i = 0; i < itemCount; i++) {
                     const itemType = Math.random() < 0.4 ? 'hp' : 'attack'; // HP40%, 攻撃60%
