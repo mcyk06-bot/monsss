@@ -136,44 +136,15 @@
             display: flex;
             flex-direction: column;
             gap: 5px;
+            align-items: center;
         }
         
-        .special-shot-gauge {
-            width: 100%;
-            height: 20px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-        }
-        
-        .special-shot-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ffd700, #ffed4e);
-            transition: width 0.3s ease;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-        
-        .special-shot-fill.ready {
-            background: linear-gradient(90deg, #ff6b00, #ffed4e);
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(255, 107, 0, 0.8); }
-            50% { opacity: 0.7; box-shadow: 0 0 20px rgba(255, 215, 0, 1); }
-        }
-        
-        .special-shot-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 11px;
+        .special-shot-count {
+            font-size: 13px;
             font-weight: bold;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            color: #333;
+            text-align: center;
+            padding: 3px 0;
         }
         
         .special-shot-btn {
@@ -186,6 +157,7 @@
             transition: all 0.3s;
             background: #ccc;
             color: #666;
+            width: 100%;
         }
         
         .special-shot-btn:disabled {
@@ -449,12 +421,8 @@
                     </div>
                 </div>
                 <div style="flex: 1;">
-                    <div class="hp-label">⚡ 大号令ショット</div>
                     <div class="special-shot-container">
-                        <div class="special-shot-gauge" id="specialShotGauge">
-                            <div class="special-shot-fill" id="specialShotFill"></div>
-                            <div class="special-shot-text" id="specialShotText">0 / 24</div>
-                        </div>
+                        <div class="special-shot-count" id="specialShotText">⚡ 0 / 24</div>
                         <button class="special-shot-btn" id="specialShotBtn" disabled>
                             <span id="specialShotBtnText">準備中...</span>
                         </button>
@@ -1959,6 +1927,15 @@
             teamHP = Math.min(MAX_TEAM_HP, teamHP + hpRecovery);
             updateHPBar();
             
+            // ★ 大号令ショットカウント増加
+            if (specialShotCount < SPECIAL_SHOT_MAX) {
+                specialShotCount++;
+                if (specialShotCount === SPECIAL_SHOT_MAX) {
+                    showMessage('⚡ 大号令ショット準備完了！', 'combo-effect');
+                }
+            }
+            updateSpecialShotUI();
+            
             stageNum.textContent = `ステージ ${currentStage} クリア！`;
             turns.textContent = `このステージのターン数: ${currentTurn + 1}`;
             defeatedText.textContent = `撃破数: ${defeated}体`;
@@ -2163,8 +2140,8 @@
         function update() {
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
             
-            // ★ 背景を描画（余白を消す）
-            ctx.fillStyle = '#1a1a2e';
+            // ★ 背景を緑に描画
+            ctx.fillStyle = '#2f662a';
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
             
             // ★ 敵のビーム描画
@@ -2535,18 +2512,15 @@
         }
         
         function updateSpecialShotUI() {
-            const fill = document.getElementById('specialShotFill');
             const text = document.getElementById('specialShotText');
             const btn = document.getElementById('specialShotBtn');
             const btnText = document.getElementById('specialShotBtnText');
             
-            const progress = (specialShotCount / SPECIAL_SHOT_MAX) * 100;
-            fill.style.width = progress + '%';
-            text.textContent = `${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
+            // カウント表示を更新
+            text.textContent = `⚡ ${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
             
             if (specialShotCount >= SPECIAL_SHOT_MAX) {
                 isSpecialShotReady = true;
-                fill.classList.add('ready');
                 btn.disabled = false;
                 
                 if (isSpecialShotActive) {
@@ -2560,7 +2534,6 @@
                 }
             } else {
                 isSpecialShotReady = false;
-                fill.classList.remove('ready');
                 btn.disabled = true;
                 btn.classList.remove('ready', 'active');
                 btnText.textContent = '準備中...';
