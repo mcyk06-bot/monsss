@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="monsss">
     <meta name="application-name" content="monsss">
-    <title>monsss</title>
+    <title>monsss - ステージバトル</title>
     <style>
         * {
             margin: 0;
@@ -313,12 +313,27 @@
             font-size: 16px;
             font-weight: bold;
         }
+        
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
         <div class="header">
-            <h1>🎮 monsss</h1>
+            <h1>🎮 monsss - ステージバトル</h1>
+        </div>
+        
+        <div class="stage-display" id="stageDisplay" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 6px; text-align: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">
+            ステージ 1
         </div>
         
         <div class="info-panel">
@@ -327,12 +342,12 @@
                 <div class="info-value" id="currentTurn">1</div>
             </div>
             <div class="info-item">
-                <div class="info-label">倒した敵</div>
+                <div class="info-label">ステージ撃破</div>
                 <div class="info-value" id="defeated">0</div>
             </div>
             <div class="info-item">
-                <div class="info-label">残り敵</div>
-                <div class="info-value" id="enemyCount">5</div>
+                <div class="info-label">総撃破</div>
+                <div class="info-value" id="totalDefeated">0</div>
             </div>
         </div>
         
@@ -414,6 +429,19 @@
         </div>
     </div>
 
+    <div id="stageClearModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 90%; animation: scaleIn 0.3s ease;">
+            <div style="font-size: 28px; font-weight: bold; color: #667eea; margin-bottom: 20px;">🎉 ステージクリア！</div>
+            <div style="margin: 20px 0; font-size: 16px; color: #333;">
+                <div id="clearStageNum"></div>
+                <div id="clearTurns"></div>
+                <div id="clearDefeated"></div>
+                <div id="hpRecovered"></div>
+            </div>
+            <button id="continueBtn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; margin-top: 20px;">次のステージへ →</button>
+        </div>
+    </div>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -428,7 +456,8 @@
         const enemyImages = {
             SMALL: new Image(),
             MEDIUM: new Image(),
-            LARGE: new Image()
+            LARGE: new Image(),
+            BOSS: new Image()
         };
 
         // 画像パスの設定
@@ -438,10 +467,11 @@
         enemyImages.SMALL.src = '004.png';
         enemyImages.MEDIUM.src = '005.png';
         enemyImages.LARGE.src = '006.png';
+        enemyImages.BOSS.src = '007.png';
 
         // 画像読み込み完了チェック
         let imagesLoaded = 0;
-        const totalImages = 6;
+        const totalImages = 7;
 
         function checkAllImagesLoaded() {
             imagesLoaded++;
@@ -456,6 +486,7 @@
         enemyImages.SMALL.onload = checkAllImagesLoaded;
         enemyImages.MEDIUM.onload = checkAllImagesLoaded;
         enemyImages.LARGE.onload = checkAllImagesLoaded;
+        enemyImages.BOSS.onload = checkAllImagesLoaded;
 
         // エラーハンドリング
         marbleImages.NORMAL.onerror = () => console.error('❌ 001.pngが読み込めません');
@@ -464,6 +495,7 @@
         enemyImages.SMALL.onerror = () => console.error('❌ 004.pngが読み込めません');
         enemyImages.MEDIUM.onerror = () => console.error('❌ 005.pngが読み込めません');
         enemyImages.LARGE.onerror = () => console.error('❌ 006.pngが読み込めません');
+        enemyImages.BOSS.onerror = () => console.error('❌ 007.pngが読み込めません');
 
         function resizeCanvas() {
             const container = document.querySelector('.canvas-container');
@@ -591,6 +623,12 @@
         let defeated = 0;
         let currentTurn = 0;
         const MAX_MARBLES = 4;
+        
+        // ★ ステージシステム
+        let currentStage = 1;
+        let totalTurns = 0;
+        let totalDefeated = 0;
+        let isStageClear = false;
         
         // ★ HP システム追加
         let teamHP = 10;
@@ -1023,9 +1061,15 @@
                 
                 ctx.save();
                 let img;
-                if (this.size === ENEMY_SIZES.SMALL) img = enemyImages.SMALL;
-                else if (this.size === ENEMY_SIZES.MEDIUM) img = enemyImages.MEDIUM;
-                else if (this.size === ENEMY_SIZES.LARGE) img = enemyImages.LARGE;
+                
+                // ★ ボスかどうかで画像を選択
+                if (this.isBoss) {
+                    img = enemyImages.BOSS;
+                } else {
+                    if (this.size === ENEMY_SIZES.SMALL) img = enemyImages.SMALL;
+                    else if (this.size === ENEMY_SIZES.MEDIUM) img = enemyImages.MEDIUM;
+                    else if (this.size === ENEMY_SIZES.LARGE) img = enemyImages.LARGE;
+                }
 
                 if (img && img.complete) {
                     ctx.drawImage(img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
@@ -1039,11 +1083,27 @@
                     ctx.fill();
                 }
                 
-                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.stroke();
+                // ★ ボスエフェクト
+                if (this.isBoss) {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('BOSS', this.x, this.y - this.radius - 10);
+                } else {
+                    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
                 
                 ctx.restore();
                 
@@ -1111,6 +1171,14 @@
         }
         
         function initGame() {
+            currentStage = 1;
+            totalTurns = 0;
+            totalDefeated = 0;
+            teamHP = MAX_TEAM_HP;
+            startStage();
+        }
+        
+        function startStage() {
             playerMarbles = [];
             stoppedMarbles = [];
             activeMarbles = [];
@@ -1121,9 +1189,9 @@
             defeated = 0;
             currentTurn = 0;
             friendshipAttackHistory = new Set();
-            teamHP = MAX_TEAM_HP;
             isGameOver = false;
             isEnemyTurn = false;
+            isStageClear = false;
             
             const types = [
                 MARBLE_TYPES.NORMAL,
@@ -1145,43 +1213,130 @@
                 playerMarbles.push(marble);
             }
             
-            const enemyCount = 5;
-            const sizeOptions = [
-                ENEMY_SIZES.SMALL,
-                ENEMY_SIZES.SMALL,
-                ENEMY_SIZES.MEDIUM,
-                ENEMY_SIZES.MEDIUM,
-                ENEMY_SIZES.LARGE
-            ];
+            // ★ ステージに応じた敵生成
+            const isBossStage = currentStage % 5 === 0;
             
-            for (let i = 0; i < enemyCount; i++) {
-                let x, y, valid;
-                const size = sizeOptions[i];
+            if (isBossStage) {
+                // ボスステージ（5,10,15...）
+                // ボスは007.pngを使用する大型の敵
+                const bossSize = {
+                    name: 'ボス',
+                    radius: 50,
+                    hp: 10 + currentStage * 2  // ボスHP: ステージごとに増加
+                };
+                const bossX = canvasSize.width / 2;
+                const bossY = 150;
+                const boss = new Enemy(bossX, bossY, bossSize);
+                boss.isBoss = true;  // ボスフラグ
+                enemies.push(boss);
                 
-                do {
-                    valid = true;
-                    x = 50 + Math.random() * (canvasSize.width - 100);
-                    y = 50 + Math.random() * (canvasSize.height * 0.4);
+                // ボスの取り巻き
+                const minionCount = Math.min(2 + Math.floor(currentStage / 5), 4);
+                const sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM];
+                
+                for (let i = 0; i < minionCount; i++) {
+                    let x, y, valid;
+                    const size = sizeOptions[i % sizeOptions.length];
                     
-                    for (let enemy of enemies) {
-                        const dx = x - enemy.x;
-                        const dy = y - enemy.y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        const minDist = size.radius + enemy.radius + 20;
-                        if (dist < minDist) {
-                            valid = false;
-                            break;
+                    do {
+                        valid = true;
+                        x = 50 + Math.random() * (canvasSize.width - 100);
+                        y = 250 + Math.random() * 150;
+                        
+                        for (let enemy of enemies) {
+                            const dx = x - enemy.x;
+                            const dy = y - enemy.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const minDist = size.radius + enemy.radius + 20;
+                            if (dist < minDist) {
+                                valid = false;
+                                break;
+                            }
                         }
-                    }
-                } while (!valid);
+                    } while (!valid);
+                    
+                    enemies.push(new Enemy(x, y, size));
+                }
+            } else {
+                // 通常ステージ
+                const baseEnemyCount = 5;
+                const enemyCount = baseEnemyCount + Math.floor(currentStage / 2);
                 
-                enemies.push(new Enemy(x, y, size));
+                const sizeOptions = [
+                    ENEMY_SIZES.SMALL,
+                    ENEMY_SIZES.SMALL,
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.MEDIUM,
+                    ENEMY_SIZES.LARGE
+                ];
+                
+                for (let i = 0; i < enemyCount; i++) {
+                    let x, y, valid;
+                    const sizeIndex = i % sizeOptions.length;
+                    const size = { ...sizeOptions[sizeIndex] };
+                    // ステージごとにHP増加
+                    size.hp = size.hp + Math.floor(currentStage / 2);
+                    
+                    do {
+                        valid = true;
+                        x = 50 + Math.random() * (canvasSize.width - 100);
+                        y = 50 + Math.random() * (canvasSize.height * 0.4);
+                        
+                        for (let enemy of enemies) {
+                            const dx = x - enemy.x;
+                            const dy = y - enemy.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const minDist = size.radius + enemy.radius + 20;
+                            if (dist < minDist) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    } while (!valid);
+                    
+                    enemies.push(new Enemy(x, y, size));
+                }
             }
             
             updateUI();
+            updateStageDisplay();
             updateHPBar();
             updateTurnIndicator();
             showMessage('画面をタップ＆ドラッグで発射！', 'info');
+        }
+        
+        // ★ ステージ表示更新
+        function updateStageDisplay() {
+            const stageDisplay = document.getElementById('stageDisplay');
+            if (currentStage % 5 === 0) {
+                stageDisplay.textContent = `🔥 ステージ ${currentStage} - ボスバトル！ 🔥`;
+                stageDisplay.style.background = 'linear-gradient(135deg, #ff0000 0%, #cc0000 100%)';
+            } else {
+                stageDisplay.textContent = `ステージ ${currentStage}`;
+                stageDisplay.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)';
+            }
+        }
+        
+        // ★ ステージクリア処理
+        function showStageClear() {
+            isStageClear = true;
+            
+            const modal = document.getElementById('stageClearModal');
+            const stageNum = document.getElementById('clearStageNum');
+            const turns = document.getElementById('clearTurns');
+            const defeatedText = document.getElementById('clearDefeated');
+            const hpRec = document.getElementById('hpRecovered');
+            
+            const hpRecovery = 3;
+            teamHP = Math.min(MAX_TEAM_HP, teamHP + hpRecovery);
+            updateHPBar();
+            
+            stageNum.textContent = `ステージ ${currentStage} クリア！`;
+            turns.textContent = `このステージのターン数: ${currentTurn + 1}`;
+            defeatedText.textContent = `撃破数: ${defeated}体`;
+            hpRec.textContent = `HP回復: +${hpRecovery} (現在: ${teamHP}/${MAX_TEAM_HP})`;
+            
+            modal.style.display = 'flex';
         }
         
         // ★ HP バー更新関数
@@ -1268,6 +1423,11 @@
                     isGameOver = true;
                     setTimeout(() => {
                         showMessage('💀 ゲームオーバー！', 'danger');
+                        setTimeout(() => {
+                            if (confirm(`ゲームオーバー！\n\n到達ステージ: ${currentStage}\n総ターン数: ${totalTurns + currentTurn + 1}\n総撃破数: ${totalDefeated}体\n\nもう一度プレイしますか？`)) {
+                                initGame();
+                            }
+                        }, 1500);
                     }, 500);
                 }
             }
@@ -1297,6 +1457,7 @@
         function endEnemyTurn() {
             isEnemyTurn = false;
             currentTurn++;
+            totalTurns++;
             updateTurnIndicator();
 
             if (currentTurn >= MAX_MARBLES) {
@@ -1399,6 +1560,7 @@
                         
                         if (enemy.takeDamage(0.3)) {
                             defeated++;
+                            totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                             enemies.splice(j, 1);
                             showMessage(`🎯 弾丸で${enemy.size.name}サイズの敵を撃破！`, 'success');
@@ -1406,7 +1568,7 @@
                             
                             if (enemies.length === 0) {
                                 setTimeout(() => {
-                                    showMessage('🎉 全ての敵を倒しました！おめでとう！', 'success');
+                                    showStageClear();
                                 }, 500);
                             }
                         }
@@ -1428,7 +1590,7 @@
                 }
             }
             
-            if (isDragging && !isEnemyTurn && !isGameOver) {
+            if (isDragging && !isEnemyTurn && !isGameOver && !isStageClear) {
                 const currentMarble = playerMarbles[currentTurn];
                 const marbleX = currentMarble.x;
                 const marbleY = currentMarble.y;
@@ -1583,14 +1745,16 @@
                         // ダメージ処理
                         if (enemy.takeDamage(marble.damage)) {
                             defeated++;
+                            totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                             enemies.splice(i, 1);
-                            showMessage(`★ ${marble.type.name}で${enemy.size.name}サイズの敵を撃破！`, 'success');
+                            const enemyType = enemy.isBoss ? 'ボス' : enemy.size.name + 'サイズ';
+                            showMessage(`★ ${marble.type.name}で${enemyType}の敵を撃破！`, 'success');
                             updateUI();
                             
                             if (enemies.length === 0) {
                                 setTimeout(() => {
-                                    showMessage('🎉 全ての敵を倒しました！おめでとう！', 'success');
+                                    showStageClear();
                                 }, 500);
                             }
                         }
@@ -1622,7 +1786,7 @@
             }
             
             // ★ 停止判定 → 敵のターンへ
-            if (activeMarbles.length > 0 && !activeMarbles[0].isMoving() && !isEnemyTurn && !isGameOver) {
+            if (activeMarbles.length > 0 && !activeMarbles[0].isMoving() && !isEnemyTurn && !isGameOver && !isStageClear) {
                 const marble = activeMarbles[0];
                 marble.isActive = false;
                 marble.isStopped = true;
@@ -1640,7 +1804,7 @@
         
         function updateUI() {
             document.getElementById('defeated').textContent = defeated;
-            document.getElementById('enemyCount').textContent = enemies.length;
+            document.getElementById('totalDefeated').textContent = totalDefeated;
             document.getElementById('currentTurn').textContent = currentTurn + 1;
         }
         
@@ -1677,7 +1841,7 @@
         }
         
         function handleStart(e) {
-            if (isEnemyTurn || isGameOver) return; // ★ 敵のターン中は操作不可
+            if (isEnemyTurn || isGameOver || isStageClear) return; // ★ 敵のターン中・ステージクリア中は操作不可
             if (currentTurn >= MAX_MARBLES) return;
             if (activeMarbles.length > 0) return;
             
@@ -1696,7 +1860,7 @@
         
         function handleEnd(e) {
             if (!isDragging) return;
-            if (isEnemyTurn || isGameOver) return; // ★ 敵のターン中は操作不可
+            if (isEnemyTurn || isGameOver || isStageClear) return; // ★ 敵のターン中・ステージクリア中は操作不可
             e.preventDefault();
             
             const marble = playerMarbles[currentTurn];
@@ -1727,6 +1891,12 @@
         canvas.addEventListener('touchcancel', handleEnd);
         
         document.getElementById('resetBtn').addEventListener('click', initGame);
+        
+        document.getElementById('continueBtn').addEventListener('click', () => {
+            document.getElementById('stageClearModal').style.display = 'none';
+            currentStage++;
+            startStage();
+        });
         
         initGame();
         update();
