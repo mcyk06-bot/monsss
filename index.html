@@ -502,19 +502,20 @@
         enemyImages.BOSS.onerror = () => console.error('❌ 007.pngが読み込めません');
 
         // ★ 基準解像度（すべてのゲーム要素はこのサイズで定義）
-        const BASE_WIDTH = 800;
-        const BASE_HEIGHT = 900; // 8:9の比率
+        // モンスト風のバランス（8:9比率）
+        const BASE_WIDTH = 600;
+        const BASE_HEIGHT = 675; // 8:9の比率
         
         function resizeCanvas() {
             const container = document.querySelector('.canvas-container');
             const rect = container.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
             
-            const aspectRatio = 8 / 9;
+            const aspectRatio = 2 / 3; // 縦長の比率
             let displayWidth = rect.width;
             let displayHeight = rect.height;
             
-            // 表示サイズを8:9の比率に調整
+            // 表示サイズを2:3の比率に調整
             if (displayWidth / displayHeight > aspectRatio) {
                 displayWidth = displayHeight * aspectRatio;
             } else {
