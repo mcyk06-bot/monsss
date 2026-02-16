@@ -985,7 +985,7 @@
 
                 // 低速域だけ強制ブレーキ
                 if (speed < 1.5) friction = 0.95;
-                if (speed < 0.5) friction = 0.5;
+                if (speed < 0.5) friction = 0.8;
 
                 this.vx *= friction;
                 this.vy *= friction;
