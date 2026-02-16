@@ -1661,8 +1661,8 @@
                 console.log(`👾 通常敵生成完了: ${enemyCount}体`);
             }
             
-            // ★ アイテム生成（12%の確率で1個のみ出現）
-            if (Math.random() < 0.12) {
+            // ★ アイテム生成（30%の確率で1個のみ出現）
+            if (Math.random() < 0.30) {
                 const itemCount = 1; // 1個のみ
                 for (let i = 0; i < itemCount; i++) {
                     const itemType = Math.random() < 0.4 ? 'hp' : 'attack'; // HP40%, 攻撃60%
