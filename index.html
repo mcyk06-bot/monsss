@@ -413,14 +413,14 @@
         <!-- HP バー追加 -->
         <div class="hp-panel">
             <div style="display: flex; gap: 10px; align-items: center;">
-                <div style="flex: 1;">
+                <div style="flex: 7;">
                     <div class="hp-label">🛡️ 味方HP</div>
                     <div class="hp-bar-container">
                         <div class="hp-bar-fill" id="hpBarFill"></div>
                         <div class="hp-text" id="hpText">10 / 10</div>
                     </div>
                 </div>
-                <div style="flex: 1;">
+                <div style="flex: 3;">
                     <div class="special-shot-container">
                         <div class="special-shot-count" id="specialShotText">⚡ 0 / 24</div>
                         <button class="special-shot-btn" id="specialShotBtn" disabled>
@@ -1547,10 +1547,14 @@
                     ctx.fill();
                     ctx.stroke();
                     
+                    // BOSSテキストをHPバーと重ならないように上に配置
                     ctx.fillStyle = 'white';
                     ctx.font = 'bold 16px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('BOSS', this.x, this.y - this.radius - 10);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText('BOSS', this.x, this.y - this.radius - 25);
+                    ctx.fillText('BOSS', this.x, this.y - this.radius - 25);
                 } else {
                     ctx.strokeStyle = 'rgba(0,0,0,0.5)';
                     ctx.lineWidth = 2;
