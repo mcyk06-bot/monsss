@@ -131,6 +131,86 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         }
         
+        /* 大号令ショット用スタイル */
+        .special-shot-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .special-shot-gauge {
+            width: 100%;
+            height: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .special-shot-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .special-shot-fill.ready {
+            background: linear-gradient(90deg, #ff6b00, #ffed4e);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(255, 107, 0, 0.8); }
+            50% { opacity: 0.7; box-shadow: 0 0 20px rgba(255, 215, 0, 1); }
+        }
+        
+        .special-shot-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        .special-shot-btn {
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #ccc;
+            color: #666;
+        }
+        
+        .special-shot-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        .special-shot-btn.ready {
+            background: linear-gradient(135deg, #ff6b00 0%, #ffd700 100%);
+            color: white;
+            animation: btnPulse 1.5s infinite;
+            box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4);
+        }
+        
+        .special-shot-btn.active {
+            background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 255, 0, 0.6);
+        }
+        
+        @keyframes btnPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
         .canvas-container {
             flex: 1;
             display: flex;
@@ -360,10 +440,26 @@
         
         <!-- HP バー追加 -->
         <div class="hp-panel">
-            <div class="hp-label">🛡️ 味方HP</div>
-            <div class="hp-bar-container">
-                <div class="hp-bar-fill" id="hpBarFill"></div>
-                <div class="hp-text" id="hpText">10 / 10</div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div style="flex: 1;">
+                    <div class="hp-label">🛡️ 味方HP</div>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar-fill" id="hpBarFill"></div>
+                        <div class="hp-text" id="hpText">10 / 10</div>
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <div class="hp-label">⚡ 大号令ショット</div>
+                    <div class="special-shot-container">
+                        <div class="special-shot-gauge" id="specialShotGauge">
+                            <div class="special-shot-fill" id="specialShotFill"></div>
+                            <div class="special-shot-text" id="specialShotText">0 / 24</div>
+                        </div>
+                        <button class="special-shot-btn" id="specialShotBtn" disabled>
+                            <span id="specialShotBtnText">準備中...</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -650,6 +746,12 @@
         // ★ RPG要素：プレイヤーのステータス
         let playerAttackBonus = 0; // 攻撃力ボーナス（アイテムで増加）
         let items = []; // フィールドのアイテム配列
+        
+        // ★ 大号令ショット
+        let specialShotCount = 0; // 大号令ショットのカウント（24でMAX）
+        const SPECIAL_SHOT_MAX = 24; // 大号令ショット発動に必要なターン数
+        let isSpecialShotReady = false; // 大号令ショットが使用可能か
+        let isSpecialShotActive = false; // 大号令ショットモードが有効か
         
         let friendshipAttackHistory = new Set();
         
@@ -980,6 +1082,123 @@
                     ctx.fillStyle = this.frame % 6 < 3 ? '#ff0000' : '#ffff00';
                     ctx.fillText('CRITICAL!', this.x, yOffset);
                     ctx.globalAlpha = 1;
+                }
+            }
+            
+            isComplete() {
+                return this.frame >= this.maxFrames;
+            }
+        }
+        
+        // ★ 大号令ショットエフェクト
+        class SpecialShotEffect {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.frame = 0;
+                this.maxFrames = 60;
+                this.rings = [];
+                this.particles = [];
+                
+                // 超巨大な衝撃波リング
+                for (let i = 0; i < 5; i++) {
+                    this.rings.push({
+                        radius: 0,
+                        maxRadius: 200 + i * 50,
+                        life: 1,
+                        delay: i * 3
+                    });
+                }
+                
+                // 大量のパーティクル
+                for (let i = 0; i < 100; i++) {
+                    const angle = (Math.PI * 2 * i) / 100;
+                    const speed = Math.random() * 6 + 4;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: Math.random() * 10 + 5,
+                        life: 1,
+                        color: Math.random() > 0.5 ? '#ff6b00' : '#ffd700'
+                    });
+                }
+            }
+            
+            draw() {
+                this.frame++;
+                const progress = this.frame / this.maxFrames;
+                
+                // 超巨大衝撃波リング
+                for (let ring of this.rings) {
+                    if (this.frame > ring.delay) {
+                        ring.radius += 8;
+                        ring.life = 1 - (this.frame - ring.delay) / (this.maxFrames - ring.delay);
+                        
+                        if (ring.life > 0) {
+                            ctx.save();
+                            ctx.globalAlpha = ring.life;
+                            
+                            // 外側のリング（金色）
+                            ctx.strokeStyle = '#ffd700';
+                            ctx.lineWidth = 8;
+                            ctx.beginPath();
+                            ctx.arc(this.x, this.y, ring.radius, 0, Math.PI * 2);
+                            ctx.stroke();
+                            
+                            // 内側のリング（オレンジ）
+                            ctx.strokeStyle = '#ff6b00';
+                            ctx.lineWidth = 4;
+                            ctx.beginPath();
+                            ctx.arc(this.x, this.y, ring.radius + 5, 0, Math.PI * 2);
+                            ctx.stroke();
+                            
+                            ctx.restore();
+                        }
+                    }
+                }
+                
+                // パーティクル
+                for (let p of this.particles) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vx *= 0.97;
+                    p.vy *= 0.97;
+                    p.life = 1 - progress;
+                    p.size *= 0.96;
+                    
+                    if (p.life > 0 && p.size > 0.5) {
+                        ctx.save();
+                        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                        gradient.addColorStop(0, p.color === '#ff6b00' ? `rgba(255, 107, 0, ${p.life})` : `rgba(255, 215, 0, ${p.life})`);
+                        gradient.addColorStop(0.5, p.color === '#ff6b00' ? `rgba(255, 140, 0, ${p.life * 0.8})` : `rgba(255, 237, 78, ${p.life * 0.8})`);
+                        gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                        
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+                
+                // 「大号令ショット！！」テキスト
+                if (this.frame < 45) {
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, 1 - this.frame / 45);
+                    ctx.font = 'bold 36px Arial';
+                    ctx.textAlign = 'center';
+                    
+                    // テキストの縁取り
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 6;
+                    ctx.strokeText('大号令ショット！！', this.x, this.y - 40 - this.frame * 0.8);
+                    
+                    // テキスト本体（点滅）
+                    ctx.fillStyle = this.frame % 8 < 4 ? '#ff6b00' : '#ffd700';
+                    ctx.fillText('大号令ショット！！', this.x, this.y - 40 - this.frame * 0.8);
+                    ctx.restore();
                 }
             }
             
@@ -1472,6 +1691,9 @@
             MAX_TEAM_HP = 10; // HP上限をリセット
             teamHP = MAX_TEAM_HP;
             playerAttackBonus = 0; // 攻撃力ボーナスをリセット
+            specialShotCount = 0; // 大号令ショットカウントをリセット
+            isSpecialShotReady = false;
+            isSpecialShotActive = false;
             startStage();
         }
         
@@ -1866,6 +2088,14 @@
             currentTurn++;
             totalTurns++;
             
+            // ★ 大号令ショットカウント増加
+            if (specialShotCount < SPECIAL_SHOT_MAX) {
+                specialShotCount++;
+                if (specialShotCount === SPECIAL_SHOT_MAX) {
+                    showMessage('⚡ 大号令ショット準備完了！', 'combo-effect');
+                }
+            }
+            
             // ★ モンスト方式：4個使い終わったら1個目に戻る
             if (currentTurn >= MAX_MARBLES) {
                 currentTurn = 0;
@@ -1882,6 +2112,7 @@
             }
             
             updateTurnIndicator();
+            updateUI();
         }
         
         function checkCollision(m1, m2) {
@@ -2267,17 +2498,29 @@
             }
             
             // ★ 停止判定 → 敵のターンへ
-            if (activeMarbles.length > 0 && !activeMarbles[0].isMoving() && !isEnemyTurn && !isGameOver && !isStageClear) {
-                const marble = activeMarbles[0];
-                marble.isActive = false;
-                marble.isStopped = true;
-                stoppedMarbles.push(marble);
-                activeMarbles = [];
+            if (activeMarbles.length > 0) {
+                // 全員が停止したかチェック
+                const allStopped = activeMarbles.every(m => !m.isMoving());
                 
-                // 敵の攻撃を実行
-                setTimeout(() => {
-                    executeEnemyAttack();
-                }, 500);
+                if (allStopped && !isEnemyTurn && !isGameOver && !isStageClear) {
+                    // 全員を停止状態に
+                    for (let marble of activeMarbles) {
+                        marble.isActive = false;
+                        marble.isStopped = true;
+                        stoppedMarbles.push(marble);
+                        
+                        // ダメージを元に戻す（大号令ショットで3倍にしていた場合）
+                        if (marble.damage > marble.type.damage) {
+                            marble.damage = marble.type.damage + playerAttackBonus;
+                        }
+                    }
+                    activeMarbles = [];
+                    
+                    // 敵の攻撃を実行
+                    setTimeout(() => {
+                        executeEnemyAttack();
+                    }, 500);
+                }
             }
             
             requestAnimationFrame(update);
@@ -2288,6 +2531,40 @@
             document.getElementById('totalDefeated').textContent = totalDefeated;
             document.getElementById('currentTurn').textContent = currentTurn + 1;
             document.getElementById('attackBonus').textContent = '+' + playerAttackBonus;
+            updateSpecialShotUI();
+        }
+        
+        function updateSpecialShotUI() {
+            const fill = document.getElementById('specialShotFill');
+            const text = document.getElementById('specialShotText');
+            const btn = document.getElementById('specialShotBtn');
+            const btnText = document.getElementById('specialShotBtnText');
+            
+            const progress = (specialShotCount / SPECIAL_SHOT_MAX) * 100;
+            fill.style.width = progress + '%';
+            text.textContent = `${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
+            
+            if (specialShotCount >= SPECIAL_SHOT_MAX) {
+                isSpecialShotReady = true;
+                fill.classList.add('ready');
+                btn.disabled = false;
+                
+                if (isSpecialShotActive) {
+                    btn.classList.remove('ready');
+                    btn.classList.add('active');
+                    btnText.textContent = '🔥 発射準備！';
+                } else {
+                    btn.classList.add('ready');
+                    btn.classList.remove('active');
+                    btnText.textContent = '⚡ 大号令ショット！';
+                }
+            } else {
+                isSpecialShotReady = false;
+                fill.classList.remove('ready');
+                btn.disabled = true;
+                btn.classList.remove('ready', 'active');
+                btnText.textContent = '準備中...';
+            }
         }
         
         function showMessage(text, type = 'info') {
@@ -2341,21 +2618,47 @@
         
         function handleEnd(e) {
             if (!isDragging) return;
-            if (isEnemyTurn || isGameOver || isStageClear) return; // ★ 敵のターン中・ステージクリア中は操作不可
+            if (isEnemyTurn || isGameOver || isStageClear) return;
             e.preventDefault();
             
-            const marble = playerMarbles[currentTurn];
             const dx = dragStart.x - dragEnd.x;
             const dy = dragStart.y - dragEnd.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             if (distance > 10) {
                 const power = Math.min(distance / 50, 3);
-                marble.vx = (dx / distance) * power * marble.speedMultiplier;
-                marble.vy = (dy / distance) * power * marble.speedMultiplier;
-                marble.isActive = true;
-                marble.isUsed = true;
-                activeMarbles.push(marble);
+                
+                // ★ 大号令ショット発動！
+                if (isSpecialShotActive) {
+                    // 全員を同時に発射
+                    for (let marble of playerMarbles) {
+                        marble.vx = (dx / distance) * power * marble.speedMultiplier * 1.5; // 通常より速い
+                        marble.vy = (dy / distance) * power * marble.speedMultiplier * 1.5;
+                        marble.isActive = true;
+                        marble.isUsed = true;
+                        marble.damage = marble.damage * 3; // 3倍ダメージ！
+                        activeMarbles.push(marble);
+                    }
+                    
+                    // 派手なエフェクト
+                    const centerX = canvasSize.width / 2;
+                    const centerY = canvasSize.height / 2;
+                    explosions.push(new SpecialShotEffect(centerX, centerY));
+                    
+                    // リセット
+                    isSpecialShotActive = false;
+                    specialShotCount = 0;
+                    updateSpecialShotUI();
+                    
+                } else {
+                    // 通常ショット
+                    const marble = playerMarbles[currentTurn];
+                    marble.vx = (dx / distance) * power * marble.speedMultiplier;
+                    marble.vy = (dy / distance) * power * marble.speedMultiplier;
+                    marble.isActive = true;
+                    marble.isUsed = true;
+                    activeMarbles.push(marble);
+                }
             }
             
             isDragging = false;
@@ -2372,6 +2675,20 @@
         canvas.addEventListener('touchcancel', handleEnd);
         
         document.getElementById('resetBtn').addEventListener('click', initGame);
+        
+        // ★ 大号令ショットボタン
+        document.getElementById('specialShotBtn').addEventListener('click', () => {
+            if (isSpecialShotReady && !isEnemyTurn && !isGameOver && !isStageClear) {
+                isSpecialShotActive = !isSpecialShotActive;
+                updateSpecialShotUI();
+                
+                if (isSpecialShotActive) {
+                    showMessage('🔥 大号令ショットモード！全員で攻撃します！', 'combo-effect');
+                } else {
+                    showMessage('通常モードに戻しました', 'info');
+                }
+            }
+        });
         
         document.getElementById('continueBtn').addEventListener('click', () => {
             console.log(`✅ ステージ ${currentStage} クリア。次のステージへ進みます`);
