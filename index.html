@@ -402,47 +402,55 @@
         
         .item-modal-header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .item-emoji {
-            font-size: 60px;
+            font-size: 70px; /* 少し大きくした */
             margin-bottom: 10px;
+            animation: floatEmoji 2s infinite ease-in-out;
+        }
+
+        @keyframes floatEmoji {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
         
         .item-name {
-            font-size: 24px;
+            font-size: 28px; /* 大きく強調 */
             font-weight: bold;
-            color: #333;
+            color: #d32f2f; /* 目立つ色に */
             margin-bottom: 10px;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.1);
         }
         
         .item-description {
             font-size: 14px;
-            color: #666;
+            color: #555;
             line-height: 1.6;
             text-align: center;
             margin-bottom: 20px;
-            padding: 15px;
-            background: #f5f5f5;
+            padding: 10px;
+            background: #f9f9f9;
             border-radius: 10px;
         }
         
         .item-character-info {
-            background: #e3f2fd;
+            background: linear-gradient(to right, #e3f2fd, #bbdefb);
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin-bottom: 20px;
             text-align: center;
-            border: 2px solid #90caf9;
+            border: 2px solid #64b5f6;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .current-equip-label {
-            background: #1976d2;
+            background: #1565c0;
             color: white;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
             font-weight: bold;
             display: inline-block;
             margin-bottom: 8px;
@@ -636,11 +644,9 @@
                 説明文がここに入ります
             </div>
             <div class="item-character-info">
-                <div class="current-equip-label">👇 現在の装備 👇</div>
-                <div id="itemCharacterName" style="font-weight: bold; color: #667eea; margin-bottom: 5px;">ノーマル</div>
-                <div id="itemCharacterStatus" style="font-size: 12px; color: #666;">
-                    友情: 通常弾 × 8
-                </div>
+                <div class="current-equip-label" id="itemStatusLabel">✨ 装備プレビュー ✨</div>
+                <div id="itemFriendshipName" style="font-weight: bold; font-size: 20px; color: #1565c0; margin-bottom: 5px;"></div>
+                <div id="itemFriendshipDetail" style="font-size: 14px; color: #333; font-weight: bold;"></div>
             </div>
             <div class="item-modal-buttons">
                 <button class="item-btn item-btn-equip" id="itemEquipBtn">
@@ -1593,7 +1599,7 @@
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
                 this.target = null;
-                this.homingStrength = 0.35; // ★ 小回りが効くように強化 (0.15 -> 0.35)
+                this.homingStrength = 0.6; // ★ さらに小回りが効くように強化 (0.35 -> 0.6)
                 this.frame = 0; // アニメーション用
             }
             
@@ -1763,6 +1769,8 @@
                 this.friendshipPower = 1.0; // 攻撃力倍率
                 this.friendshipCount = 8; // 弾数
                 this.friendshipItems = []; // 装備しているアイテムのリスト
+                // ★ 友情レベル（最大5）
+                this.friendshipLevel = 1;
             }
             
             draw() {
@@ -1866,6 +1874,13 @@
                         const iconY = this.y + this.radius * 0.5;
                         ctx.strokeText(icon, iconX, iconY);
                         ctx.fillText(icon, iconX, iconY);
+                        
+                        // レベル表示（Lv2以上なら）
+                        if (this.friendshipLevel > 1) {
+                            ctx.font = 'bold 12px Arial';
+                            ctx.fillStyle = '#ffeb3b';
+                            ctx.fillText(`Lv${this.friendshipLevel}`, iconX + 10, iconY - 10);
+                        }
                     }
                 }
                 
@@ -1960,7 +1975,7 @@
                         newBullets.push(laser);
                     }
                 } else if (this.friendshipType === 'machinegun') {
-                    // ★ マシンガン: 弱った敵を狙って16発高速連射（連続発射delay付き）
+                    // ★ マシンガン: 弱った敵を狙って高速連射（連続発射delay付き）
                     let target = null;
                     let minHp = Infinity;
                     
@@ -1972,7 +1987,8 @@
                         }
                     }
 
-                    const numShots = 16;
+                    // レベルに応じて発射数を増やす（基本16発 + レベル補正）
+                    const numShots = 16 + (this.friendshipLevel - 1) * 4;
                     const spread = 0.2; // ばらつき
                     
                     if(target) {
@@ -2660,10 +2676,11 @@
             
             // ★ 回復友情の処理
             if (hitMarble.friendshipType === 'heal') {
-                const healAmount = 3;
+                // レベルに応じて回復量増加
+                const healAmount = 3 + (hitMarble.friendshipLevel - 1) * 2;
                 teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                 explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
-                // showMessage(`💚 HP回復友情発動！ +${healAmount}`, 'success');
+                showMessage(`💚 HP回復友情(Lv${hitMarble.friendshipLevel})！ +${healAmount}`, 'success');
                 updateHPBar();
                 return null; // 弾は出さない
             }
@@ -3033,6 +3050,7 @@
                         if (isCritical) {
                             // クリティカルヒットエフェクトを追加
                             explosions.push(new CriticalEffect(enemy.x, enemy.y));
+                            // ★ 要望によりコメントアウト
                             // showMessage(`💥 CRITICAL HIT! +10ダメージ！`, 'danger');
                         }
                         
@@ -3155,62 +3173,108 @@
             const emoji = document.getElementById('itemEmoji');
             const name = document.getElementById('itemName');
             const description = document.getElementById('itemDescription');
-            const charName = document.getElementById('itemCharacterName');
-            const charStatus = document.getElementById('itemCharacterStatus');
+            // ★ 自分のタイプ表示を削除し、プレビューに変更
+            const fsName = document.getElementById('itemFriendshipName');
+            const fsDetail = document.getElementById('itemFriendshipDetail');
+            const statusLabel = document.getElementById('itemStatusLabel');
             
             emoji.textContent = item.emoji;
             name.textContent = item.name;
             description.textContent = item.description;
             
-            // キャラクター情報を表示
-            charName.textContent = marble.type.name;
+            // ★ 取得予定の友情コンボ情報を表示
+            let newItemType = 'normal';
+            if (item.type === 'friendship_homing') newItemType = 'homing';
+            else if (item.type === 'friendship_laser') newItemType = 'laser';
+            else if (item.type === 'friendship_heal') newItemType = 'heal';
+            else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
             
-            let friendshipTypeName = '通常弾';
-            if (marble.friendshipType === 'homing') friendshipTypeName = 'ホーミングミサイル';
-            else if (marble.friendshipType === 'laser') friendshipTypeName = 'レーザービーム';
-            else if (marble.friendshipType === 'heal') friendshipTypeName = '友情・回復';
-            else if (marble.friendshipType === 'machinegun') friendshipTypeName = '友情・マシンガン';
+            let isSameType = (marble.friendshipType === newItemType);
+            let nextLevel = isSameType ? Math.min(marble.friendshipLevel + 1, 5) : 1;
             
-            charStatus.textContent = `友情: ${friendshipTypeName} × ${marble.friendshipCount} (威力: ${marble.friendshipPower}倍)`;
+            let levelText = isSameType ? `Lv.${marble.friendshipLevel} ➔ Lv.${nextLevel}` : 'Lv.1 (新規装備)';
+            if (isSameType && marble.friendshipLevel >= 5) levelText = 'Lv.5 (MAX)';
+            
+            // アイテムタイプに応じた名前
+            let typeName = '';
+            if (newItemType === 'homing') typeName = 'ホーミングミサイル';
+            else if (newItemType === 'laser') typeName = 'レーザービーム';
+            else if (newItemType === 'heal') typeName = '友情・回復';
+            else if (newItemType === 'machinegun') typeName = '友情・マシンガン';
+            else if (item.type === 'friendship_power') typeName = '友情攻撃力アップ';
+            else if (item.type === 'friendship_count') typeName = '友情弾数アップ';
+            
+            fsName.textContent = typeName;
+            
+            if (isSameType) {
+                statusLabel.textContent = "🔼 レベルアップチャンス！";
+                statusLabel.style.background = "#ff9800";
+                fsDetail.textContent = `${levelText} に強化されます！`;
+            } else {
+                statusLabel.textContent = "✨ 新しい友情コンボ！";
+                statusLabel.style.background = "#1565c0";
+                fsDetail.textContent = `現在の友情を上書きして装備します`;
+            }
             
             modal.classList.add('active');
         }
         
         // ★ 友情攻撃アイテムを適用
         function applyFriendshipItem(item, marble) {
-            if (item.type === 'friendship_homing') {
-                marble.friendshipType = 'homing';
-                marble.friendshipItems.push(item);
-                explosions.push(new CriticalEffect(marble.x, marble.y));
-                showMessage(`🎯 ${marble.type.name}にホーミングミサイルを装備！`, 'success');
-            } else if (item.type === 'friendship_laser') {
-                marble.friendshipType = 'laser';
-                marble.friendshipItems.push(item);
-                explosions.push(new CriticalEffect(marble.x, marble.y));
-                showMessage(`⚡ ${marble.type.name}にレーザービームを装備！`, 'success');
-            } else if (item.type === 'friendship_power') {
+            // 単純強化アイテムの場合はそのまま適用
+            if (item.type === 'friendship_power') {
                 marble.friendshipPower *= 1.5;
                 marble.friendshipItems.push(item);
                 explosions.push(new CriticalEffect(marble.x, marble.y));
                 showMessage(`💥 ${marble.type.name}の友情攻撃力が1.5倍！`, 'success');
+                console.log(`✅ ${marble.type.name}にアイテム適用: ${item.name}`);
+                return;
             } else if (item.type === 'friendship_count') {
                 marble.friendshipCount += 4;
                 marble.friendshipItems.push(item);
                 explosions.push(new HealEffect(marble.x, marble.y));
                 showMessage(`🔢 ${marble.type.name}の友情弾数が+4！ (${marble.friendshipCount}発)`, 'success');
-            } else if (item.type === 'friendship_heal') {
-                marble.friendshipType = 'heal';
-                marble.friendshipItems.push(item);
-                explosions.push(new HealEffect(marble.x, marble.y));
-                showMessage(`❤️‍🩹 ${marble.type.name}に回復友情を装備！`, 'success');
-            } else if (item.type === 'friendship_machinegun') {
-                marble.friendshipType = 'machinegun';
-                marble.friendshipItems.push(item);
-                explosions.push(new CriticalEffect(marble.x, marble.y));
-                showMessage(`🔫 ${marble.type.name}にマシンガンを装備！`, 'success');
+                console.log(`✅ ${marble.type.name}にアイテム適用: ${item.name}`);
+                return;
             }
+
+            // ★ 友情コンボ変更・レベルアップ処理
+            let newItemType = '';
+            let itemName = '';
             
-            console.log(`✅ ${marble.type.name}にアイテム適用: ${item.name}`);
+            if (item.type === 'friendship_homing') { newItemType = 'homing'; itemName = 'ホーミング'; }
+            else if (item.type === 'friendship_laser') { newItemType = 'laser'; itemName = 'レーザー'; }
+            else if (item.type === 'friendship_heal') { newItemType = 'heal'; itemName = '回復'; }
+            else if (item.type === 'friendship_machinegun') { newItemType = 'machinegun'; itemName = 'マシンガン'; }
+
+            if (newItemType) {
+                if (marble.friendshipType === newItemType) {
+                    // 同じタイプならレベルアップ
+                    if (marble.friendshipLevel < 5) {
+                        marble.friendshipLevel++;
+                        // レベルに応じて威力や弾数を強化
+                        marble.friendshipPower += 0.5; // 威力+0.5倍ずつ
+                        marble.friendshipCount += 2;   // 弾数+2発ずつ
+                        
+                        explosions.push(new HealEffect(marble.x, marble.y));
+                        showMessage(`🆙 ${itemName}がLv.${marble.friendshipLevel}に強化！`, 'combo-effect');
+                    } else {
+                        showMessage(`⚠️ ${itemName}は既に最大レベルです！`, 'info');
+                    }
+                } else {
+                    // 違うタイプなら切り替え（レベルリセット）
+                    marble.friendshipType = newItemType;
+                    marble.friendshipLevel = 1;
+                    marble.friendshipPower = 1.0; // 初期化
+                    marble.friendshipCount = 8;   // 初期化
+                    
+                    explosions.push(new CriticalEffect(marble.x, marble.y));
+                    showMessage(`✨ ${itemName}を装備しました！(Lv.1)`, 'success');
+                }
+                
+                marble.friendshipItems.push(item);
+                console.log(`✅ ${marble.type.name}にアイテム適用: ${item.name} (Lv.${marble.friendshipLevel})`);
+            }
         }
         
         function getCanvasCoordinates(e) {
