@@ -1447,16 +1447,6 @@
                     this.color = '#9c27b0';
                     this.name = 'レーザービーム';
                     this.description = '友情攻撃が貫通レーザーになります。敵を一直線に貫く！';
-                } else if (type === 'friendship_power') {
-                    this.emoji = '💥';
-                    this.color = '#ff5722';
-                    this.name = '友情攻撃力アップ';
-                    this.description = '友情攻撃の威力が1.5倍になります';
-                } else if (type === 'friendship_count') {
-                    this.emoji = '🔢';
-                    this.color = '#4caf50';
-                    this.name = '友情攻撃弾数アップ';
-                    this.description = '友情攻撃の弾数が+4増加します';
                 } else if (type === 'friendship_heal') {
                     this.emoji = '❤️‍🩹';
                     this.color = '#ff69b4';
@@ -2239,24 +2229,20 @@
                     const rand = Math.random();
                     let itemType;
                     // バランス調整：回復と攻撃アップを出しやすく、強力な友情はレアに
-                    if (rand < 0.25) {
+                    if (rand < 0.35) {  // 0.25 + 0.10 = 0.35 (hp: 35%)
                         itemType = 'hp';
-                    } else if (rand < 0.45) {
+                    } else if (rand < 0.55) {  // 0.35 + 0.20 = 0.55 (attack: 20%)
                         itemType = 'attack';
-                    } else if (rand < 0.50) {
-                        itemType = 'death'; // レアアイテム：デス
-                    } else if (rand < 0.60) {
+                    } else if (rand < 0.60) {  // 0.55 + 0.05 = 0.60 (death: 5%)
+                        itemType = 'death';
+                    } else if (rand < 0.70) {  // 0.60 + 0.10 = 0.70 (friendship_heal: 10%)
                         itemType = 'friendship_heal';
-                    } else if (rand < 0.70) {
+                    } else if (rand < 0.80) {  // 0.70 + 0.10 = 0.80 (friendship_homing: 10%)
                         itemType = 'friendship_homing';
-                    } else if (rand < 0.80) {
+                    } else if (rand < 0.90) {  // 0.80 + 0.10 = 0.90 (friendship_laser: 10%)
                         itemType = 'friendship_laser';
-                    } else if (rand < 0.90) {
+                    } else {  // 0.90 ~ 1.00 (friendship_machinegun: 10%)
                         itemType = 'friendship_machinegun';
-                    } else if (rand < 0.95) {
-                        itemType = 'friendship_power';
-                    } else {
-                        itemType = 'friendship_count';
                     }
                     
                     let x, y, valid;
@@ -3201,8 +3187,6 @@
             else if (newItemType === 'laser') typeName = 'レーザービーム';
             else if (newItemType === 'heal') typeName = '友情・回復';
             else if (newItemType === 'machinegun') typeName = '友情・マシンガン';
-            else if (item.type === 'friendship_power') typeName = '友情攻撃力アップ';
-            else if (item.type === 'friendship_count') typeName = '友情弾数アップ';
             
             fsName.textContent = typeName;
             
@@ -3221,23 +3205,6 @@
         
         // ★ 友情攻撃アイテムを適用
         function applyFriendshipItem(item, marble) {
-            // 単純強化アイテムの場合はそのまま適用
-            if (item.type === 'friendship_power') {
-                marble.friendshipPower *= 1.5;
-                marble.friendshipItems.push(item);
-                explosions.push(new CriticalEffect(marble.x, marble.y));
-                showMessage(`💥 ${marble.type.name}の友情攻撃力が1.5倍！`, 'success');
-                console.log(`✅ ${marble.type.name}にアイテム適用: ${item.name}`);
-                return;
-            } else if (item.type === 'friendship_count') {
-                marble.friendshipCount += 4;
-                marble.friendshipItems.push(item);
-                explosions.push(new HealEffect(marble.x, marble.y));
-                showMessage(`🔢 ${marble.type.name}の友情弾数が+4！ (${marble.friendshipCount}発)`, 'success');
-                console.log(`✅ ${marble.type.name}にアイテム適用: ${item.name}`);
-                return;
-            }
-
             // ★ 友情コンボ変更・レベルアップ処理
             let newItemType = '';
             let itemName = '';
