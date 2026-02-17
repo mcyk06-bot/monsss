@@ -885,7 +885,7 @@
         const HIT_SLOWDOWN = 0.5;
         const STOP_THRESHOLD = 0.01;
         const VELOCITY_SCALE = 18.0;
-        const SUB_STEPS = 5; // ★ 移動計算を5分割して精度向上
+        const SUB_STEPS = 5; 
         
         class EnemyBeam {
             constructor(startX, startY, endX, endY, enemyColor) {
@@ -1796,22 +1796,20 @@
             }
         }
 
-        // ★ 新友情コンボ：エナジーサークル（改：拡散型）
         class EnergyCircle extends Bullet {
             constructor(x, y, color, power = 1.0, level = 1) {
                 super(x, y, 0, 0, color, power, 0);
                 this.currentRadius = 0;
-                this.growthRate = 12; // 広がる速度
+                this.growthRate = 12; 
                 this.level = level;
                 this.width = 30 + (level * 5); 
-                this.life = 60; // 生存時間
+                this.life = 60; 
                 this.opacity = 1.0;
             }
 
             update() {
                 this.currentRadius += this.growthRate;
                 this.life--;
-                // 時間経過とともに薄くなる
                 this.opacity = Math.max(0, this.life / 60);
             }
 
@@ -1821,21 +1819,18 @@
                 ctx.save();
                 ctx.globalAlpha = this.opacity;
 
-                // リングの描画（ドーナツ型）
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2);
                 ctx.strokeStyle = this.color;
                 ctx.lineWidth = this.width;
                 ctx.stroke();
                 
-                // 内側の発光ライン
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, Math.max(0, this.currentRadius - this.width/2 + 5), 0, Math.PI * 2);
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // 外側の発光ライン
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.currentRadius + this.width/2 - 5, 0, Math.PI * 2);
                 ctx.stroke();
@@ -1843,7 +1838,6 @@
                 ctx.restore();
             }
 
-            // エナジーサークルは壁で消えない
             isAlive() {
                 return this.life > 0;
             }
@@ -1993,7 +1987,6 @@
             update(stepFactor = 1.0) {
                 if (!this.isActive) return;
 
-                // 摩擦は分割ステップ数に合わせて調整
                 let friction = Math.pow(this.type.friction, stepFactor);
                 const speed = Math.hypot(this.vx, this.vy);
 
@@ -2003,7 +1996,6 @@
                 this.vx *= friction;
                 this.vy *= friction;
 
-                // 移動量をステップ数で分割
                 this.x += this.vx * VELOCITY_SCALE * stepFactor;
                 this.y += this.vy * VELOCITY_SCALE * stepFactor;
                 
@@ -2050,7 +2042,6 @@
                 const power = this.friendshipPower;
                 
                 if (this.friendshipType === 'homing') {
-                    // ★ ホーミングの速度を遅く調整 (6 -> 3.5)
                     const homingSpeed = 3.5;
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
@@ -2168,11 +2159,40 @@
                 this.lastHitTime = 0;
                 this.color = size.color;
                 this.secondaryColor = size.secondaryColor;
+                
+                // ★ シェイク（振動）演出用の変数
+                this.shakeX = 0;
+                this.shakeY = 0;
+                this.shakeTime = 0;
+                this.shakeIntensity = 0;
             }
             
+            // ★ ヒット時の振動をトリガーするメソッド
+            hitShake(intensity = 5) {
+                this.shakeTime = 6; // 6フレーム振動
+                this.shakeIntensity = intensity;
+            }
+
             draw() {
                 this.animationFrame++;
                 
+                // ★ 振動計算（描画位置だけずらす）
+                let drawX = this.x;
+                let drawY = this.y;
+
+                if (this.shakeTime > 0) {
+                    const shakeMagnitude = this.shakeIntensity;
+                    // ランダムにずらす
+                    this.shakeX = (Math.random() - 0.5) * shakeMagnitude * 2;
+                    this.shakeY = (Math.random() - 0.5) * shakeMagnitude * 2;
+                    drawX += this.shakeX;
+                    drawY += this.shakeY;
+                    this.shakeTime--;
+                } else {
+                    this.shakeX = 0;
+                    this.shakeY = 0;
+                }
+
                 ctx.save();
                 let img;
                 
@@ -2185,13 +2205,14 @@
                 }
 
                 if (img && img.complete && img.naturalWidth > 0) {
-                    ctx.drawImage(img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+                    // drawX, drawY を使用して描画
+                    ctx.drawImage(img, drawX - this.radius, drawY - this.radius, this.radius * 2, this.radius * 2);
                 } else {
-                    const gradient = ctx.createRadialGradient(this.x - this.radius/3, this.y - this.radius/3, 0, this.x, this.y, this.radius);
+                    const gradient = ctx.createRadialGradient(drawX - this.radius/3, drawY - this.radius/3, 0, drawX, drawY, this.radius);
                     gradient.addColorStop(0, this.secondaryColor);
                     gradient.addColorStop(1, this.color);
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.arc(drawX, drawY, this.radius, 0, Math.PI * 2);
                     ctx.fillStyle = gradient;
                     ctx.fill();
                 }
@@ -2201,7 +2222,7 @@
                     ctx.strokeStyle = '#ff0000';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+                    ctx.arc(drawX, drawY, this.radius + 5, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                     
@@ -2210,22 +2231,23 @@
                     ctx.textAlign = 'center';
                     ctx.strokeStyle = '#000000';
                     ctx.lineWidth = 3;
-                    ctx.strokeText('BOSS', this.x, this.y - this.radius - 25);
-                    ctx.fillText('BOSS', this.x, this.y - this.radius - 25);
+                    ctx.strokeText('BOSS', drawX, drawY - this.radius - 25);
+                    ctx.fillText('BOSS', drawX, drawY - this.radius - 25);
                 } else {
                     ctx.strokeStyle = 'rgba(0,0,0,0.5)';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.arc(drawX, drawY, this.radius, 0, Math.PI * 2);
                     ctx.stroke();
                 }
                 
                 ctx.restore();
                 
+                // HPバーも一緒に揺らす
                 const barWidth = 30;
                 const barHeight = 4;
-                const barX = this.x - barWidth / 2;
-                const barY = this.y - this.radius - 12;
+                const barX = drawX - barWidth / 2;
+                const barY = drawY - this.radius - 12;
                 
                 ctx.fillStyle = 'rgba(0,0,0,0.3)';
                 ctx.fillRect(barX, barY, barWidth, barHeight);
@@ -2238,19 +2260,20 @@
                 ctx.fillStyle = 'black';
                 ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${this.hp.toFixed(1)}/${this.maxHp}`, this.x, barY - 2);
+                ctx.fillText(`${this.hp.toFixed(1)}/${this.maxHp}`, drawX, barY - 2);
                 
                 const now = Date.now();
                 const timeSinceHit = now - this.lastHitTime;
                 if (timeSinceHit < 200) {
                     const progress = timeSinceHit / 200;
                     
+                    // エフェクトも一緒に揺らす
                     if (this.isBoss) {
                         for (let i = 0; i < 3; i++) {
                             const offset = i * 8;
                             const alpha = (1 - progress) * (1 - i * 0.2);
                             ctx.beginPath();
-                            ctx.arc(this.x, this.y, this.radius + 10 + offset + progress * 20, 0, Math.PI * 2);
+                            ctx.arc(drawX, drawY, this.radius + 10 + offset + progress * 20, 0, Math.PI * 2);
                             ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;
                             ctx.lineWidth = 6 - i;
                             ctx.stroke();
@@ -2258,14 +2281,14 @@
                         
                         if (Math.floor(timeSinceHit / 50) % 2 === 0) {
                             ctx.beginPath();
-                            ctx.arc(this.x, this.y, this.radius + 8, 0, Math.PI * 2);
+                            ctx.arc(drawX, drawY, this.radius + 8, 0, Math.PI * 2);
                             ctx.strokeStyle = `rgba(255, 255, 255, ${1 - progress})`;
                             ctx.lineWidth = 8;
                             ctx.stroke();
                         }
                     } else {
                         ctx.beginPath();
-                        ctx.arc(this.x, this.y, this.radius + 5 + progress * 10, 0, Math.PI * 2);
+                        ctx.arc(drawX, drawY, this.radius + 5 + progress * 10, 0, Math.PI * 2);
                         ctx.strokeStyle = `rgba(255, 255, 0, ${1 - progress})`;
                         ctx.lineWidth = 5;
                         ctx.stroke();
@@ -2277,6 +2300,9 @@
             }
             
             takeDamage(amount = 1) {
+                // ダメージを受けた時に揺らす（ダメージ量に応じて強く）
+                this.hitShake(5 + amount); 
+                
                 this.hp -= amount;
                 this.lastHitTime = Date.now();
                 if (this.hp <= 0) {
@@ -2315,7 +2341,6 @@
             startStage();
         }
 
-        // ★ アイテム生成
         function spawnItems(countMultiplier = 1.0) {
             if (Math.random() < 0.40 * countMultiplier) {
                 const itemCount = 1; 
@@ -2910,7 +2935,6 @@
             }
             
             // ★ 味方の移動と衝突判定（サブステップ処理）
-            // 1フレームの移動を複数回に分けて行うことで、すり抜けを防ぐ
             if (activeMarbles.length > 0) {
                 for (let step = 0; step < SUB_STEPS; step++) {
                     // 1. まず全員を少し動かす
@@ -3030,8 +3054,7 @@
                         }
                     }
                     
-                    // 3. 友情コンボ判定（アクティブマーブルと他の味方）
-                    // これはサブステップの最後に1回だけ判定してもよいが、すり抜け防止のためここに入れる
+                    // 3. 友情コンボ判定
                     const activeMarble = activeMarbles[0];
                     if (activeMarble && activeMarble.isActive) {
                          for (let marble of playerMarbles) {
