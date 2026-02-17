@@ -873,12 +873,6 @@
         let currentItem = null; // 現在選択中のアイテム
         let currentMarble = null; // アイテムを拾ったキャラクター
         
-        // ★ マシンガン連続発射用
-        let machinegunQueue = []; // {bullet: Bullet, delay: number}
-        
-        // ★ ゲーム一時停止フラグ
-        let isGamePaused = false;
-        
         let friendshipAttackHistory = new Set();
         
         //const FRICTION = 0.98;
@@ -1122,18 +1116,16 @@
                 this.frame = 0;
                 this.maxFrames = 80;
                 
-                // ハート形のパーティクルを生成
-                for (let i = 0; i < 15; i++) {
-                    const angle = (Math.PI * 2 / 15) * i;
+                for (let i = 0; i < 20; i++) {
+                    const angle = (Math.PI * 2 / 20) * i;
                     const speed = 1 + Math.random() * 2;
                     this.particles.push({
                         x: x,
                         y: y,
                         vx: Math.cos(angle) * speed * 0.5,
                         vy: Math.sin(angle) * speed * 0.5 - 1.5,
-                        radius: 4 + Math.random() * 4,
-                        life: 1,
-                        rotation: Math.random() * Math.PI * 2
+                        radius: 3 + Math.random() * 5,
+                        life: 1
                     });
                 }
             }
@@ -1149,40 +1141,28 @@
                     particle.vx *= 0.98;
                     particle.vy *= 0.98;
                     particle.life = 1 - progress;
-                    particle.rotation += 0.1;
                     
                     if (particle.life > 0) {
-                        ctx.save();
-                        ctx.globalAlpha = particle.life;
-                        ctx.translate(particle.x, particle.y);
-                        ctx.rotate(particle.rotation);
+                        const gradient = ctx.createRadialGradient(
+                            particle.x, particle.y, 0,
+                            particle.x, particle.y, particle.radius
+                        );
+                        const alpha = Math.floor(particle.life * 255).toString(16).padStart(2, '0');
+                        gradient.addColorStop(0, '#90EE90' + alpha);
+                        gradient.addColorStop(0.5, '#32CD32' + alpha);
+                        gradient.addColorStop(1, 'rgba(50, 205, 50, 0)');
                         
-                        // ピンクのハート形を描画
-                        const size = particle.radius * particle.life;
-                        ctx.fillStyle = '#ff69b4'; // ホットピンク
                         ctx.beginPath();
-                        ctx.moveTo(0, size * 0.3);
-                        // 左側のカーブ
-                        ctx.bezierCurveTo(-size, -size * 0.3, -size, -size * 0.8, 0, -size * 0.5);
-                        // 右側のカーブ
-                        ctx.bezierCurveTo(size, -size * 0.8, size, -size * 0.3, 0, size * 0.3);
+                        ctx.arc(particle.x, particle.y, particle.radius * particle.life, 0, Math.PI * 2);
+                        ctx.fillStyle = gradient;
                         ctx.fill();
-                        
-                        // 白い輝き
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                        ctx.beginPath();
-                        ctx.arc(-size * 0.3, -size * 0.2, size * 0.3, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        ctx.restore();
                     }
                 }
                 
-                // ピンクの輪が広がるエフェクト
                 if (this.frame < 30 && this.frame % 6 < 3) {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, 20 + this.frame, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'rgba(255, 105, 180, ' + (1 - this.frame / 30) + ')';
+                    ctx.strokeStyle = 'rgba(144, 238, 144, ' + (1 - this.frame / 30) + ')';
                     ctx.lineWidth = 3;
                     ctx.stroke();
                 }
@@ -1590,7 +1570,7 @@
             constructor(x, y, vx, vy, color, power = 1.0) {
                 super(x, y, vx, vy, color, power);
                 this.target = null;
-                this.homingStrength = 0.35; // 0.15 → 0.35 小回りが効くように
+                this.homingStrength = 0.15;
                 this.frame = 0; // アニメーション用
             }
             
@@ -1949,7 +1929,7 @@
                         newBullets.push(laser);
                     }
                 } else if (this.friendshipType === 'machinegun') {
-                    // ★ マシンガン: 弱った敵を狙って16発高速連射（ダダダダダッ）
+                    // ★ マシンガン: 弱った敵を狙って16発高速連射
                     let target = null;
                     let minHp = Infinity;
                     
@@ -1963,7 +1943,6 @@
 
                     const numShots = 16;
                     const spread = 0.2; // ばらつき
-                    const delayBetweenShots = 3; // フレーム間隔（ダダダダダッ感）
                     
                     if(target) {
                         // ターゲット方向
@@ -1981,11 +1960,7 @@
                                 '#607d8b', // グレーっぽい色
                                 power * 0.4 // 1発の威力は低め
                             );
-                            // キューに追加（遅延発射）
-                            machinegunQueue.push({
-                                bullet: bullet,
-                                delay: i * delayBetweenShots
-                            });
+                            newBullets.push(bullet);
                         }
                     } else {
                         // ターゲットいないならランダム
@@ -1993,14 +1968,9 @@
                             const angle = Math.random() * Math.PI * 2;
                             const speed = bulletSpeed * 1.5;
                             const bullet = new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed, '#607d8b', power * 0.4);
-                            machinegunQueue.push({
-                                bullet: bullet,
-                                delay: i * delayBetweenShots
-                            });
+                            newBullets.push(bullet);
                         }
                     }
-                    // マシンガンは即座に発射せず、キューで管理するので空配列を返す
-                    // （キューの処理はupdate関数で行う）
                 } else {
                     // 通常弾
                     for (let i = 0; i < bulletCount; i++) {
@@ -2683,41 +2653,6 @@
             ctx.fillStyle = '#2f662a';
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
             
-            // ★ アイテムモーダルが開いている場合はゲームを停止（描画だけ継続）
-            if (isItemModalOpen) {
-                // 描画だけ行う
-                for (let i = enemyBeams.length - 1; i >= 0; i--) {
-                    enemyBeams[i].draw();
-                }
-                for (let i = explosions.length - 1; i >= 0; i--) {
-                    explosions[i].draw();
-                }
-                for (let i = enemies.length - 1; i >= 0; i--) {
-                    enemies[i].draw();
-                }
-                for (let i = items.length - 1; i >= 0; i--) {
-                    items[i].draw();
-                }
-                for (let marble of playerMarbles) {
-                    marble.draw();
-                }
-                for (let i = bullets.length - 1; i >= 0; i--) {
-                    bullets[i].draw();
-                }
-                if (isDragging) {
-                    ctx.beginPath();
-                    ctx.moveTo(dragStart.x, dragStart.y);
-                    ctx.lineTo(dragEnd.x, dragEnd.y);
-                    ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
-                    ctx.lineWidth = 3;
-                    ctx.setLineDash([5, 5]);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-                requestAnimationFrame(update);
-                return; // ゲームロジックの更新をスキップ
-            }
-            
             // ★ 敵のビーム描画
             for (let i = enemyBeams.length - 1; i >= 0; i--) {
                 enemyBeams[i].draw();
@@ -2740,55 +2675,13 @@
             }
             
             for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
-                
-                // ★ 敵の速度による移動（ビリヤード効果）
-                if (enemy.vx !== 0 || enemy.vy !== 0) {
-                    enemy.x += enemy.vx;
-                    enemy.y += enemy.vy;
-                    
-                    // 壁との衝突判定
-                    if (enemy.x - enemy.radius < 0) {
-                        enemy.x = enemy.radius;
-                        enemy.vx *= -0.8;
-                    } else if (enemy.x + enemy.radius > canvasSize.width) {
-                        enemy.x = canvasSize.width - enemy.radius;
-                        enemy.vx *= -0.8;
-                    }
-                    
-                    if (enemy.y - enemy.radius < 0) {
-                        enemy.y = enemy.radius;
-                        enemy.vy *= -0.8;
-                    } else if (enemy.y + enemy.radius > canvasSize.height) {
-                        enemy.y = canvasSize.height - enemy.radius;
-                        enemy.vy *= -0.8;
-                    }
-                    
-                    // 摩擦で減速
-                    enemy.vx *= 0.98;
-                    enemy.vy *= 0.98;
-                    
-                    // 速度が十分小さくなったら停止
-                    if (Math.abs(enemy.vx) < 0.1) enemy.vx = 0;
-                    if (Math.abs(enemy.vy) < 0.1) enemy.vy = 0;
-                }
-                
-                enemy.draw();
+                enemies[i].draw();
             }
             
             // ★ アイテムの描画と更新
             for (let i = items.length - 1; i >= 0; i--) {
                 items[i].update();
                 items[i].draw();
-            }
-            
-            // ★ マシンガンキューの処理（連続発射）
-            for (let i = machinegunQueue.length - 1; i >= 0; i--) {
-                machinegunQueue[i].delay--;
-                if (machinegunQueue[i].delay <= 0) {
-                    bullets.push(machinegunQueue[i].bullet);
-                    machinegunQueue.splice(i, 1);
-                }
             }
             
             for (let i = bullets.length - 1; i >= 0; i--) {
@@ -3088,51 +2981,27 @@
                             }
                         }
                         
-                        // ★ ビリヤード式の衝突処理（味方も敵も跳ね返る）
+                        // 衝突処理（味方だけ跳ね返る）
                         const overlap = marble.radius + enemy.radius - distance;
-                        if (overlap > 0 && distance > 0) {
-                            // 法線ベクトル（敵から味方へ）
-                            const nx = -dx / distance;
-                            const ny = -dy / distance;
+                        if (overlap > 0) {
+                            // 法線ベクトル（敵の中心から味方の中心へ）
+                            const nx = dx / distance;
+                            const ny = dy / distance;
                             
-                            // 位置の補正（お互いを押し出す）
-                            const halfOverlap = (overlap + 1) / 2;
-                            marble.x += nx * halfOverlap;
-                            marble.y += ny * halfOverlap;
-                            enemy.x -= nx * halfOverlap;
-                            enemy.y -= ny * halfOverlap;
+                            // 味方を敵の外側まで押し戻す
+                            marble.x -= nx * (overlap + 1);  // +1で確実に離す
+                            marble.y -= ny * (overlap + 1);
                             
-                            // 反発係数（ビリヤードらしく0.8）
-                            const restitution = 0.8;
+                            // 味方の速度を法線方向と接線方向に分解
+                            const dotProduct = marble.vx * nx + marble.vy * ny;
                             
-                            // 質量比を考慮（味方1、敵は大きさに応じて質量が異なる）
-                            const marbleMass = 1;
-                            const enemyMass = enemy.isBoss ? 5 : (enemy.size.name === '大' ? 3 : enemy.size.name === '中' ? 2 : 1);
+                            // 法線方向の速度を反転（反射）
+                            marble.vx -= 2 * dotProduct * nx;
+                            marble.vy -= 2 * dotProduct * ny;
                             
-                            // 相対速度
-                            const relVelX = marble.vx - enemy.vx;
-                            const relVelY = marble.vy - enemy.vy;
-                            
-                            // 相対速度の法線方向成分
-                            const relVelDotN = relVelX * nx + relVelY * ny;
-                            
-                            // 近づいている場合のみ反射
-                            if (relVelDotN < 0) {
-                                // 衝突による速度変化の計算
-                                const impulse = -(1 + restitution) * relVelDotN / (1/marbleMass + 1/enemyMass);
-                                
-                                // 味方の速度を更新
-                                marble.vx += impulse * nx / marbleMass;
-                                marble.vy += impulse * ny / marbleMass;
-                                
-                                // 敵の速度を更新（敵も動く！）
-                                enemy.vx -= impulse * nx / enemyMass;
-                                enemy.vy -= impulse * ny / enemyMass;
-                                
-                                // 敵も減速させる（摩擦的な効果）
-                                enemy.vx *= 0.95;
-                                enemy.vy *= 0.95;
-                            }
+                            // 反射後の減速（ビリヤードらしさのため）
+                            marble.vx *= 0.8;
+                            marble.vy *= 0.8;
                         }
                     }
                 }
@@ -3219,7 +3088,6 @@
         function showItemModal(item, marble) {
             currentItem = item;
             currentMarble = marble;
-            isItemModalOpen = true; // ゲームを停止
             
             const modal = document.getElementById('itemModal');
             const emoji = document.getElementById('itemEmoji');
@@ -3400,7 +3268,6 @@
             if (currentItem && currentMarble) {
                 applyFriendshipItem(currentItem, currentMarble);
                 document.getElementById('itemModal').classList.remove('active');
-                isItemModalOpen = false; // ゲームを再開
                 currentItem = null;
                 currentMarble = null;
             }
@@ -3409,7 +3276,6 @@
         // ★ アイテムモーダル - 装備しないボタン
         document.getElementById('itemCancelBtn').addEventListener('click', () => {
             document.getElementById('itemModal').classList.remove('active');
-            isItemModalOpen = false; // ゲームを再開
             showMessage('アイテムを装備しませんでした', 'info');
             currentItem = null;
             currentMarble = null;
