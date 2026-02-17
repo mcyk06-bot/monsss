@@ -2663,7 +2663,7 @@
                 const healAmount = 3;
                 teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                 explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
-                showMessage(`💚 HP回復友情発動！ +${healAmount}`, 'success');
+                // showMessage(`💚 HP回復友情発動！ +${healAmount}`, 'success');
                 updateHPBar();
                 return null; // 弾は出さない
             }
@@ -3033,7 +3033,7 @@
                         if (isCritical) {
                             // クリティカルヒットエフェクトを追加
                             explosions.push(new CriticalEffect(enemy.x, enemy.y));
-                            showMessage(`💥 CRITICAL HIT! +10ダメージ！`, 'danger');
+                            // showMessage(`💥 CRITICAL HIT! +10ダメージ！`, 'danger');
                         }
                         
                         // ダメージ処理
