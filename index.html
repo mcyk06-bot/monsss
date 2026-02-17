@@ -227,6 +227,7 @@
         }
         
         .message {
+            display: none;
             position: fixed;
             top: 50%;
             left: 50%;
@@ -1589,7 +1590,7 @@
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
                 this.target = null;
-                this.homingStrength = 2.0; // ★ さらに小回りが効くように強化 (0.35 -> 2.0)
+                this.homingStrength = 2.0; // ★ さらに小回りが効くように強化 (0.35 -> 0.6)
                 this.frame = 0; // アニメーション用
             }
             
