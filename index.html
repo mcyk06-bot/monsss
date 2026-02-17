@@ -2385,7 +2385,7 @@
             updateStageDisplay();
             updateHPBar();
             updateTurnIndicator();
-            showMessage('画面をタップ＆ドラッグで発射！', 'info');
+            // showMessage('画面をタップ＆ドラッグで発射！', 'info');
         }
         
         // ★ ステージ表示更新
@@ -2480,7 +2480,7 @@
             );
             enemyBeams.push(beam);
 
-            showMessage(`💥 敵がビーム攻撃！`, 'danger');
+            // showMessage(`💥 敵がビーム攻撃！`, 'danger');
 
             // ビーム上の味方を判定してダメージ
             setTimeout(() => {
@@ -2509,7 +2509,7 @@
 
             if (hitCount > 0) {
                 const totalDamage = hitCount * enemyDamage;
-                showMessage(`⚠️ ${hitCount}人がダメージを受けた！ (-${totalDamage}HP)`, 'danger');
+                // showMessage(`⚠️ ${hitCount}人がダメージを受けた！ (-${totalDamage}HP)`, 'danger');
                 updateHPBar();
 
                 if (teamHP <= 0) {
@@ -2575,7 +2575,7 @@
                 }
                 // stoppedMarblesをクリア（玉は位置を保持したまま再利用）
                 stoppedMarbles = [];
-                showMessage('🔄 1個目の玉に戻ります！', 'info');
+                // showMessage('🔄 1個目の玉に戻ります！', 'info');
             }
             
             updateTurnIndicator();
@@ -2705,7 +2705,7 @@
                             totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                             enemies.splice(j, 1);
-                            showMessage(`🎯 弾丸で${enemy.size.name}サイズの敵を撃破！`, 'success');
+                            // showMessage(`🎯 弾丸で${enemy.size.name}サイズの敵を撃破！`, 'success');
                             
                             // HP回復判定（20%の確率）
                             const healChance = Math.random() < 0.20;
@@ -2916,7 +2916,7 @@
                                     totalDefeated++;
                                 });
                                 enemies = [];
-                                // showMessage('💀 デス発動！敵を全滅させました！', 'danger');
+                                showMessage('💀 デス発動！敵を全滅させました！', 'danger');
                                 
                                 // 敵がいなくなったらクリア
                                 setTimeout(() => {
@@ -2959,7 +2959,7 @@
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                             enemies.splice(i, 1);
                             const enemyType = enemy.isBoss ? 'ボス' : enemy.size.name + 'サイズ';
-                            showMessage(`★ ${marble.type.name}で${enemyType}の敵を撃破！`, 'success');
+                            // showMessage(`★ ${marble.type.name}で${enemyType}の敵を撃破！`, 'success');
                             
                             // HP回復判定（20%の確率）
                             const healChance = Math.random() < 0.20;
@@ -2968,7 +2968,7 @@
                                 teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                                 // HP回復エフェクトを追加
                                 explosions.push(new HealEffect(enemy.x, enemy.y));
-                                showMessage(`💚 HP回復！ +${healAmount}`, 'success');
+                                // showMessage(`💚 HP回復！ +${healAmount}`, 'success');
                                 updateHPBar();
                             }
                             
