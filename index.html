@@ -1589,7 +1589,7 @@
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
                 this.target = null;
-                this.homingStrength = 0.6; // ★ さらに小回りが効くように強化 (0.35 -> 0.6)
+                this.homingStrength = 2.0; // ★ さらに小回りが効くように強化 (0.35 -> 2.0)
                 this.frame = 0; // アニメーション用
             }
             
@@ -3174,32 +3174,61 @@
             else if (item.type === 'friendship_laser') newItemType = 'laser';
             else if (item.type === 'friendship_heal') newItemType = 'heal';
             else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
-            
+
             let isSameType = (marble.friendshipType === newItemType);
             let nextLevel = isSameType ? Math.min(marble.friendshipLevel + 1, 5) : 1;
-            
-            let levelText = isSameType ? `Lv.${marble.friendshipLevel} ➔ Lv.${nextLevel}` : 'Lv.1 (新規装備)';
-            if (isSameType && marble.friendshipLevel >= 5) levelText = 'Lv.5 (MAX)';
-            
+
             // アイテムタイプに応じた名前
             let typeName = '';
             if (newItemType === 'homing') typeName = 'ホーミングミサイル';
             else if (newItemType === 'laser') typeName = 'レーザービーム';
             else if (newItemType === 'heal') typeName = '友情・回復';
             else if (newItemType === 'machinegun') typeName = '友情・マシンガン';
-            
+
+            // 現在の友情コンボ名
+            let currentTypeName = '';
+            if (marble.friendshipType === 'homing') currentTypeName = 'ホーミングミサイル';
+            else if (marble.friendshipType === 'laser') currentTypeName = 'レーザービーム';
+            else if (marble.friendshipType === 'heal') currentTypeName = '友情・回復';
+            else if (marble.friendshipType === 'machinegun') currentTypeName = '友情・マシンガン';
+            else currentTypeName = 'なし';
+
+            // アイテム名を表示
             fsName.textContent = typeName;
-            
+
+            // NEW or レベルアップチャンス
             if (isSameType) {
-                statusLabel.textContent = "🔼 レベルアップチャンス！";
+                statusLabel.textContent = "🔼 レベルアップチャンス";
                 statusLabel.style.background = "#ff9800";
-                fsDetail.textContent = `${levelText} に強化されます！`;
             } else {
-                statusLabel.textContent = "✨ 新しい友情コンボ！";
+                statusLabel.textContent = "✨ NEW";
                 statusLabel.style.background = "#1565c0";
-                fsDetail.textContent = `現在の友情を上書きして装備します`;
             }
-            
+
+            // ★★★☆☆ 取得後のレベルを星で表示
+            let starDisplay = '';
+            for (let i = 1; i <= 5; i++) {
+                starDisplay += (i <= nextLevel) ? '★' : '☆';
+            }
+
+            // 説明部分に星を表示
+            fsDetail.textContent = starDisplay;
+
+            // 青枠：現在の友情コンボ情報
+            const characterInfoDiv = document.querySelector('.item-character-info');
+            // 既存の青枠テキストを更新または新規追加
+            let currentComboDiv = document.getElementById('currentComboInfo');
+            if (!currentComboDiv) {
+                currentComboDiv = document.createElement('div');
+                currentComboDiv.id = 'currentComboInfo';
+                currentComboDiv.style.cssText = 'background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px; border: 2px solid #1565c0;';
+                characterInfoDiv.appendChild(currentComboDiv);
+            }
+            currentComboDiv.innerHTML = `
+                <div style="font-size: 12px; color: #666; margin-bottom: 3px;">現在の友情コンボ</div>
+                <div style="font-weight: bold; font-size: 16px; color: #1565c0;">${currentTypeName} Lv.${marble.friendshipLevel}</div>
+            `;
+
             modal.classList.add('active');
         }
         
