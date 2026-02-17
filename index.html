@@ -889,8 +889,6 @@
         const HIT_SLOWDOWN = 0.5;
         const STOP_THRESHOLD = 0.01;
         const VELOCITY_SCALE = 18.0;
-        // ★ 高速移動時のトンネリング防止用サブステップ数
-        const SUBSTEPS = 4;
         
         // ★ 敵のビームクラス追加
         class EnemyBeam {
@@ -938,180 +936,181 @@
             }
         }
         
-        // ★ 爆弾飛来エフェクト（ピュルルル飛んでくる）
-        class EnemyBombProjectile {
-            constructor(fromX, fromY, toX, toY, blastRadius) {
-                this.fromX = fromX; this.fromY = fromY;
-                this.toX = toX; this.toY = toY;
-                this.x = fromX; this.y = fromY;
+        // ★ 敵爆弾エフェクト（円形爆発）
+        class EnemyBombEffect {
+            constructor(x, y, blastRadius) {
+                this.x = x;
+                this.y = y;
                 this.blastRadius = blastRadius;
                 this.frame = 0;
-                this.travelFrames = 38; // 飛行フレーム
-                this.explodeFrames = 50; // 爆発フレーム
-                this.maxFrames = this.travelFrames + this.explodeFrames;
-                this.trail = [];
-                this.exploded = false;
-                this.onExplode = null; // コールバック
-                this.rotation = 0;
+                this.maxFrames = 55;
             }
             draw() {
                 this.frame++;
-                this.rotation += 0.25;
-                if (this.frame <= this.travelFrames) {
-                    // ── 飛行フェーズ ──
-                    const t = this.frame / this.travelFrames;
-                    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
-                    // 放物線（少し上に弧を描く）
-                    const arcH = -80 * Math.sin(Math.PI * t);
-                    this.x = this.fromX + (this.toX - this.fromX) * ease;
-                    this.y = this.fromY + (this.toY - this.fromY) * ease + arcH;
-                    this.trail.push({x: this.x, y: this.y, r: this.rotation});
-                    if (this.trail.length > 10) this.trail.shift();
-
-                    ctx.save();
-                    // 軌跡
-                    for (let i = 0; i < this.trail.length; i++) {
-                        const tp = i / this.trail.length;
-                        ctx.globalAlpha = tp * 0.4;
-                        ctx.beginPath();
-                        ctx.arc(this.trail[i].x, this.trail[i].y, 5 * tp, 0, Math.PI*2);
-                        ctx.fillStyle = '#ff8800';
-                        ctx.fill();
-                    }
-                    // 爆弾本体
-                    ctx.globalAlpha = 1;
-                    ctx.translate(this.x, this.y);
-                    ctx.rotate(this.rotation);
-                    // 本体（黒丸）
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 10, 0, Math.PI*2);
-                    ctx.fillStyle = '#222';
-                    ctx.fill();
-                    ctx.strokeStyle = '#555';
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
-                    // 導火線
-                    ctx.strokeStyle = '#ff9900';
+                const p = this.frame / this.maxFrames;
+                const r = this.blastRadius * Math.min(p * 1.6, 1);
+                const alpha = p < 0.4 ? p / 0.4 : (1 - p) * 1.5;
+                ctx.save();
+                // 外炎グラデーション
+                const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r);
+                g.addColorStop(0,   `rgba(255,255,255,${alpha * 0.9})`);
+                g.addColorStop(0.25,`rgba(255,220, 50,${alpha * 0.85})`);
+                g.addColorStop(0.55,`rgba(255, 80,  0,${alpha * 0.7})`);
+                g.addColorStop(0.85,`rgba(180, 20,  0,${alpha * 0.4})`);
+                g.addColorStop(1,   `rgba(100,  0,  0,0)`);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = g;
+                ctx.fill();
+                // 衝撃波リング
+                ctx.strokeStyle = `rgba(255,160,0,${alpha})`;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                ctx.stroke();
+                // 予告範囲点線（爆発前半）
+                if (p < 0.3) {
+                    ctx.strokeStyle = `rgba(255,0,0,${0.5 * (1-p/0.3)})`;
                     ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 4]);
                     ctx.beginPath();
-                    ctx.moveTo(7, -7);
-                    ctx.quadraticCurveTo(14, -14, 10, -20);
+                    ctx.arc(this.x, this.y, this.blastRadius, 0, Math.PI * 2);
                     ctx.stroke();
-                    // 導火線の火花（点滅）
-                    if (this.frame % 4 < 2) {
-                        ctx.fillStyle = '#ffee00';
-                        ctx.beginPath();
-                        ctx.arc(10, -20, 3, 0, Math.PI*2);
-                        ctx.fill();
-                    }
-                    ctx.restore();
+                    ctx.setLineDash([]);
+                }
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
 
-                    // 着地直前に予告サークル
-                    if (t > 0.6) {
-                        const warnAlpha = (t - 0.6) / 0.4 * 0.5;
-                        ctx.save();
-                        ctx.strokeStyle = `rgba(255,0,0,${warnAlpha})`;
-                        ctx.lineWidth = 2;
-                        ctx.setLineDash([5,4]);
-                        ctx.beginPath();
-                        ctx.arc(this.toX, this.toY, this.blastRadius, 0, Math.PI*2);
-                        ctx.stroke();
-                        ctx.setLineDash([]);
-                        ctx.restore();
-                    }
+        // ★ 敵メテオエフェクト（隕石落下）
+        class EnemyMeteorEffect {
+            constructor(targetX, targetY) {
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.x = targetX + (Math.random() - 0.5) * 100;
+                this.y = -40;
+                this.radius = 16;
+                this.frame = 0;
+                this.maxFrames = 55;
+                this.trail = [];
+                this.landed = false;
+            }
+            draw() {
+                this.frame++;
+                const p = this.frame / this.maxFrames;
+                // 放物線で落下
+                this.x += (this.targetX - this.x) * 0.14;
+                this.y += (this.targetY - this.y) * 0.14;
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > 14) this.trail.shift();
 
-                    // 着地 → 爆発コールバック
-                    if (this.frame === this.travelFrames) {
-                        if (this.onExplode) this.onExplode();
-                    }
-
-                } else {
-                    // ── 爆発フェーズ ──
-                    const ep = (this.frame - this.travelFrames) / this.explodeFrames;
-                    const r = this.blastRadius * Math.min(ep * 1.8, 1);
-                    const alpha = ep < 0.35 ? ep/0.35 : (1 - ep) * 1.4;
-                    ctx.save();
-                    const g = ctx.createRadialGradient(this.toX, this.toY, 0, this.toX, this.toY, r);
-                    g.addColorStop(0, `rgba(255,255,255,${alpha*0.95})`);
-                    g.addColorStop(0.2, `rgba(255,220,50,${alpha*0.88})`);
-                    g.addColorStop(0.55,`rgba(255,80,0,${alpha*0.72})`);
-                    g.addColorStop(0.85,`rgba(180,20,0,${alpha*0.4})`);
-                    g.addColorStop(1, `rgba(100,0,0,0)`);
+                ctx.save();
+                // 軌跡
+                for (let i = 0; i < this.trail.length; i++) {
+                    const t = i / this.trail.length;
+                    ctx.globalAlpha = t * 0.45;
                     ctx.beginPath();
-                    ctx.arc(this.toX, this.toY, r, 0, Math.PI*2);
-                    ctx.fillStyle = g;
+                    ctx.arc(this.trail[i].x, this.trail[i].y, this.radius * t * 0.8, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgb(255,${Math.floor(120*t)},0)`;
                     ctx.fill();
-                    ctx.strokeStyle = `rgba(255,140,0,${alpha})`;
-                    ctx.lineWidth = 3;
+                }
+                // 本体
+                ctx.globalAlpha = 1;
+                const gm = ctx.createRadialGradient(
+                    this.x - this.radius*0.3, this.y - this.radius*0.3, 0,
+                    this.x, this.y, this.radius
+                );
+                gm.addColorStop(0, '#ffffff');
+                gm.addColorStop(0.35,'#ffaa00');
+                gm.addColorStop(1,  '#cc2200');
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = gm;
+                ctx.fill();
+                ctx.strokeStyle = '#ff5500';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                // 着地予告マーカー
+                if (p < 0.75) {
+                    const warn = 1 - p / 0.75;
+                    ctx.strokeStyle = `rgba(255,0,0,${warn * 0.7})`;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 4]);
                     ctx.beginPath();
-                    ctx.arc(this.toX, this.toY, r, 0, Math.PI*2);
+                    ctx.arc(this.targetX, this.targetY, 28, 0, Math.PI * 2);
                     ctx.stroke();
-                    ctx.restore();
+                    ctx.setLineDash([]);
+                }
+                ctx.restore();
+
+                if (p >= 0.88 && !this.landed) {
+                    this.landed = true;
                 }
             }
             isComplete() { return this.frame >= this.maxFrames; }
         }
 
-        // ★ メテオエフェクト（隕石落下）
-        class EnemyMeteorEffect {
-            constructor(targetX, targetY) {
-                this.targetX = targetX; this.targetY = targetY;
-                this.x = targetX + (Math.random()-0.5)*120;
-                this.y = -50;
-                this.radius = 14;
+        // ★ エナジーサークルエフェクト（友情攻撃）
+        class EnergySurgeEffect {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
                 this.frame = 0;
-                this.travelFrames = 48;
-                this.explodeFrames = 35;
-                this.maxFrames = this.travelFrames + this.explodeFrames;
-                this.trail = [];
-                this.onLand = null;
+                this.maxFrames = 75;
+                // 3つの時差リング
+                this.rings = [
+                    {delay: 0,  maxR: 270},
+                    {delay: 10, maxR: 310},
+                    {delay: 20, maxR: 350},
+                ];
             }
             draw() {
                 this.frame++;
-                if (this.frame <= this.travelFrames) {
-                    const t = this.frame / this.travelFrames;
-                    this.x += (this.targetX - this.x) * 0.11;
-                    this.y += (this.targetY - this.y) * 0.11;
-                    this.trail.push({x: this.x, y: this.y});
-                    if (this.trail.length > 12) this.trail.shift();
-                    ctx.save();
-                    for (let i = 0; i < this.trail.length; i++) {
-                        const tp = i / this.trail.length;
-                        ctx.globalAlpha = tp * 0.4;
-                        ctx.beginPath();
-                        ctx.arc(this.trail[i].x, this.trail[i].y, this.radius * tp * 0.75, 0, Math.PI*2);
-                        ctx.fillStyle = `rgb(255,${Math.floor(100*tp)},0)`;
-                        ctx.fill();
-                    }
-                    ctx.globalAlpha = 1;
-                    const gm = ctx.createRadialGradient(this.x-4, this.y-4, 0, this.x, this.y, this.radius);
-                    gm.addColorStop(0,'#ffffff'); gm.addColorStop(0.35,'#ffaa00'); gm.addColorStop(1,'#cc2200');
-                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
-                    ctx.fillStyle = gm; ctx.fill();
-                    ctx.strokeStyle='#ff5500'; ctx.lineWidth=2; ctx.stroke();
-                    // 着地予告
-                    if (t > 0.5) {
-                        const wa = (t-0.5)/0.5*0.6;
-                        ctx.strokeStyle=`rgba(255,50,0,${wa})`; ctx.lineWidth=2;
-                        ctx.setLineDash([5,4]);
-                        ctx.beginPath(); ctx.arc(this.targetX,this.targetY,30,0,Math.PI*2); ctx.stroke();
-                        ctx.setLineDash([]);
-                    }
-                    ctx.restore();
-                    if (this.frame === this.travelFrames && this.onLand) this.onLand();
-                } else {
-                    // 着地爆発
-                    const ep = (this.frame - this.travelFrames) / this.explodeFrames;
-                    const r = 40 * Math.min(ep*2, 1);
-                    const alpha = ep < 0.3 ? ep/0.3 : (1-ep)*1.4;
-                    ctx.save();
-                    const g2 = ctx.createRadialGradient(this.targetX,this.targetY,0,this.targetX,this.targetY,r);
-                    g2.addColorStop(0,`rgba(255,255,200,${alpha})`);
-                    g2.addColorStop(0.5,`rgba(255,100,0,${alpha*0.7})`);
-                    g2.addColorStop(1,`rgba(150,0,0,0)`);
-                    ctx.beginPath(); ctx.arc(this.targetX,this.targetY,r,0,Math.PI*2);
-                    ctx.fillStyle=g2; ctx.fill(); ctx.restore();
+                ctx.save();
+                for (const ring of this.rings) {
+                    const f = this.frame - ring.delay;
+                    if (f <= 0) continue;
+                    const dur = this.maxFrames - ring.delay;
+                    const p = Math.min(f / dur, 1);
+                    const r = ring.maxR * Math.pow(p, 0.55);
+                    const alpha = p < 0.25 ? p / 0.25 : (1 - p) * 1.3;
+                    if (alpha <= 0) continue;
+
+                    // 外向きグラデーションリング
+                    const gr = ctx.createRadialGradient(this.x, this.y, r*0.7, this.x, this.y, r);
+                    gr.addColorStop(0, `rgba(0,220,255,0)`);
+                    gr.addColorStop(0.5,`rgba(0,200,255,${alpha*0.45})`);
+                    gr.addColorStop(0.82,`rgba(160,60,255,${alpha*0.8})`);
+                    gr.addColorStop(1, `rgba(255,255,255,0)`);
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = gr;
+                    ctx.fill();
+
+                    // 光るリム
+                    ctx.strokeStyle = `rgba(180,80,255,${alpha * 0.9})`;
+                    ctx.lineWidth = Math.max(5 - p * 3, 1);
+                    ctx.shadowColor = `rgba(0,200,255,${alpha})`;
+                    ctx.shadowBlur = 12;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
                 }
+                // 中心フラッシュ
+                if (this.frame < 18) {
+                    const fa = 1 - this.frame / 18;
+                    const fg = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 65);
+                    fg.addColorStop(0, `rgba(255,255,255,${fa})`);
+                    fg.addColorStop(0.5,`rgba(80,200,255,${fa*0.6})`);
+                    fg.addColorStop(1, `rgba(80,200,255,0)`);
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 65, 0, Math.PI * 2);
+                    ctx.fillStyle = fg;
+                    ctx.fill();
+                }
+                ctx.restore();
             }
             isComplete() { return this.frame >= this.maxFrames; }
         }
@@ -1638,6 +1637,11 @@
                     this.color = '#607d8b';
                     this.name = '友情・マシンガン';
                     this.description = '弱った敵にめがけて高速弾を16発連射します！';
+                } else if (type === 'friendship_energy') {
+                    this.emoji = '🌀';
+                    this.color = '#00bcd4';
+                    this.name = 'エナジーサークル';
+                    this.description = '自身を中心にエネルギー衝撃波が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！';
                 }
             }
             
@@ -1770,9 +1774,8 @@
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
                 this.target = null;
-                this.homingStrength = 0.25; // ★ ゆっくりめに（2.0→0.25）
-                this.maxSpeed = 5.5;        // ★ 速度上限を設定
-                this.frame = 0;
+                this.homingStrength = 2.0; // ★ さらに小回りが効くように強化 (0.35 -> 0.6)
+                this.frame = 0; // アニメーション用
             }
             
             update() {
@@ -1811,13 +1814,6 @@
                         this.vx += (dx / dist) * this.homingStrength;
                         this.vy += (dy / dist) * this.homingStrength;
                     }
-                }
-                
-                // ★ 速度上限（速くなりすぎを防ぐ）
-                const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-                if (spd > this.maxSpeed) {
-                    this.vx = (this.vx / spd) * this.maxSpeed;
-                    this.vy = (this.vy / spd) * this.maxSpeed;
                 }
                 
                 this.x += this.vx;
@@ -2040,6 +2036,7 @@
                     else if (this.friendshipType === 'laser') icon = '⚡';
                     else if (this.friendshipType === 'heal') icon = '❤️';
                     else if (this.friendshipType === 'machinegun') icon = '🔫';
+                    else if (this.friendshipType === 'energy') icon = '🌀';
                     else if (this.friendshipPower > 1.0) icon = '💥';
                     else if (this.friendshipCount > 8) icon = '🔢';
                     
@@ -2067,6 +2064,7 @@
             }
             
             update() {
+                // console.log(this.type);
                 if (!this.isActive) return;
 
                 let friction = this.type.friction;
@@ -2079,28 +2077,23 @@
                 this.vx *= friction;
                 this.vy *= friction;
 
-                // ★ サブステップで分割移動（高速時のトンネリング防止）
-                const stepVx = this.vx * VELOCITY_SCALE / SUBSTEPS;
-                const stepVy = this.vy * VELOCITY_SCALE / SUBSTEPS;
-                for (let s = 0; s < SUBSTEPS; s++) {
-                    this.x += stepVx;
-                    this.y += stepVy;
-
-                    // 壁バウンド
-                    if (this.x - this.radius < 0) {
-                        this.x = this.radius;
-                        this.vx *= -BOUNCE;
-                    } else if (this.x + this.radius > canvasSize.width) {
-                        this.x = canvasSize.width - this.radius;
-                        this.vx *= -BOUNCE;
-                    }
-                    if (this.y - this.radius < 0) {
-                        this.y = this.radius;
-                        this.vy *= -BOUNCE;
-                    } else if (this.y + this.radius > canvasSize.height) {
-                        this.y = canvasSize.height - this.radius;
-                        this.vy *= -BOUNCE;
-                    }
+                this.x += this.vx * VELOCITY_SCALE;
+                this.y += this.vy * VELOCITY_SCALE;
+                
+                if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.vx *= -BOUNCE;
+                } else if (this.x + this.radius > canvasSize.width) {
+                    this.x = canvasSize.width - this.radius;
+                    this.vx *= -BOUNCE;
+                }
+                
+                if (this.y - this.radius < 0) {
+                    this.y = this.radius;
+                    this.vy *= -BOUNCE;
+                } else if (this.y + this.radius > canvasSize.height) {
+                    this.y = canvasSize.height - this.radius;
+                    this.vy *= -BOUNCE;
                 }
                 
                 if (Math.abs(this.vx * VELOCITY_SCALE) < STOP_THRESHOLD && 
@@ -2211,6 +2204,28 @@
                             newBullets.push(bullet);
                         }
                     }
+                } else if (this.friendshipType === 'energy') {
+                    // ★ エナジーサークル: 全敵に範囲ダメージ
+                    const selfRef = this;
+                    const dmg = (1.5 + selfRef.friendshipLevel * 0.8) * power;
+                    explosions.push(new EnergySurgeEffect(selfRef.x, selfRef.y));
+                    showMessage(`🌀 エナジーサークル発動！`, 'combo-effect');
+                    setTimeout(() => {
+                        for (let i = enemies.length - 1; i >= 0; i--) {
+                            const en = enemies[i];
+                            if (en.takeDamage(dmg)) {
+                                defeated++;
+                                totalDefeated++;
+                                explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
+                                enemies.splice(i, 1);
+                            } else {
+                                explosions.push(new CriticalEffect(en.x, en.y));
+                            }
+                        }
+                        updateUI();
+                        if (enemies.length === 0) setTimeout(() => showStageClear(), 500);
+                    }, 350);
+                    return [];
                 } else {
                     // 通常弾
                     for (let i = 0; i < bulletCount; i++) {
@@ -2248,34 +2263,12 @@
                 this.lastHitTime = 0;
                 this.color = size.color;
                 this.secondaryColor = size.secondaryColor;
-                // ★ シェイクエフェクト用
-                this.shakeFrame = 0;
-                this.shakeMaxFrames = 0;
-                this.shakeIntensity = 0;
-            }
-
-            // ★ シェイク発動（強さ・フレーム数を指定）
-            triggerShake(intensity = 10, frames = 18) {
-                this.shakeFrame = frames;
-                this.shakeMaxFrames = frames;
-                this.shakeIntensity = intensity;
             }
             
             draw() {
                 this.animationFrame++;
-
-                // ★ シェイクオフセット計算（減衰しながら揺れる）
-                let shakeOffX = 0, shakeOffY = 0;
-                if (this.shakeFrame > 0) {
-                    this.shakeFrame--;
-                    const decay = this.shakeFrame / this.shakeMaxFrames;
-                    const ang = this.shakeFrame * 2.8;
-                    shakeOffX = Math.cos(ang) * this.shakeIntensity * decay;
-                    shakeOffY = Math.sin(ang * 1.4) * this.shakeIntensity * decay * 0.55;
-                }
                 
                 ctx.save();
-                ctx.translate(shakeOffX, shakeOffY);
                 let img;
                 
                 // ★ ボスかどうかで画像を選択
@@ -2390,9 +2383,6 @@
             takeDamage(amount = 1) {
                 this.hp -= amount;
                 this.lastHitTime = Date.now();
-                // ★ ダメージに応じたシェイク強度
-                const intensity = Math.min(6 + amount * 2, 18);
-                this.triggerShake(intensity, 20);
                 if (this.hp <= 0) {
                     return true;
                 }
@@ -2439,32 +2429,30 @@
 
         // ★ アイテム生成関数（確率アップ＆毎ターン呼び出し用）
         function spawnItems(countMultiplier = 1.0) {
-            // ★ 確率を0.40→0.60に引き上げ、さらにcountMultiplierで調整
-            const spawnRoll = Math.random();
-            // 60%で1個、10%で2個追加（countMultiplier適用）
-            let spawnCount = 0;
-            if (spawnRoll < 0.60 * countMultiplier) spawnCount = 1;
-            if (spawnRoll < 0.12 * countMultiplier) spawnCount = 2; // ボーナスで2個
-            
-            for (let i = 0; i < spawnCount; i++) {
+            // アイテム生成確率（ターンごとなので少し高めに）
+            if (Math.random() < 0.40 * countMultiplier) {
+                const itemCount = 1; 
+                for (let i = 0; i < itemCount; i++) {
                     // アイテムタイプをランダムに選択
                     const rand = Math.random();
                     let itemType;
                     // バランス調整：回復と攻撃アップを出しやすく、強力な友情はレアに
-                    if (rand < 0.35) {  // 0.25 + 0.10 = 0.35 (hp: 35%)
+                    if (rand < 0.30) {
                         itemType = 'hp';
-                    } else if (rand < 0.55) {  // 0.35 + 0.20 = 0.55 (attack: 20%)
+                    } else if (rand < 0.48) {
                         itemType = 'attack';
-                    } else if (rand < 0.60) {  // 0.55 + 0.05 = 0.60 (death: 5%)
+                    } else if (rand < 0.53) {
                         itemType = 'death';
-                    } else if (rand < 0.70) {  // 0.60 + 0.10 = 0.70 (friendship_heal: 10%)
+                    } else if (rand < 0.62) {
                         itemType = 'friendship_heal';
-                    } else if (rand < 0.80) {  // 0.70 + 0.10 = 0.80 (friendship_homing: 10%)
+                    } else if (rand < 0.71) {
                         itemType = 'friendship_homing';
-                    } else if (rand < 0.90) {  // 0.80 + 0.10 = 0.90 (friendship_laser: 10%)
+                    } else if (rand < 0.80) {
                         itemType = 'friendship_laser';
-                    } else {  // 0.90 ~ 1.00 (friendship_machinegun: 10%)
+                    } else if (rand < 0.90) {
                         itemType = 'friendship_machinegun';
+                    } else {
+                        itemType = 'friendship_energy'; // レア 10%
                     }
                     
                     let x, y, valid;
@@ -2726,102 +2714,104 @@
             const availableTargets = playerMarbles.filter(m => !m.isUsed || m.isStopped);
             if (availableTargets.length === 0) { endEnemyTurn(); return; }
 
-            // ★ ステージに応じた攻撃回数（ステージ12以降2回、22以降3回に緩和）
-            const attackCount = currentStage >= 22 ? 3 : currentStage >= 12 ? 2 : 1;
+            // ★ ステージに応じた攻撃回数（ステージ10以降2回、20以降3回）
+            const attackCount = currentStage >= 20 ? 3 : currentStage >= 10 ? 2 : 1;
 
-            // ★ 攻撃タイプ選択（ステージが進むほど多様化）
+            // ★ ステージに応じた攻撃タイプ選択
             function pickAttackType() {
                 const r = Math.random();
-                if (currentStage < 5)  return 'beam';
-                if (currentStage < 10) return r < 0.65 ? 'beam' : 'bomb';
-                if (currentStage < 18) {
-                    if (r < 0.42) return 'beam';
+                if (currentStage < 5) {
+                    return 'beam'; // 序盤はビームのみ
+                } else if (currentStage < 10) {
+                    return r < 0.65 ? 'beam' : 'bomb'; // ビーム65% / 爆弾35%
+                } else if (currentStage < 15) {
+                    if (r < 0.45) return 'beam';
                     if (r < 0.75) return 'bomb';
-                    return 'meteor';
+                    return 'meteor'; // ビーム45% / 爆弾30% / メテオ25%
+                } else {
+                    if (r < 0.30) return 'beam';
+                    if (r < 0.60) return 'bomb';
+                    return 'meteor'; // 均等3種
                 }
-                if (r < 0.30) return 'beam';
-                if (r < 0.62) return 'bomb';
-                return 'meteor';
             }
 
-            // ★ 1回分の攻撃（Promise）
-            function doOneAttack() {
+            // ★ 1回分の攻撃を実行
+            function doOneAttack(delayMs) {
                 return new Promise(resolve => {
-                    if (enemies.length === 0) { resolve(); return; }
-                    const attacker = enemies[Math.floor(Math.random() * enemies.length)];
-                    const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
-                    const type = pickAttackType();
+                    setTimeout(() => {
+                        if (enemies.length === 0) { resolve(); return; }
+                        const attacker = enemies[Math.floor(Math.random() * enemies.length)];
+                        const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
+                        const type = pickAttackType();
 
-                    if (type === 'beam') {
-                        // ── ビーム ──
-                        const beam = new EnemyBeam(attacker.x, attacker.y, target.x, target.y, attacker.color);
-                        enemyBeams.push(beam);
-                        setTimeout(() => checkBeamHits(beam), 220);
-                        setTimeout(resolve, 1100);
+                        if (type === 'beam') {
+                            // ── ビーム攻撃 ──
+                            const beam = new EnemyBeam(attacker.x, attacker.y, target.x, target.y, attacker.color);
+                            enemyBeams.push(beam);
+                            setTimeout(() => checkBeamHits(beam), 220);
+                            setTimeout(resolve, 1200);
 
-                    } else if (type === 'bomb') {
-                        // ── 爆弾（飛来アニメーション付き） ──
-                        showMessage('💣 爆弾投擲！', 'danger');
-                        const bx = target.x + (Math.random()-0.5)*40;
-                        const by = target.y + (Math.random()-0.5)*40;
-                        // ダメージはステージ5からだが最大2ダメに抑える
-                        const bombDmg = Math.min(enemyDamage, 2);
-                        const blastR = 60 + currentStage * 1.2;
-                        const proj = new EnemyBombProjectile(attacker.x, attacker.y, bx, by, blastR);
-                        proj.onExplode = () => {
-                            for (const m of playerMarbles) {
-                                const dx = m.x - bx, dy = m.y - by;
-                                if (Math.sqrt(dx*dx + dy*dy) < blastR) {
-                                    teamHP -= bombDmg;
-                                    m.takeDamage();
-                                    explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#ff6600'));
-                                }
-                            }
-                            updateHPBar();
-                            triggerGameOver();
-                        };
-                        enemyBeams.push(proj);
-                        setTimeout(resolve, 1500);
-
-                    } else if (type === 'meteor') {
-                        // ── メテオ（発数を絞り、ダメージも抑える） ──
-                        showMessage('☄️ メテオ落下！', 'danger');
-                        // ステージに関係なく最大2発に制限（バランス重視）
-                        const count = currentStage >= 20 ? 2 : 1;
-                        const meteorDmg = 1; // メテオは常に1ダメ固定
-                        let done = 0;
-                        for (let mi = 0; mi < count; mi++) {
+                        } else if (type === 'bomb') {
+                            // ── 爆弾攻撃：狙った味方の周辺に範囲爆発 ──
+                            showMessage('💣 爆弾攻撃！', 'danger');
+                            const bx = target.x + (Math.random() - 0.5) * 50;
+                            const by = target.y + (Math.random() - 0.5) * 50;
+                            const blastR = 65 + currentStage * 1.5;
+                            const bomb = new EnemyBombEffect(bx, by, blastR);
+                            enemyBeams.push(bomb);
+                            // 少し遅れて着弾判定
                             setTimeout(() => {
-                                if (enemies.length === 0) return;
-                                const mt = availableTargets[Math.floor(Math.random() * availableTargets.length)];
-                                const meteor = new EnemyMeteorEffect(mt.x, mt.y);
-                                meteor.onLand = () => {
-                                    for (const m of playerMarbles) {
-                                        const dx = m.x - meteor.targetX, dy = m.y - meteor.targetY;
-                                        if (Math.sqrt(dx*dx + dy*dy) < 35) {
-                                            teamHP -= meteorDmg;
-                                            m.takeDamage();
-                                            explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#cc2200'));
-                                        }
+                                for (const m of playerMarbles) {
+                                    const dx = m.x - bx, dy = m.y - by;
+                                    if (Math.sqrt(dx*dx + dy*dy) < blastR) {
+                                        teamHP -= enemyDamage;
+                                        m.takeDamage();
+                                        explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#ff6600'));
                                     }
-                                    updateHPBar();
-                                    triggerGameOver();
-                                };
-                                enemyBeams.push(meteor);
-                                done++;
-                            }, mi * 500);
+                                }
+                                updateHPBar();
+                                triggerGameOver();
+                            }, 550);
+                            setTimeout(resolve, 1300);
+
+                        } else if (type === 'meteor') {
+                            // ── メテオ攻撃：ランダムな数の隕石が連続落下 ──
+                            showMessage('☄️ メテオ攻撃！', 'danger');
+                            const count = 2 + Math.min(Math.floor(currentStage / 8), 3); // 2〜5発
+                            let doneCount = 0;
+                            for (let mi = 0; mi < count; mi++) {
+                                setTimeout(() => {
+                                    if (enemies.length === 0) return;
+                                    const mt = availableTargets[Math.floor(Math.random() * availableTargets.length)];
+                                    const meteor = new EnemyMeteorEffect(mt.x, mt.y);
+                                    enemyBeams.push(meteor);
+                                    // 着弾判定
+                                    setTimeout(() => {
+                                        for (const m of playerMarbles) {
+                                            const dx = m.x - meteor.targetX, dy = m.y - meteor.targetY;
+                                            if (Math.sqrt(dx*dx + dy*dy) < 38) {
+                                                teamHP -= enemyDamage;
+                                                m.takeDamage();
+                                                explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#cc2200'));
+                                            }
+                                        }
+                                        explosions.push(new EnemyBombEffect(meteor.targetX, meteor.targetY, 45));
+                                        updateHPBar();
+                                        triggerGameOver();
+                                        doneCount++;
+                                    }, 680);
+                                }, mi * 380);
+                            }
+                            setTimeout(resolve, count * 380 + 900);
                         }
-                        setTimeout(resolve, count * 500 + 800);
-                    }
+                    }, delayMs);
                 });
             }
 
             // 攻撃を順番に実行してからターン終了
             (async () => {
                 for (let i = 0; i < attackCount; i++) {
-                    await doOneAttack();
-                    if (isGameOver) return;
-                    if (i < attackCount - 1) await new Promise(r => setTimeout(r, 300));
+                    await doOneAttack(i === 0 ? 0 : 200);
                 }
                 endEnemyTurn();
             })();
@@ -3458,6 +3448,7 @@
             else if (item.type === 'friendship_laser') newItemType = 'laser';
             else if (item.type === 'friendship_heal') newItemType = 'heal';
             else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
+            else if (item.type === 'friendship_energy') newItemType = 'energy';
 
             let isSameType = (marble.friendshipType === newItemType);
             let nextLevel = isSameType ? Math.min(marble.friendshipLevel + 1, 5) : 1;
@@ -3468,6 +3459,7 @@
             else if (newItemType === 'laser') typeName = 'レーザービーム';
             else if (newItemType === 'heal') typeName = '友情・回復';
             else if (newItemType === 'machinegun') typeName = '友情・マシンガン';
+            else if (newItemType === 'energy') typeName = 'エナジーサークル';
 
             // 現在の友情コンボ名
             let currentTypeName = '';
@@ -3475,6 +3467,7 @@
             else if (marble.friendshipType === 'laser') currentTypeName = 'レーザービーム';
             else if (marble.friendshipType === 'heal') currentTypeName = '友情・回復';
             else if (marble.friendshipType === 'machinegun') currentTypeName = '友情・マシンガン';
+            else if (marble.friendshipType === 'energy') currentTypeName = 'エナジーサークル';
             else currentTypeName = 'なし';
 
             // アイテム名を表示
@@ -3526,6 +3519,7 @@
             else if (item.type === 'friendship_laser') { newItemType = 'laser'; itemName = 'レーザー'; }
             else if (item.type === 'friendship_heal') { newItemType = 'heal'; itemName = '回復'; }
             else if (item.type === 'friendship_machinegun') { newItemType = 'machinegun'; itemName = 'マシンガン'; }
+            else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = 'エナジーサークル'; }
 
             if (newItemType) {
                 if (marble.friendshipType === newItemType) {
