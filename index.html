@@ -434,6 +434,18 @@
             border-radius: 10px;
             margin-bottom: 20px;
             text-align: center;
+            border: 2px solid #90caf9;
+        }
+
+        .current-equip-label {
+            background: #1976d2;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 8px;
         }
         
         .item-modal-buttons {
@@ -520,7 +532,6 @@
             <canvas id="gameCanvas"></canvas>
         </div>
         
-        <!-- HP バー追加 -->
         <div class="hp-panel">
             <div style="display: flex; gap: 10px; align-items: center;">
                 <div style="flex: 7;">
@@ -560,7 +571,7 @@
             <p>4. B→A の方向におはじきが飛びます！</p>
             
             <p><strong>✨ 友情攻撃:</strong></p>
-            <p>味方おはじきに初めて当たると、8個の弾丸が放出されます！</p>
+            <p>味方おはじきに初めて当たると、強力な攻撃が発動！</p>
             
             <p><strong>⚠️ ターン制バトル:</strong></p>
             <p>味方が1人行動するごとに、敵がビーム攻撃してきます！<br>
@@ -615,7 +626,6 @@
         </div>
     </div>
     
-    <!-- アイテム選択モーダル -->
     <div class="item-modal" id="itemModal">
         <div class="item-modal-content">
             <div class="item-modal-header">
@@ -626,6 +636,7 @@
                 説明文がここに入ります
             </div>
             <div class="item-character-info">
+                <div class="current-equip-label">👇 現在の装備 👇</div>
                 <div id="itemCharacterName" style="font-weight: bold; color: #667eea; margin-bottom: 5px;">ノーマル</div>
                 <div id="itemCharacterStatus" style="font-size: 12px; color: #666;">
                     友情: 通常弾 × 8
@@ -1031,6 +1042,71 @@
             }
         }
         
+        // ★ デスエフェクト：画面全体にドクロ
+        class DeathEffect {
+            constructor() {
+                this.frame = 0;
+                this.maxFrames = 80;
+                this.fadeFrames = 20; // フェードイン/アウトにかかる時間
+            }
+            
+            draw() {
+                this.frame++;
+                const width = canvasSize.width;
+                const height = canvasSize.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // フェードイン・アウトの計算
+                let alpha = 0;
+                if (this.frame < this.fadeFrames) {
+                    alpha = this.frame / this.fadeFrames; // フェードイン
+                } else if (this.frame > this.maxFrames - this.fadeFrames) {
+                    alpha = (this.maxFrames - this.frame) / this.fadeFrames; // フェードアウト
+                } else {
+                    alpha = 1; // 表示維持
+                }
+                
+                ctx.save();
+                
+                // 背景を暗くする
+                ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
+                ctx.fillRect(0, 0, width, height);
+                
+                // ドクロの描画（巨大絵文字）
+                ctx.globalAlpha = alpha;
+                
+                // ドクロを震わせる
+                const shakeX = (Math.random() - 0.5) * 10 * alpha;
+                const shakeY = (Math.random() - 0.5) * 10 * alpha;
+                const scale = 1 + Math.sin(this.frame * 0.2) * 0.1; // 鼓動
+                
+                ctx.translate(centerX + shakeX, centerY + shakeY);
+                ctx.scale(scale, scale);
+                
+                ctx.font = '150px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('💀', 0, 0);
+                
+                // 「DEATH」テキスト
+                if (this.frame > 10) {
+                    ctx.font = 'bold 60px Arial';
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 4;
+                    ctx.strokeText('DEATH', 0, 120);
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillText('DEATH', 0, 120);
+                }
+                
+                ctx.restore();
+            }
+            
+            isComplete() {
+                return this.frame >= this.maxFrames;
+            }
+        }
+
         // HP回復エフェクト
         class HealEffect {
             constructor(x, y) {
@@ -1337,6 +1413,11 @@
                     this.color = '#ffd600';
                     this.name = '攻撃力アップ';
                     this.description = '攻撃力が0.5増加します';
+                } else if (type === 'death') {
+                    this.emoji = '💀';
+                    this.color = '#333333';
+                    this.name = 'デス';
+                    this.description = '現在ステージ上の全ての敵を即死させます！';
                 } else if (type === 'friendship_homing') {
                     this.emoji = '🎯';
                     this.color = '#00bcd4';
@@ -1357,6 +1438,16 @@
                     this.color = '#4caf50';
                     this.name = '友情攻撃弾数アップ';
                     this.description = '友情攻撃の弾数が+4増加します';
+                } else if (type === 'friendship_heal') {
+                    this.emoji = '❤️‍🩹';
+                    this.color = '#ff69b4';
+                    this.name = '友情・回復';
+                    this.description = '友情攻撃発動時、攻撃の代わりにHPを回復します。';
+                } else if (type === 'friendship_machinegun') {
+                    this.emoji = '🔫';
+                    this.color = '#607d8b';
+                    this.name = '友情・マシンガン';
+                    this.description = '弱った敵にめがけて高速弾を16発発射します！';
                 }
             }
             
@@ -1480,9 +1571,11 @@
                 super(x, y, vx, vy, color, power);
                 this.target = null;
                 this.homingStrength = 0.15;
+                this.frame = 0; // アニメーション用
             }
             
             update() {
+                this.frame++;
                 // ターゲットを探す
                 if (!this.target || this.target.hp <= 0) {
                     let closestEnemy = null;
@@ -1520,20 +1613,35 @@
             }
             
             draw() {
-                // ホーミングミサイルは赤い軌跡
+                // ★ ホーミングミサイル: 三角形＋噴射炎
                 ctx.save();
+                ctx.translate(this.x, this.y);
+                const angle = Math.atan2(this.vy, this.vx);
+                ctx.rotate(angle);
+
+                // ミサイル本体
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius + 2, 0, Math.PI * 2);
-                
-                const gradient = ctx.createRadialGradient(
-                    this.x, this.y, 0,
-                    this.x, this.y, this.radius + 2
-                );
-                gradient.addColorStop(0, '#ff0000');
-                gradient.addColorStop(0.5, '#ffaa00');
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                ctx.fillStyle = gradient;
+                ctx.moveTo(8, 0);
+                ctx.lineTo(-4, -4);
+                ctx.lineTo(-4, 4);
+                ctx.closePath();
+                ctx.fillStyle = '#ff4444'; // 赤色
                 ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // 噴射炎
+                if (this.frame % 4 < 2) {
+                    ctx.beginPath();
+                    ctx.moveTo(-4, 0);
+                    ctx.lineTo(-10, -2);
+                    ctx.lineTo(-10, 2);
+                    ctx.closePath();
+                    ctx.fillStyle = '#ffcc00'; // 黄色
+                    ctx.fill();
+                }
+
                 ctx.restore();
             }
         }
@@ -1621,7 +1729,7 @@
                 this.damageFrame = 0; // ダメージ演出用
                 
                 // ★ 友情攻撃の設定（ローグライク要素）
-                this.friendshipType = 'normal'; // 'normal', 'homing', 'laser'
+                this.friendshipType = 'normal'; // 'normal', 'homing', 'laser', 'heal', 'machinegun'
                 this.friendshipPower = 1.0; // 攻撃力倍率
                 this.friendshipCount = 8; // 弾数
                 this.friendshipItems = []; // 装備しているアイテムのリスト
@@ -1707,12 +1815,35 @@
                     ctx.textBaseline = 'middle';
                     ctx.fillText('⬆️', this.x, this.y - this.radius - 20);
                 }
+
+                // ★ 友情アイコンの表示（右下に小さく）
+                if (this.isPlayer) {
+                    let icon = '';
+                    if (this.friendshipType === 'homing') icon = '🎯';
+                    else if (this.friendshipType === 'laser') icon = '⚡';
+                    else if (this.friendshipType === 'heal') icon = '❤️';
+                    else if (this.friendshipType === 'machinegun') icon = '🔫';
+                    else if (this.friendshipPower > 1.0) icon = '💥';
+                    else if (this.friendshipCount > 8) icon = '🔢';
+                    
+                    if (icon) {
+                        ctx.font = '14px Arial';
+                        ctx.fillStyle = 'white';
+                        ctx.strokeStyle = 'black';
+                        ctx.lineWidth = 2;
+                        // 右下に描画
+                        const iconX = this.x + this.radius * 0.5;
+                        const iconY = this.y + this.radius * 0.5;
+                        ctx.strokeText(icon, iconX, iconY);
+                        ctx.fillText(icon, iconX, iconY);
+                    }
+                }
                 
                 ctx.restore();
             }
             
             update() {
-                console.log(this.type);
+                // console.log(this.type);
                 if (!this.isActive) return;
 
                 let friction = this.type.friction;
@@ -1796,6 +1927,49 @@
                             power
                         );
                         newBullets.push(laser);
+                    }
+                } else if (this.friendshipType === 'machinegun') {
+                    // ★ マシンガン: 弱った敵を狙って16発高速連射
+                    let target = null;
+                    let minHp = Infinity;
+                    
+                    // HP最小の敵を探す
+                    for (let enemy of enemies) {
+                        if(enemy.hp < minHp) {
+                            minHp = enemy.hp;
+                            target = enemy;
+                        }
+                    }
+
+                    const numShots = 16;
+                    const spread = 0.2; // ばらつき
+                    
+                    if(target) {
+                        // ターゲット方向
+                        const baseAngle = Math.atan2(target.y - this.y, target.x - this.x);
+                        for(let i=0; i<numShots; i++) {
+                            // 少しばらつかせる
+                            const angle = baseAngle + (Math.random() - 0.5) * spread;
+                            // 速度も少しばらつかせる
+                            const speed = bulletSpeed * 1.5 + Math.random() * 2;
+                            const bullet = new Bullet(
+                                this.x,
+                                this.y,
+                                Math.cos(angle) * speed,
+                                Math.sin(angle) * speed,
+                                '#607d8b', // グレーっぽい色
+                                power * 0.4 // 1発の威力は低め
+                            );
+                            newBullets.push(bullet);
+                        }
+                    } else {
+                        // ターゲットいないならランダム
+                        for(let i=0; i<numShots; i++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const speed = bulletSpeed * 1.5;
+                            const bullet = new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed, '#607d8b', power * 0.4);
+                            newBullets.push(bullet);
+                        }
                     }
                 } else {
                     // 通常弾
@@ -1970,15 +2144,16 @@
             
             const spacing = Math.min(80, canvasSize.width / 5);
             const startX = (canvasSize.width - (spacing * 3)) / 2;
-            const yPos = canvasSize.height - 30; // 下の余白を減らす
+            const yPos = canvasSize.height - 50; // 下の余白を少し増やす
             
             for (let i = 0; i < playerMarbles.length; i++) {
-                if (!playerMarbles[i].isUsed) {
-                    playerMarbles[i].x = startX + (i * spacing);
-                    playerMarbles[i].y = yPos;
-                    playerMarbles[i].initialX = playerMarbles[i].x;
-                    playerMarbles[i].initialY = playerMarbles[i].y;
-                }
+                // 生きているマーブルだけ再配置
+                playerMarbles[i].x = startX + (i * spacing);
+                playerMarbles[i].y = yPos;
+                playerMarbles[i].vx = 0;
+                playerMarbles[i].vy = 0;
+                playerMarbles[i].initialX = playerMarbles[i].x;
+                playerMarbles[i].initialY = playerMarbles[i].y;
             }
         }
         
@@ -1992,207 +2167,35 @@
             specialShotCount = 0; // 大号令ショットカウントをリセット
             isSpecialShotReady = false;
             isSpecialShotActive = false;
+            playerMarbles = []; // ゲーム初期化時は空にする
             startStage();
         }
-        
-        function startStage() {
-            console.log(`🎮 ステージ ${currentStage} を開始します`);
-            
-            // ★ サイクル計算（10ステージごと）
-            const cycleNumber = Math.floor((currentStage - 1) / 10); // 何周目か (0, 1, 2...)
-            const stageInCycle = ((currentStage - 1) % 10) + 1; // 1-10のサイクル内のステージ
-            
-            // ★ 敵の攻撃力を5ステージごとに増加（より早く強化）
-            enemyDamage = 1 + Math.floor(currentStage / 5);
-            console.log(`⚔️ ステージ ${currentStage} (サイクル${cycleNumber + 1}, ${stageInCycle}/10) - 敵の攻撃力: ${enemyDamage}`);
-            
-            playerMarbles = [];
-            stoppedMarbles = [];
-            activeMarbles = [];
-            enemies = [];
-            bullets = [];
-            explosions = [];
-            enemyBeams = [];
-            items = []; // アイテム配列をリセット
-            defeated = 0;
-            currentTurn = 0;
-            friendshipAttackHistory = new Set();
-            isGameOver = false;
-            isEnemyTurn = false;
-            isStageClear = false;
-            
-            const types = [
-                MARBLE_TYPES.NORMAL,
-                MARBLE_TYPES.POWER,
-                MARBLE_TYPES.SPEED,
-                MARBLE_TYPES.NORMAL
-            ];
-            
-            const spacing = Math.min(80, canvasSize.width / 5);
-            const startX = (canvasSize.width - (spacing * 3)) / 2;
-            const yPos = canvasSize.height - 50;
-            
-            console.log(`👥 味方を${MAX_MARBLES}個生成します`);
-            for (let i = 0; i < MAX_MARBLES; i++) {
-                const marble = new Marble(
-                    startX + (i * spacing), 
-                    yPos, 
-                    types[i]
-                );
-                playerMarbles.push(marble);
-            }
-            console.log(`✅ 味方生成完了: ${playerMarbles.length}個`);
-            
-            // ★ ステージに応じた敵生成
-            const isBossStage = currentStage % 5 === 0;
-            
-            if (isBossStage) {
-                console.log(`🔥 ボスステージ ${currentStage} の敵を生成します`);
-                // ボスステージ（5,10,15...）
-                // ボスは007.pngを使用する大型の敵
-                const bossSize = {
-                    name: 'ボス',
-                    radius: 50,
-                    maxHp: 15 + currentStage * 1.5,  // ボスHP: より強化（ステージ5で22.5, 10で30, 15で37.5）
-                    color: '#8b0000',  // ダークレッド
-                    secondaryColor: '#ff0000'  // 明るいレッド
-                };
-                const bossX = canvasSize.width / 2;
-                const bossY = 150;
-                const boss = new Enemy(bossX, bossY, bossSize);
-                boss.isBoss = true;  // ボスフラグ
-                enemies.push(boss);
-                console.log(`👹 ボス生成完了: HP=${boss.maxHp}`);
-                
-                // ボスの取り巻き（最大3体に制限）
-                const minionCount = Math.min(2 + Math.floor(currentStage / 5), 3);
-                const sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM];
-                
-                for (let i = 0; i < minionCount; i++) {
-                    let x, y, valid;
-                    const size = sizeOptions[i % sizeOptions.length];
-                    let attempts = 0;
-                    const maxAttempts = 100;
-                    
-                    do {
-                        valid = true;
-                        x = 50 + Math.random() * (canvasSize.width - 100);
-                        y = 250 + Math.random() * 150;
-                        
-                        for (let enemy of enemies) {
-                            const dx = x - enemy.x;
-                            const dy = y - enemy.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            const minDist = size.radius + enemy.radius + 20;
-                            if (dist < minDist) {
-                                valid = false;
-                                break;
-                            }
-                        }
-                        
-                        attempts++;
-                        if (attempts >= maxAttempts) {
-                            // 最大試行回数に達したら、重なってもそのまま配置
-                            valid = true;
-                        }
-                    } while (!valid);
-                    
-                    enemies.push(new Enemy(x, y, size));
-                }
-                console.log(`🐉 取り巻き生成完了: ${minionCount}体`);
-            } else {
-                // 通常ステージ
-                const baseEnemyCount = 5;
-                
-                // 敵の数：サイクル内で増加、次のサイクルで初期値に戻る
-                const enemyCount = Math.min(baseEnemyCount + Math.floor(stageInCycle / 3), 8);
-                
-                // 大きい敵の比率：サイクルが進むほど増加
-                let sizeOptions;
-                if (cycleNumber === 0) {
-                    // 1-10ステージ：初期バランス
-                    sizeOptions = [
-                        ENEMY_SIZES.SMALL,
-                        ENEMY_SIZES.SMALL,
-                        ENEMY_SIZES.MEDIUM,
-                        ENEMY_SIZES.MEDIUM,
-                        ENEMY_SIZES.LARGE
-                    ];
-                } else if (cycleNumber === 1) {
-                    // 11-20ステージ：中型が増える
-                    sizeOptions = [
-                        ENEMY_SIZES.SMALL,
-                        ENEMY_SIZES.MEDIUM,
-                        ENEMY_SIZES.MEDIUM,
-                        ENEMY_SIZES.LARGE,
-                        ENEMY_SIZES.LARGE
-                    ];
-                } else {
-                    // 21ステージ以降：大型が主体
-                    sizeOptions = [
-                        ENEMY_SIZES.MEDIUM,
-                        ENEMY_SIZES.MEDIUM,
-                        ENEMY_SIZES.LARGE,
-                        ENEMY_SIZES.LARGE,
-                        ENEMY_SIZES.LARGE
-                    ];
-                }
-                
-                console.log(`📊 ステージ${currentStage} (サイクル${cycleNumber + 1}, ${stageInCycle}/10) - 敵:${enemyCount}体`);
-                
-                for (let i = 0; i < enemyCount; i++) {
-                    let x, y, valid;
-                    const sizeIndex = i % sizeOptions.length;
-                    const size = { ...sizeOptions[sizeIndex] };
-                    // ステージごとにHP増加（増加量を上げる）
-                    size.maxHp = size.maxHp + Math.floor(currentStage / 2) + cycleNumber * 2;
-                    let attempts = 0;
-                    const maxAttempts = 100;
-                    
-                    do {
-                        valid = true;
-                        x = 50 + Math.random() * (canvasSize.width - 100);
-                        y = 50 + Math.random() * (canvasSize.height * 0.4);
-                        
-                        for (let enemy of enemies) {
-                            const dx = x - enemy.x;
-                            const dy = y - enemy.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            const minDist = size.radius + enemy.radius + 20;
-                            if (dist < minDist) {
-                                valid = false;
-                                break;
-                            }
-                        }
-                        
-                        attempts++;
-                        if (attempts >= maxAttempts) {
-                            // 最大試行回数に達したら、重なってもそのまま配置
-                            valid = true;
-                        }
-                    } while (!valid);
-                    
-                    enemies.push(new Enemy(x, y, size));
-                }
-                console.log(`👾 通常敵生成完了: ${enemyCount}体`);
-            }
-            
-            // ★ アイテム生成（30%の確率で1個のみ出現）
-            if (Math.random() < 0.30) {
-                const itemCount = 1; // 1個のみ
+
+        // ★ アイテム生成関数（確率アップ＆毎ターン呼び出し用）
+        function spawnItems(countMultiplier = 1.0) {
+            // アイテム生成確率（ターンごとなので少し高めに）
+            if (Math.random() < 0.40 * countMultiplier) {
+                const itemCount = 1; 
                 for (let i = 0; i < itemCount; i++) {
                     // アイテムタイプをランダムに選択
                     const rand = Math.random();
                     let itemType;
-                    if (rand < 0.15) {
+                    // バランス調整：回復と攻撃アップを出しやすく、強力な友情はレアに
+                    if (rand < 0.25) {
                         itemType = 'hp';
-                    } else if (rand < 0.30) {
+                    } else if (rand < 0.45) {
                         itemType = 'attack';
                     } else if (rand < 0.50) {
-                        itemType = 'friendship_homing';
+                        itemType = 'death'; // レアアイテム：デス
+                    } else if (rand < 0.60) {
+                        itemType = 'friendship_heal';
                     } else if (rand < 0.70) {
+                        itemType = 'friendship_homing';
+                    } else if (rand < 0.80) {
                         itemType = 'friendship_laser';
-                    } else if (rand < 0.85) {
+                    } else if (rand < 0.90) {
+                        itemType = 'friendship_machinegun';
+                    } else if (rand < 0.95) {
                         itemType = 'friendship_power';
                     } else {
                         itemType = 'friendship_count';
@@ -2236,10 +2239,148 @@
                     
                     items.push(new Item(x, y, itemType));
                 }
-                console.log(`🎁 アイテム生成: ${itemCount}個`);
+                console.log(`🎁 アイテム出現！`);
+            }
+        }
+        
+        function startStage() {
+            console.log(`🎮 ステージ ${currentStage} を開始します`);
+            
+            // ★ サイクル計算（10ステージごと）
+            const cycleNumber = Math.floor((currentStage - 1) / 10); 
+            const stageInCycle = ((currentStage - 1) % 10) + 1; 
+            
+            // ★ 敵の攻撃力を5ステージごとに増加
+            enemyDamage = 1 + Math.floor(currentStage / 5);
+            console.log(`⚔️ ステージ ${currentStage} - 敵の攻撃力: ${enemyDamage}`);
+            
+            // playerMarbles は初期化せず、存在しない場合のみ作成（能力継承のため）
+            if (playerMarbles.length === 0) {
+                const types = [
+                    MARBLE_TYPES.NORMAL,
+                    MARBLE_TYPES.POWER,
+                    MARBLE_TYPES.SPEED,
+                    MARBLE_TYPES.NORMAL
+                ];
+                
+                const spacing = Math.min(80, canvasSize.width / 5);
+                const startX = (canvasSize.width - (spacing * 3)) / 2;
+                const yPos = canvasSize.height - 50;
+                
+                console.log(`👥 味方を${MAX_MARBLES}個生成します`);
+                for (let i = 0; i < MAX_MARBLES; i++) {
+                    const marble = new Marble(
+                        startX + (i * spacing), 
+                        yPos, 
+                        types[i]
+                    );
+                    playerMarbles.push(marble);
+                }
+            } else {
+                // ★ 既存の味方を再配置＆状態リセット
+                repositionMarbles();
+                for (let marble of playerMarbles) {
+                    marble.isUsed = false;
+                    marble.isActive = false;
+                    marble.isStopped = false;
+                    marble.hitEnemies = new Set();
+                }
+                console.log(`👥 既存の味方ステータスを引き継ぎました`);
+            }
+
+            stoppedMarbles = [];
+            activeMarbles = [];
+            enemies = [];
+            bullets = [];
+            explosions = [];
+            enemyBeams = [];
+            items = []; // アイテム配列をリセット（前のステージのは消す）
+            defeated = 0;
+            currentTurn = 0;
+            friendshipAttackHistory = new Set();
+            isGameOver = false;
+            isEnemyTurn = false;
+            isStageClear = false;
+            
+            
+            // ★ ステージに応じた敵生成
+            const isBossStage = currentStage % 5 === 0;
+            
+            if (isBossStage) {
+                console.log(`🔥 ボスステージ ${currentStage} の敵を生成します`);
+                const bossSize = {
+                    name: 'ボス',
+                    radius: 50,
+                    maxHp: 15 + currentStage * 1.5,
+                    color: '#8b0000',
+                    secondaryColor: '#ff0000'
+                };
+                const bossX = canvasSize.width / 2;
+                const bossY = 150;
+                const boss = new Enemy(bossX, bossY, bossSize);
+                boss.isBoss = true;
+                enemies.push(boss);
+                
+                const minionCount = Math.min(2 + Math.floor(currentStage / 5), 3);
+                const sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM];
+                
+                for (let i = 0; i < minionCount; i++) {
+                    let x, y, valid;
+                    const size = sizeOptions[i % sizeOptions.length];
+                    let attempts = 0;
+                    do {
+                        valid = true;
+                        x = 50 + Math.random() * (canvasSize.width - 100);
+                        y = 250 + Math.random() * 150;
+                        for (let enemy of enemies) {
+                            const dx = x - enemy.x;
+                            const dy = y - enemy.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < size.radius + enemy.radius + 20) { valid = false; break; }
+                        }
+                        attempts++;
+                        if (attempts >= 100) valid = true;
+                    } while (!valid);
+                    enemies.push(new Enemy(x, y, size));
+                }
+            } else {
+                const baseEnemyCount = 5;
+                const enemyCount = Math.min(baseEnemyCount + Math.floor(stageInCycle / 3), 8);
+                let sizeOptions;
+                if (cycleNumber === 0) {
+                    sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.LARGE];
+                } else if (cycleNumber === 1) {
+                    sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.LARGE, ENEMY_SIZES.LARGE];
+                } else {
+                    sizeOptions = [ENEMY_SIZES.MEDIUM, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.LARGE, ENEMY_SIZES.LARGE, ENEMY_SIZES.LARGE];
+                }
+                
+                for (let i = 0; i < enemyCount; i++) {
+                    let x, y, valid;
+                    const sizeIndex = i % sizeOptions.length;
+                    const size = { ...sizeOptions[sizeIndex] };
+                    size.maxHp = size.maxHp + Math.floor(currentStage / 2) + cycleNumber * 2;
+                    let attempts = 0;
+                    do {
+                        valid = true;
+                        x = 50 + Math.random() * (canvasSize.width - 100);
+                        y = 50 + Math.random() * (canvasSize.height * 0.4);
+                        for (let enemy of enemies) {
+                            const dx = x - enemy.x;
+                            const dy = y - enemy.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < size.radius + enemy.radius + 20) { valid = false; break; }
+                        }
+                        attempts++;
+                        if (attempts >= 100) valid = true;
+                    } while (!valid);
+                    enemies.push(new Enemy(x, y, size));
+                }
             }
             
-            console.log(`✅ ステージ ${currentStage} の準備完了 - 味方:${playerMarbles.length}個, 敵:${enemies.length}体, アイテム:${items.length}個`);
+            // ★ アイテム生成（開始時）
+            spawnItems(1.5); // 開始時は少し多めに
+            
             updateUI();
             updateStageDisplay();
             updateHPBar();
@@ -2297,7 +2438,7 @@
             
             const hpPercent = (teamHP / MAX_TEAM_HP) * 100;
             hpBarFill.style.width = hpPercent + '%';
-            hpText.textContent = `${Math.max(0, teamHP)} / ${MAX_TEAM_HP}`;
+            hpText.textContent = `${Math.max(0, teamHP.toFixed(1))} / ${MAX_TEAM_HP}`;
             
             // HP に応じて色変更
             hpBarFill.classList.remove('low', 'critical');
@@ -2411,6 +2552,9 @@
             currentTurn++;
             totalTurns++;
             
+            // ★ 毎ターンアイテム出現のチャンス
+            spawnItems();
+
             // ★ 大号令ショットカウント増加
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
@@ -2471,6 +2615,16 @@
             
             friendshipAttackHistory.add(collisionKey);
             
+            // ★ 回復友情の処理
+            if (hitMarble.friendshipType === 'heal') {
+                const healAmount = 3;
+                teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
+                explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
+                showMessage(`💚 HP回復友情発動！ +${healAmount}`, 'success');
+                updateHPBar();
+                return null; // 弾は出さない
+            }
+
             const newBullets = hitMarble.createBullets();
             showMessage(`✨ ${hitMarble.type.name}の友情攻撃発動！`, 'combo-effect');
             
@@ -2516,7 +2670,7 @@
             
             // explosions配列が大きくなりすぎないように制限（安全対策）
             if (explosions.length > 50) {
-                console.warn(`⚠️ explosions配列が大きすぎます (${explosions.length}個)。古いものを削除します。`);
+                // console.warn(`⚠️ explosions配列が大きすぎます (${explosions.length}個)。古いものを削除します。`);
                 explosions.splice(0, explosions.length - 30);
             }
             
@@ -2750,6 +2904,26 @@
                             playerAttackBonus += 0.5;
                             explosions.push(new CriticalEffect(item.x, item.y));
                             showMessage(`⚔️ 攻撃力+0.5！ (ボーナス:+${playerAttackBonus})`, 'success');
+                        } else if (item.type === 'death') {
+                            // ★ デス：画面全体のドクロ演出を追加
+                            explosions.push(new DeathEffect());
+                            
+                            // 演出の少し後に敵を全滅させる
+                            setTimeout(() => {
+                                enemies.forEach(e => {
+                                    explosions.push(new Explosion(e.x, e.y, e.radius, e.color));
+                                    defeated++;
+                                    totalDefeated++;
+                                });
+                                enemies = [];
+                                // showMessage('💀 デス発動！敵を全滅させました！', 'danger');
+                                
+                                // 敵がいなくなったらクリア
+                                setTimeout(() => {
+                                    showStageClear();
+                                }, 1000);
+                            }, 1000); // 1秒後に全滅（ドクロ表示中）
+
                         } else if (item.type.startsWith('friendship_')) {
                             // 友情攻撃系アイテムはモーダルで選択
                             showItemModal(item, marble);
@@ -2932,6 +3106,8 @@
             let friendshipTypeName = '通常弾';
             if (marble.friendshipType === 'homing') friendshipTypeName = 'ホーミングミサイル';
             else if (marble.friendshipType === 'laser') friendshipTypeName = 'レーザービーム';
+            else if (marble.friendshipType === 'heal') friendshipTypeName = '友情・回復';
+            else if (marble.friendshipType === 'machinegun') friendshipTypeName = '友情・マシンガン';
             
             charStatus.textContent = `友情: ${friendshipTypeName} × ${marble.friendshipCount} (威力: ${marble.friendshipPower}倍)`;
             
@@ -2960,6 +3136,16 @@
                 marble.friendshipItems.push(item);
                 explosions.push(new HealEffect(marble.x, marble.y));
                 showMessage(`🔢 ${marble.type.name}の友情弾数が+4！ (${marble.friendshipCount}発)`, 'success');
+            } else if (item.type === 'friendship_heal') {
+                marble.friendshipType = 'heal';
+                marble.friendshipItems.push(item);
+                explosions.push(new HealEffect(marble.x, marble.y));
+                showMessage(`❤️‍🩹 ${marble.type.name}に回復友情を装備！`, 'success');
+            } else if (item.type === 'friendship_machinegun') {
+                marble.friendshipType = 'machinegun';
+                marble.friendshipItems.push(item);
+                explosions.push(new CriticalEffect(marble.x, marble.y));
+                showMessage(`🔫 ${marble.type.name}にマシンガンを装備！`, 'success');
             }
             
             console.log(`✅ ${marble.type.name}にアイテム適用: ${item.name}`);
