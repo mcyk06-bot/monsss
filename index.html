@@ -818,6 +818,8 @@
             🛼 <strong>スピードアップ</strong>　全員の速度+0.1（最大+2.0）<br>
             ⏳ <strong>砂時計</strong>　大号令カウント+4<br>
             💀 <strong>デス</strong>　超激レア！敵を全滅させる<br>
+            💊 <strong>友情強化薬</strong>　レア(2%)！自分の友情(メイン/サブ)Lv+1<br>
+            💉 <strong>全体友情強化注射</strong>　激レア(1%)！全員の友情Lv+1<br>
             🚀 <strong>ホーミングミサイル</strong>　友情攻撃が敵を自動追尾<br>
             ⚡ <strong>レーザービーム</strong>　友情攻撃が貫通レーザーに<br>
             ❤️‍🩹 <strong>友情・回復</strong>　友情攻撃でHP回復<br>
@@ -871,8 +873,19 @@
         <div class="item-modal-buttons" id="itemModalButtons">
             <button class="item-btn item-btn-equip" id="itemEquipBtn">装備する ✓</button>
             <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">サブに装備 ⚡</button>
+            <button class="item-btn" id="itemGiveBtn" style="display:none; background:linear-gradient(135deg,#00bcd4,#0097a7); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">仲間に渡す 🤝</button>
             <button class="item-btn item-btn-cancel" id="itemCancelBtn">装備しない ✗</button>
         </div>
+    </div>
+</div>
+
+<!-- 仲間選択モーダル -->
+<div id="giveModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:3000; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:16px; padding:20px; max-width:340px; width:90%; text-align:center;">
+        <div style="font-size:16px; font-weight:bold; margin-bottom:4px;">🤝 誰に渡す？</div>
+        <div id="giveItemLabel" style="font-size:13px; color:#666; margin-bottom:14px;"></div>
+        <div id="giveMemberList" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;"></div>
+        <button onclick="document.getElementById('giveModal').style.display='none'; document.getElementById('itemModal').classList.add('active');" style="background:#aaa; color:white; border:none; border-radius:8px; padding:10px 24px; font-size:13px; font-weight:bold; cursor:pointer;">キャンセル</button>
     </div>
 </div>
 
@@ -1501,6 +1514,8 @@
             else if (type === 'attack') { this.emoji = '💪'; this.color = '#ffd600'; this.name = '攻撃力アップ'; this.description = '攻撃力が0.5増加します'; }
             else if (type === 'speedup') { this.emoji = '🛼'; this.color = '#00bcd4'; this.name = 'スピードアップ'; this.description = '全キャラの移動速度が上がります！'; }
             else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
+            else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '友情強化薬'; this.description = '自分の友情コンボ（メイン・サブ）のレベルが1上がる！レア'; }
+            else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体友情強化注射'; this.description = '仲間全員の友情コンボのレベルが1上がる！激レア！'; }
             else if (type === 'friendship_homing') { this.emoji = '🚀'; this.color = '#00bcd4'; this.name = 'ホーミングミサイル'; this.description = '友情攻撃がホーミングミサイルになります。敵を自動追尾！'; }
             else if (type === 'friendship_laser') { this.emoji = '⚡'; this.color = '#9c27b0'; this.name = 'レーザービーム'; this.description = '友情攻撃が貫通レーザーになります。敵を一直線に貫く！'; }
             else if (type === 'friendship_heal') { this.emoji = '❤️‍🩹'; this.color = '#ff69b4'; this.name = '友情・回復'; this.description = '友情攻撃発動時、攻撃の代わりにHPを回復します。'; }
@@ -1945,13 +1960,17 @@
             } else if (rand < 0.54) {
                 itemType = 'attack';             // 12%
             } else if (rand < 0.55) {
-                itemType = 'death';              // 1% ★激レア化
-            } else if (rand < 0.624) {
-                itemType = 'friendship_heal';    // 12.4%
-            } else if (rand < 0.748) {
-                itemType = 'friendship_homing';  // 12.4%
-            } else if (rand < 0.872) {
-                itemType = 'friendship_laser';   // 12.4%
+                itemType = 'death';              // 1%
+            } else if (rand < 0.57) {
+                itemType = 'friendship_up_self'; // 2% 💊
+            } else if (rand < 0.58) {
+                itemType = 'friendship_up_all';  // 1% 💉
+            } else if (rand < 0.644) {
+                itemType = 'friendship_heal';    // 6.4%
+            } else if (rand < 0.724) {
+                itemType = 'friendship_homing';  // 8%
+            } else if (rand < 0.804) {
+                itemType = 'friendship_laser';   // 8%
             } else if (rand < 1.0) {
                 if (Math.random() < 0.5) {
                     itemType = 'friendship_machinegun';
@@ -2391,6 +2410,50 @@
                                 enemies = []; showMessage('💀 デス発動！敵を全滅させました！', 'danger');
                                 ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 1000))(currentStage);
                             }, 1000);
+                        } else if (item.type === 'friendship_up_self') {
+                            // 自分の友情レベルを1上げる
+                            let leveled = false;
+                            if (marble.friendshipType !== 'normal' && marble.friendshipLevel < 5) {
+                                marble.friendshipLevel++; marble.friendshipPower += 0.5; marble.friendshipCount += 2;
+                                leveled = true;
+                                if (marble.friendshipLevel === 5 && !marble.subFriendshipUnlocked) {
+                                    marble.subFriendshipUnlocked = true;
+                                }
+                            }
+                            if (marble.subFriendshipUnlocked && marble.subFriendshipType !== 'normal' && marble.subFriendshipLevel < 5) {
+                                marble.subFriendshipLevel++;
+                                leveled = true;
+                            }
+                            if (leveled) {
+                                playLevelUpSound();
+                                explosions.push(new HealEffect(marble.x, marble.y));
+                                showMessage(`💊 友情強化！メイン/サブのレベルが上がった！`, 'combo-effect');
+                            } else {
+                                showMessage(`💊 友情強化薬…でも効果なし（未装備orMAX）`, 'info');
+                            }
+                        } else if (item.type === 'friendship_up_all') {
+                            // 全員の友情レベルを1上げる
+                            let count = 0;
+                            for (const m of playerMarbles) {
+                                if (m.friendshipType !== 'normal' && m.friendshipLevel < 5) {
+                                    m.friendshipLevel++; m.friendshipPower += 0.5; m.friendshipCount += 2;
+                                    count++;
+                                    if (m.friendshipLevel === 5 && !m.subFriendshipUnlocked) {
+                                        m.subFriendshipUnlocked = true;
+                                    }
+                                }
+                                if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
+                                    m.subFriendshipLevel++;
+                                    count++;
+                                }
+                            }
+                            if (count > 0) {
+                                playLevelUpSound();
+                                playerMarbles.forEach(m => explosions.push(new HealEffect(m.x, m.y)));
+                                showMessage(`💉 全体友情強化！${count}個のレベルが上がった！`, 'combo-effect');
+                            } else {
+                                showMessage(`💉 全体友情強化注射…効果なし（未装備orMAX）`, 'info');
+                            }
                         } else if (item.type.startsWith('friendship_')) {
                             pendingItemModal = { item, marble };
                         }
@@ -2620,6 +2683,10 @@
             subBtn.style.display = 'none';
         }
 
+        // 仲間に渡すボタン（自分のサブ友情がLv5 かつ 友情アイテム）
+        const giveBtn = document.getElementById('itemGiveBtn');
+        giveBtn.style.display = (isFriendship && marble.subFriendshipUnlocked && marble.subFriendshipLevel >= 5) ? 'block' : 'none';
+
         document.getElementById('itemModal').classList.add('active');
     }
     
@@ -2809,6 +2876,51 @@
             document.getElementById('itemModal').classList.remove('active');
             currentItem = null; currentMarble = null; isPaused = false;
         }
+    });
+
+    document.getElementById('itemGiveBtn').addEventListener('click', () => {
+        // アイテムモーダルを隠して仲間選択モーダルを表示
+        document.getElementById('itemModal').classList.remove('active');
+        const giveModal = document.getElementById('giveModal');
+        const item = currentItem;
+        const fromMarble = currentMarble;
+
+        document.getElementById('giveItemLabel').textContent = `${item.emoji} ${FRIENDSHIP_NAMES[
+            item.type === 'friendship_homing' ? 'homing' :
+            item.type === 'friendship_laser' ? 'laser' :
+            item.type === 'friendship_heal' ? 'heal' :
+            item.type === 'friendship_machinegun' ? 'machinegun' : 'energy'
+        ]}`;
+
+        // 自分以外の3人のパネルを生成
+        const list = document.getElementById('giveMemberList');
+        list.innerHTML = '';
+        playerMarbles.forEach((m, idx) => {
+            if (m === fromMarble) return;
+            const name = CHAR_NAMES[m.characterIndex] || `キャラ${idx+1}`;
+            const mainIcon = FRIENDSHIP_ICONS[m.friendshipType] || '─';
+            const subIcon = m.subFriendshipUnlocked ? (FRIENDSHIP_ICONS[m.subFriendshipType] || '─') : '🔒';
+            const mainBar = m.friendshipType !== 'normal' ? iconBar(m.friendshipType, m.friendshipLevel) : '<span style="color:#aaa;font-size:12px;">未装備</span>';
+            const subBar = m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' ? iconBar(m.subFriendshipType, m.subFriendshipLevel) : `<span style="color:#aaa;font-size:12px;">${m.subFriendshipUnlocked ? '未装備' : '🔒未解放'}</span>`;
+
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#f8f9fa; border:1px solid #ddd; border-radius:10px; padding:10px; cursor:pointer; transition:background 0.15s;';
+            card.innerHTML = `
+                <div style="font-weight:bold; font-size:14px; margin-bottom:6px;">${name}</div>
+                <div style="font-size:12px; color:#555; margin-bottom:2px;">メイン: ${mainBar}</div>
+                <div style="font-size:12px; color:#888;">サブ: ${subBar}</div>
+                <button style="margin-top:8px; background:linear-gradient(135deg,#00bcd4,#0097a7); color:white; border:none; border-radius:6px; padding:6px 16px; font-size:12px; font-weight:bold; cursor:pointer; width:100%;">渡す →</button>
+            `;
+            card.querySelector('button').addEventListener('click', () => {
+                giveModal.style.display = 'none';
+                // 渡した相手のモーダルを開く
+                currentMarble = m;
+                showItemModal(item, m);
+            });
+            list.appendChild(card);
+        });
+
+        giveModal.style.display = 'flex';
     });
 
     document.getElementById('itemEquipSubBtn').addEventListener('click', () => {
