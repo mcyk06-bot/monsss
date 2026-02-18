@@ -2102,11 +2102,14 @@
                     const isBulletCritical = Math.random() < 0.15;
                     const bulletDamage = (0.3 + playerAttackBonus * 0.1) * bullets[i].power;
                     const finalBulletDamage = isBulletCritical ? bulletDamage * 3 : bulletDamage;
-                    if (isBulletCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
+                    // マシンガン弾はクリティカルエフェクトを省略（処理軽減）
+                    if (isBulletCritical && !(bullets[i] instanceof HomingBullet) && bullets[i].power >= 0.5) {
+                        explosions.push(new CriticalEffect(enemy.x, enemy.y));
+                    }
                     if (enemy.takeDamage(finalBulletDamage)) {
                         defeated++; totalDefeated++;
                         explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
-                        enemies.splice(i, 1);
+                        enemies.splice(j, 1); // ← j（敵のインデックス）で削除
                         if (Math.random() < 0.20 && teamHP < MAX_TEAM_HP) {
                             const healAmount = 10; teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                             explosions.push(new HealEffect(enemy.x, enemy.y));
