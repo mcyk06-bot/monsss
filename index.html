@@ -661,37 +661,45 @@
     <div class="instructions-modal" id="instructionsModal">
         <div class="instructions-content">
             <h2>🎮 monsss の遊び方</h2>
-            <p><strong>基本操作:</strong></p>
-            <p>1. 画面の好きな場所をタップ（A地点）</p>
-            <p>2. そのまま指をスライド</p>
-            <p>3. 好きな場所で指を離す（B地点）</p>
-            <p>4. B→A の方向におはじきが飛びます！</p>
-            <p><strong>✨ 友情攻撃:</strong></p>
-            <p>味方おはじきに初めて当たると、強力な攻撃が発動！</p>
-            <p><strong>⚠️ ターン制バトル:</strong></p>
-            <p>味方が1人行動するごとに、敵がビーム攻撃してきます！<br>
-            ビームの線上にいる味方全員がダメージを受けます。<br>
-            味方4人共通のHPが0になるとゲームオーバーです。</p>
+
+            <p><strong>🕹️ 基本操作</strong></p>
+            <p>画面をタップ＆スライドして指を離すと、離した→タップした方向にキャラが飛びます！味方にぶつかると友情攻撃が発動。4人共通のHPが0でゲームオーバー。</p>
+
+            <p><strong>👥 キャラクター</strong></p>
             <div class="marble-types">
                 <div class="marble-type">
                     <div class="marble-icon" style="background: linear-gradient(135deg, #4CAF50, #81C784);"></div>
-                    <div><strong>ノーマル</strong>×2<br><small>攻撃力:普通 速度:普通</small></div>
+                    <div><strong>マイク</strong>（ノーマル）<br><small>攻撃力 ×1.0・速度 ×1.0　オールラウンダー</small></div>
                 </div>
                 <div class="marble-type">
                     <div class="marble-icon" style="background: linear-gradient(135deg, #f44336, #e57373);"></div>
-                    <div><strong>パワー</strong><br><small>攻撃力:高 速度:遅</small></div>
+                    <div><strong>ホッパー</strong>（パワー）<br><small>攻撃力 ×1.25・速度 ×0.7　重い一撃型</small></div>
                 </div>
                 <div class="marble-type">
                     <div class="marble-icon" style="background: linear-gradient(135deg, #2196F3, #64B5F6);"></div>
-                    <div><strong>スピード</strong><br><small>攻撃力:低 速度:速</small></div>
+                    <div><strong>イレブン</strong>（スピード）<br><small>攻撃力 ×0.85・速度 ×1.5　素早い攻撃型</small></div>
+                </div>
+                <div class="marble-type">
+                    <div class="marble-icon" style="background: linear-gradient(135deg, #4CAF50, #81C784);"></div>
+                    <div><strong>ダスティン</strong>（ノーマル）<br><small>攻撃力 ×1.0・速度 ×1.0　オールラウンダー</small></div>
                 </div>
             </div>
+
+            <p><strong>🎁 アイテム一覧</strong></p>
             <div class="enemy-info">
-                <strong>🎯 敵のサイズ:</strong><br>
-                <span style="color: #e53935;">● 大サイズ (HP: 5)</span><br>
-                <span style="color: #fb8c00;">● 中サイズ (HP: 3)</span><br>
-                <span style="color: #43a047;">● 小サイズ (HP: 1)</span>
+                ❤️ <strong>HPアップ</strong>　最大HP+4<br>
+                💪 <strong>攻撃力アップ</strong>　全員の攻撃力+0.5<br>
+                🛼 <strong>スピードアップ</strong>　全員の速度+0.1（最大+2.0）<br>
+                ⏳ <strong>砂時計</strong>　大号令カウント+4<br>
+                💀 <strong>デス</strong>　超激レア！敵を全滅させる<br>
+                🚀 <strong>ホーミングミサイル</strong>　友情攻撃が敵を自動追尾<br>
+                ⚡ <strong>レーザービーム</strong>　友情攻撃が貫通レーザーに<br>
+                ❤️‍🩹 <strong>友情・回復</strong>　友情攻撃でHP回復<br>
+                🔫 <strong>友情・マシンガン</strong>　弱った敵に連射<br>
+                🧿 <strong>エナジーサークル</strong>　全敵にダメージ<br>
+                <small>※友情アイテムは同じ種類を重ねるとLv5まで強化！</small>
             </div>
+
             <button class="close-btn" id="closeBtn">閉じる</button>
         </div>
     </div>
