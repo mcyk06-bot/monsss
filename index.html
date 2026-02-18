@@ -1790,7 +1790,7 @@
                             showMessage('💣 爆弾攻撃！', 'danger');
                             const bx = target.x + (Math.random() - 0.5) * 50;
                             const by = target.y + (Math.random() - 0.5) * 50;
-                            const blastR = 65 + currentStage * 1.5;
+                            const blastR = 50 + currentStage * 1.5;
                             // ★ 飛翔プロジェクタイルを追加
                             enemyBeams.push(new EnemyBombProjectile(attacker.x, attacker.y, bx, by));
                             setTimeout(() => {
@@ -1800,7 +1800,7 @@
                                     const dx = m.x - bx, dy = m.y - by;
                                     if (Math.sqrt(dx*dx+dy*dy) < blastR) {
                                         teamHP -= enemyDamage; m.takeDamage();
-                                        explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#ff6600'));
+                                        explosions.push(new Explosion(m.x, m.y, m.radius*0.3, '#ff6600'));
                                     }
                                 }
                                 updateHPBar(); triggerGameOver();
