@@ -1195,10 +1195,10 @@
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
                 this.target = null; 
-                this.homingStrength = 0.25; // 変更: 2.0 -> 0.25 (8分の1)
+                this.homingStrength = 0.4; // 変更: 2.0 -> 0.25 (8分の1)
                 this.frame = 0;
-                this.maxSpeed = 5.5; // 追加: 速度上限
-                this.life = 400;
+                this.maxSpeed = 5.0; // 追加: 速度上限
+                this.life = 250;
             }
             update() {
                 if (this.delay > 0) { this.delay--; return; }
@@ -1393,7 +1393,7 @@
                     const selfRef = this;
                     const dmg = (1.5 + selfRef.friendshipLevel * 0.8) * power;
                     explosions.push(new EnergySurgeEffect(selfRef.x, selfRef.y));
-                    showMessage(`🌀 エナジーサークル発動！`, 'combo-effect');
+                    //showMessage(`🌀 エナジーサークル発動！`, 'combo-effect');
                     setTimeout(() => {
                         for (let i = enemies.length - 1; i >= 0; i--) {
                             const en = enemies[i];
@@ -1805,7 +1805,7 @@
                 const healAmount = 3 + (hitMarble.friendshipLevel - 1) * 2;
                 teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                 explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
-                showMessage(`💚 HP回復友情(Lv${hitMarble.friendshipLevel})！ +${healAmount}`, 'success');
+                //showMessage(`💚 HP回復友情(Lv${hitMarble.friendshipLevel})！ +${healAmount}`, 'success');
                 updateHPBar(); return null;
             }
             return hitMarble.createBullets();
