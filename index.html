@@ -33,52 +33,111 @@
             background: white;
         }
         
-        .header {
-            text-align: center;
-            padding: 8px 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            flex-shrink: 0;
-        }
-        
-        h1 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        
-        .info-panel {
+        .header { display: none; }
+        h1 { margin: 0; font-size: 18px; font-weight: bold; }
+
+        .monsst-bar {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            background: linear-gradient(180deg, #f5c542 0%, #a76700 50%, #f5c542 100%);
+            border-bottom: 3px solid #b8600a;
+            padding: 6px 10px;
+            position: relative;
+            min-height: 68px;
+        }
+        .monsst-bar::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+        }
+
+        .monsst-stats {
+            display: flex;
+            flex: 1;
             justify-content: space-around;
-            padding: 8px;
-            background: #f0f0f0;
-            flex-shrink: 0;
+            align-items: center;
         }
-        
-        .info-item {
+        .monsst-stat {
             text-align: center;
+            min-width: 48px;
         }
-        
-        .info-label {
-            font-size: 10px;
-            color: #666;
-        }
-        
-        .info-value {
-            font-size: 16px;
+        .monsst-stat-label {
+            font-size: 9px;
             font-weight: bold;
-            color: #667eea;
+            color: #5a3200;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+            letter-spacing: 0.5px;
         }
-        
-        .turn-indicator {
-            text-align: center;
-            padding: 6px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .monsst-stat-value {
+            font-size: 17px;
             font-weight: bold;
-            font-size: 12px;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 0 8px rgba(0,0,0,0.3);
+            line-height: 1.1;
+        }
+
+        .monsst-circle-wrap {
             flex-shrink: 0;
+            margin: 0 8px;
         }
+        .monsst-circle {
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #6af, #0c427f 60%, #0d3a7a);
+            border: 3px solid #ffd740;
+            box-shadow: 0 0 0 2px #b8600a, 0 4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .monsst-circle::after {
+            content: '';
+            position: absolute;
+            top: 5px; left: 10px;
+            width: 18px; height: 8px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 50%;
+            transform: rotate(-20deg);
+        }
+        .monsst-circle-label {
+            font-size: 8px;
+            font-weight: bold;
+            color: #a8d4ff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+        .monsst-circle-num {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(100,200,255,0.8), 0 1px 3px rgba(0,0,0,0.6);
+            line-height: 1.1;
+        }
+        .monsst-circle.boss {
+            background: radial-gradient(circle at 35% 30%, #f88, #c62828 60%, #7f0000);
+            box-shadow: 0 0 0 2px #b8600a, 0 4px 12px rgba(255,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3);
+            animation: bossGlow 1.2s infinite alternate;
+        }
+        @keyframes bossGlow {
+            from { box-shadow: 0 0 0 2px #b8600a, 0 4px 12px rgba(255,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3); }
+            to   { box-shadow: 0 0 0 2px #ff4444, 0 4px 20px rgba(255,0,0,0.8), inset 0 2px 4px rgba(255,255,255,0.3); }
+        }
+
+        .turn-indicator { display: none; }
+        .info-panel { display: none; }
+        .stage-display { display: none; }
+
+        .info-item { text-align: center; }
+        .info-label { font-size: 10px; color: #666; }
+        .info-value { font-size: 16px; font-weight: bold; color: #667eea; }
         
         .hp-panel {
             padding: 10px;
@@ -527,33 +586,44 @@
 </head>
 <body>
     <div class="game-container">
-        <div class="header">
-            <h1>🎮 monsss - ステージバトル</h1>
-        </div>
-        <div class="stage-display" id="stageDisplay" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 6px; text-align: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">
-            ステージ 1
-        </div>
-        <div class="info-panel">
-            <div class="info-item">
-                <div class="info-label">ターン</div>
-                <div class="info-value" id="currentTurn">1</div>
+        <div class="header"><h1>🎮 monsss</h1></div>
+        <div class="monsst-bar" id="monsst-bar">
+            <!-- 左2つ: ターン・ステージ撃破 -->
+            <div class="monsst-stats">
+                <div class="monsst-stat">
+                    <div class="monsst-stat-label">ターン</div>
+                    <div class="monsst-stat-value" id="currentTurn">1</div>
+                </div>
+                <div class="monsst-stat">
+                    <div class="monsst-stat-label">撃破</div>
+                    <div class="monsst-stat-value" id="defeated">0</div>
+                </div>
             </div>
-            <div class="info-item">
-                <div class="info-label">ステージ撃破</div>
-                <div class="info-value" id="defeated">0</div>
+            <!-- 中央: ステージ丸 -->
+            <div class="monsst-circle-wrap">
+                <div class="monsst-circle" id="stageCircle">
+                    <div class="monsst-circle-label">STAGE</div>
+                    <div class="monsst-circle-num" id="stageDisplay">1</div>
+                </div>
             </div>
-            <div class="info-item">
-                <div class="info-label">総撃破</div>
-                <div class="info-value" id="totalDefeated">0</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">⚔️攻撃力</div>
-                <div class="info-value" id="attackBonus">+0</div>
+            <!-- 右2つ: 総撃破・攻撃力 -->
+            <div class="monsst-stats">
+                <div class="monsst-stat">
+                    <div class="monsst-stat-label">総撃破</div>
+                    <div class="monsst-stat-value" id="totalDefeated">0</div>
+                </div>
+                <div class="monsst-stat">
+                    <div class="monsst-stat-label">⚔️攻撃力</div>
+                    <div class="monsst-stat-value" id="attackBonus">+0</div>
+                </div>
             </div>
         </div>
-        <div class="turn-indicator" id="turnIndicator">
-            画面をタップ＆ドラッグで発射！
+        <!-- 旧要素（JS参照用に残す・非表示） -->
+        <div class="stage-display" id="_stageDisplayOld" style="display:none;"></div>
+        <div class="info-panel" style="display:none;">
+            <div class="info-item"><div class="info-value" id="_currentTurnOld"></div></div>
         </div>
+        <div class="turn-indicator" id="turnIndicator" style="display:none;"></div>
         <div class="canvas-container">
             <canvas id="gameCanvas"></canvas>
         </div>
@@ -1730,9 +1800,9 @@
                     const size = sizeOptions[i % sizeOptions.length];
                     do {
                         valid = true; x = 50 + Math.random() * (canvasSize.width - 100); y = 250 + Math.random() * 150;
-                        for (let enemy of enemies) { const dx = x-enemy.x, dy = y-enemy.y; if (Math.sqrt(dx*dx+dy*dy) < size.radius+enemy.radius+20) { valid = false; break; } }
-                        attempts++; if (attempts >= 100) valid = true;
-                    } while (!valid);
+                        for (let enemy of enemies) { const dx = x-enemy.x, dy = y-enemy.y; if (Math.sqrt(dx*dx+dy*dy) < size.radius+enemy.radius+15) { valid = false; break; } }
+                        attempts++;
+                    } while (!valid && attempts < 200);
                     enemies.push(new Enemy(x, y, size));
                 }
             } else {
@@ -1748,9 +1818,9 @@
                     size.maxHp = size.maxHp + Math.floor(currentStage / 2) + cycleNumber * 2;
                     do {
                         valid = true; x = 50 + Math.random() * (canvasSize.width - 100); y = 50 + Math.random() * (canvasSize.height * 0.4);
-                        for (let enemy of enemies) { const dx = x-enemy.x, dy = y-enemy.y; if (Math.sqrt(dx*dx+dy*dy) < size.radius+enemy.radius+20) { valid = false; break; } }
-                        attempts++; if (attempts >= 100) valid = true;
-                    } while (!valid);
+                        for (let enemy of enemies) { const dx = x-enemy.x, dy = y-enemy.y; if (Math.sqrt(dx*dx+dy*dy) < size.radius+enemy.radius+15) { valid = false; break; } }
+                        attempts++;
+                    } while (!valid && attempts < 200);
                     enemies.push(new Enemy(x, y, size));
                 }
             }
@@ -1760,13 +1830,14 @@
         }
         
         function updateStageDisplay() {
-            const stageDisplay = document.getElementById('stageDisplay');
+            const circle = document.getElementById('stageCircle');
+            const num = document.getElementById('stageDisplay');
             if (currentStage % 5 === 0) {
-                stageDisplay.textContent = `🔥 ステージ ${currentStage} - ボスバトル！ 🔥`;
-                stageDisplay.style.background = 'linear-gradient(135deg, #ff0000 0%, #cc0000 100%)';
+                num.textContent = currentStage;
+                circle.classList.add('boss');
             } else {
-                stageDisplay.textContent = `ステージ ${currentStage}`;
-                stageDisplay.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)';
+                num.textContent = currentStage;
+                circle.classList.remove('boss');
             }
         }
         
@@ -1777,7 +1848,7 @@
             teamHP = Math.min(MAX_TEAM_HP, teamHP + hpRecovery); updateHPBar();
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
-                if (specialShotCount === SPECIAL_SHOT_MAX) showMessage('⚡ 大号令！', 'combo-effect');
+                if (specialShotCount === SPECIAL_SHOT_MAX) showMessage('⚡ 大号令ショット準備完了！', 'combo-effect');
             }
             updateSpecialShotUI();
             document.getElementById('clearStageNum').textContent = `ステージ ${currentStage} クリア！`;
@@ -1834,7 +1905,7 @@
                             showMessage('💣 爆弾攻撃！', 'danger');
                             const bx = target.x + (Math.random() - 0.5) * 50;
                             const by = target.y + (Math.random() - 0.5) * 50;
-                            const blastR = 50 + currentStage * 1.5;
+                            const blastR = Math.min(50 + currentStage * 1.5, 100);
                             // ★ 飛翔プロジェクタイルを追加
                             enemyBeams.push(new EnemyBombProjectile(attacker.x, attacker.y, bx, by));
                             setTimeout(() => {
@@ -2188,8 +2259,8 @@
             text.textContent = `⚡ ${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
             if (specialShotCount >= SPECIAL_SHOT_MAX) {
                 isSpecialShotReady = true; btn.disabled = false;
-                if (isSpecialShotActive) { btn.classList.remove('ready'); btn.classList.add('active'); btnText.textContent = '🔥 発射準備！'; }
-                else { btn.classList.add('ready'); btn.classList.remove('active'); btnText.textContent = '⚡ 大号令ショット！'; }
+                if (isSpecialShotActive) { btn.classList.remove('ready'); btn.classList.add('active'); btnText.textContent = '⚡ 大号令！'; }
+                else { btn.classList.add('ready'); btn.classList.remove('active'); btnText.textContent = '⚡ 大号令！'; }
             } else {
                 isSpecialShotReady = false; btn.disabled = true; btn.classList.remove('ready', 'active'); btnText.textContent = '準備中...';
             }
