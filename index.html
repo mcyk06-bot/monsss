@@ -2599,8 +2599,8 @@
         }
 
         // サブ解放バナー（この装備でLv5になる時）
-        const willUnlock = isFriendship && isSameAsMain && marble.friendshipLevel === 4 && !marble.subFriendshipUnlocked;
-        document.getElementById('subUnlockBanner').style.display = willUnlock ? 'block' : 'none';
+        // サブ解放バナーは装備確定後に出すので常に非表示
+        document.getElementById('subUnlockBanner').style.display = 'none';
 
         // サブ友情ボックス
         const subInfo = document.getElementById('subFriendshipInfo');
@@ -2659,7 +2659,18 @@
                     // Lv5でサブ友情解放
                     if (marble.friendshipLevel === 5 && !marble.subFriendshipUnlocked) {
                         marble.subFriendshipUnlocked = true;
-                        showMessage(`🔓 サブ友情が解放されました！`, 'combo-effect');
+                        // 装備確定後にバナーをフラッシュ表示
+                        const banner = document.getElementById('subUnlockBanner');
+                        if (banner) {
+                            banner.style.display = 'block';
+                            // モーダルを一瞬再表示してバナーを見せる
+                            document.getElementById('itemModal').classList.add('active');
+                            isPaused = true;
+                            setTimeout(() => {
+                                document.getElementById('itemModal').classList.remove('active');
+                                isPaused = false;
+                            }, 2200);
+                        }
                     }
                 } else {
                     showMessage(`⚠️ ${itemName}は既に最大レベルです！`, 'info');
