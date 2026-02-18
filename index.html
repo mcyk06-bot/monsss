@@ -2259,17 +2259,20 @@
             if (!currentComboDiv) {
                 currentComboDiv = document.createElement('div');
                 currentComboDiv.id = 'currentComboInfo';
-                currentComboDiv.style.cssText = 'background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid #ddd; text-align: left;';
+                // text-align: center; を追加
+                currentComboDiv.style.cssText = 'background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid #ddd; text-align: center;';
                 characterInfoDiv.appendChild(currentComboDiv);
             }
 
             currentComboDiv.innerHTML = `
                 <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">【現在のステータス】</div>
                 <div style="font-size: 14px; color: #444; margin-bottom: 4px;">装備: <strong>${currentTypeName}</strong></div>
-                <div style="font-size: 14px; color: #f1c40f; letter-spacing: 2px;">${currentStars}</div>
-                <div style="margin: 8px 0; border-top: 1px dashed #ccc;"></div>
+                <div style="font-size: 14px; color: #f1c40f; letter-spacing: 2px; margin-bottom: 10px;">${currentStars}</div>
+                
+                <div style="margin: 10px auto; width: 80%; border-top: 1px dashed #ccc;"></div>
+                
                 <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">【習得後のレベル】</div>
-                <div style="font-size: 18px; color: #ff9800; letter-spacing: 2px;">${nextStars}</div>
+                <div style="font-size: 20px; color: #ff9800; letter-spacing: 2px; font-weight: bold;">${nextStars}</div>
             `;
 
             modal.classList.add('active');
