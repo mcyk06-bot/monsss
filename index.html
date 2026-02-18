@@ -1892,9 +1892,9 @@
             function pickAttackType() {
                 const r = Math.random();
                 if (currentStage < 5) return 'beam';
-                else if (currentStage < 10) return r < 0.65 ? 'beam' : 'bomb';
-                else if (currentStage < 15) { if (r < 0.45) return 'beam'; if (r < 0.75) return 'bomb'; return 'meteor'; }
-                else { if (r < 0.30) return 'beam'; if (r < 0.60) return 'bomb'; return 'meteor'; }
+                else if (currentStage < 10) return r < 0.80 ? 'beam' : 'bomb';
+                else if (currentStage < 15) { if (r < 0.55) return 'beam'; if (r < 0.75) return 'bomb'; return 'meteor'; }
+                else { if (r < 0.45) return 'beam'; if (r < 0.65) return 'bomb'; return 'meteor'; }
             }
             function doOneAttack(delayMs) {
                 return new Promise(resolve => {
@@ -1913,15 +1913,15 @@
                             const bx = target.x + (Math.random() - 0.5) * 50;
                             const by = target.y + (Math.random() - 0.5) * 50;
                             const blastR = Math.min(50 + currentStage * 1.5, 100);
-                            // ★ 飛翔プロジェクタイルを追加
+                            const bombDamage = Math.min(enemyDamage, 5);
+                            // ★ 爆発プロジェクタイルを追加
                             enemyBeams.push(new EnemyBombProjectile(attacker.x, attacker.y, bx, by));
                             setTimeout(() => {
-                                // 着弾時に爆発エフェクト
                                 enemyBeams.push(new EnemyBombEffect(bx, by, blastR));
                                 for (const m of playerMarbles) {
                                     const dx = m.x - bx, dy = m.y - by;
                                     if (Math.sqrt(dx*dx+dy*dy) < blastR) {
-                                        teamHP -= enemyDamage; m.takeDamage();
+                                        teamHP -= bombDamage; m.takeDamage();
                                         explosions.push(new Explosion(m.x, m.y, m.radius*0.2, '#ff6600'));
                                     }
                                 }
@@ -2124,9 +2124,9 @@
                         if (Math.sqrt(dx*dx+dy*dy) < marble.radius + item.radius) {
                             item.collected = true; items.splice(i, 1);
                             if (item.type === 'hp') {
-                                MAX_TEAM_HP += 2; teamHP = Math.min(teamHP + 2, MAX_TEAM_HP);
+                                MAX_TEAM_HP += 4; teamHP = Math.min(teamHP + 4, MAX_TEAM_HP);
                                 explosions.push(new HealEffect(item.x, item.y));
-                                showMessage(`❤️ HP上限+2！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
+                                showMessage(`❤️ HP上限+4！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
                             } else if (item.type === 'speedup') {
                                 playerSpeedBonus = Math.min(playerSpeedBonus + 0.1, 2.0); explosions.push(new CriticalEffect(item.x, item.y));
                                 showMessage(`🛼 スピード+0.1！ (ボーナス:+${playerSpeedBonus.toFixed(1)})`, 'success');
@@ -2421,7 +2421,9 @@
                     }
                     const centerX = canvasSize.width / 2, centerY = canvasSize.height / 2;
                     explosions.push(new SpecialShotEffect(centerX, centerY));
-                    isSpecialShotActive = false; specialShotCount = 0; updateSpecialShotUI();
+                    isSpecialShotActive = false; specialShotCount = 0;
+                    currentTurn = MAX_MARBLES - 1; // 大号令後はendEnemyTurnで必ずリセットされるよう調整
+                    updateSpecialShotUI();
                 } else {
                     const marble = playerMarbles[currentTurn];
                     if (marble.isUsed) { isDragging = false; return; } 
