@@ -749,7 +749,6 @@
         <div class="hp-panel">
             <div style="display: flex; gap: 10px; align-items: center;">
                 <div style="flex: 7;">
-                    <div class="hp-label">🛡️ 味方HP</div>
                     <div class="hp-bar-container">
                         <div class="hp-bar-fill" id="hpBarFill"></div>
                         <div class="hp-text" id="hpText">10 / 10</div>
@@ -757,9 +756,9 @@
                 </div>
                 <div style="flex: 3;">
                     <div class="special-shot-container">
-                        <div class="special-shot-count" id="specialShotText">⚡ 0 / 24</div>
                         <button class="special-shot-btn" id="specialShotBtn" disabled>
                             <span id="specialShotBtnText">準備中...</span>
+                            <span id="specialShotText" style="font-size:10px; opacity:0.8; display:block; margin-top:1px;">0 / 24</span>
                         </button>
                     </div>
                 </div>
@@ -2468,7 +2467,7 @@
         const text = document.getElementById('specialShotText');
         const btn = document.getElementById('specialShotBtn');
         const btnText = document.getElementById('specialShotBtnText');
-        text.textContent = `⚡ ${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
+        text.textContent = `${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
         if (specialShotCount >= SPECIAL_SHOT_MAX) {
             isSpecialShotReady = true; btn.disabled = false;
             if (isSpecialShotActive) { btn.classList.remove('ready'); btn.classList.add('active'); btnText.textContent = '⚡ 大号令！'; }
