@@ -852,9 +852,23 @@
             <div class="current-equip-label" id="itemStatusLabel">✨ 装備プレビュー ✨</div>
             <div id="itemFriendshipName" style="font-weight: bold; font-size: 20px; color: #1565c0; margin-bottom: 5px;"></div>
             <div id="itemFriendshipDetail" style="font-size: 14px; color: #333; font-weight: bold;"></div>
+
+            <!-- メイン友情ステータス -->
+            <div id="mainFriendshipInfo" style="background:#f8f9fa; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #ddd; text-align:center;">
+            </div>
+
+            <!-- サブ友情解放バナー（Lv5到達時のみ表示） -->
+            <div id="subUnlockBanner" style="display:none; background:linear-gradient(135deg,#ff6b35,#f7c948); color:white; font-weight:bold; font-size:14px; padding:8px; border-radius:8px; margin-top:8px; text-align:center; animation: scaleIn 0.3s ease;">
+                🔓 サブ友情が解放されました！
+            </div>
+
+            <!-- サブ友情ステータス（解放済みのみ表示） -->
+            <div id="subFriendshipInfo" style="display:none; background:#fff3e0; padding:10px; border-radius:8px; margin-top:8px; border:2px solid #ff9800; text-align:center;">
+            </div>
         </div>
-        <div class="item-modal-buttons">
+        <div class="item-modal-buttons" id="itemModalButtons">
             <button class="item-btn item-btn-equip" id="itemEquipBtn">装備する ✓</button>
+            <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">サブに装備 ⚡</button>
             <button class="item-btn item-btn-cancel" id="itemCancelBtn">装備しない ✗</button>
         </div>
     </div>
@@ -1629,6 +1643,8 @@
             this.characterIndex = -1; // startStageで設定
             this.friendshipType = 'normal'; this.friendshipPower = 1.0; this.friendshipCount = 8;
             this.friendshipItems = []; this.friendshipLevel = 1;
+            this.subFriendshipType = 'normal'; this.subFriendshipUnlocked = false;
+            this.subFriendshipLevel = 1;
         }
         draw() {
             this.animationFrame++;
@@ -1767,6 +1783,21 @@
                 }
             }
             return newBullets;
+        }
+        createSubBullets() {
+            if (!this.subFriendshipUnlocked || this.subFriendshipType === 'normal') return [];
+            // サブ友情：威力1/2、レベルはsubFriendshipLevel
+            const saved = { type: this.friendshipType, power: this.friendshipPower, level: this.friendshipLevel, count: this.friendshipCount };
+            this.friendshipType = this.subFriendshipType;
+            this.friendshipPower = saved.power * 0.5;
+            this.friendshipLevel = this.subFriendshipLevel;
+            this.friendshipCount = this.friendshipCount;
+            const bullets = this.createBullets();
+            this.friendshipType = saved.type;
+            this.friendshipPower = saved.power;
+            this.friendshipLevel = saved.level;
+            this.friendshipCount = saved.count;
+            return bullets;
         }
         takeDamage() { this.damageFrame = 20; }
     }
@@ -2220,6 +2251,9 @@
         if (friendshipAttackHistory.has(collisionKey)) return null;
         friendshipAttackHistory.add(collisionKey);
         playFriendshipSound(hitMarble.friendshipType);
+        if (hitMarble.subFriendshipUnlocked && hitMarble.subFriendshipType !== 'normal') {
+            setTimeout(() => playFriendshipSound(hitMarble.subFriendshipType), 150);
+        }
         if (hitMarble.friendshipType === 'heal') {
             const healAmount = 3 + (hitMarble.friendshipLevel - 1) * 2;
             teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
@@ -2227,7 +2261,9 @@
             //showMessage(`💚 HP回復友情(Lv${hitMarble.friendshipLevel})！ +${healAmount}`, 'success');
             updateHPBar(); return null;
         }
-        return hitMarble.createBullets();
+        const bullets = hitMarble.createBullets();
+        const subBullets = hitMarble.createSubBullets();
+        return [...bullets, ...subBullets];
     }
     
     function updateTurnIndicator() {
@@ -2502,14 +2538,21 @@
         setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
     }
     
+    const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal:'　' };
+    const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal:'なし' };
+
+    function iconBar(type, level) {
+        const icon = FRIENDSHIP_ICONS[type] || '　';
+        return Array.from({length:5}, (_,i) =>
+            `<span style="font-size:20px;opacity:${i < level ? 1 : 0.2}">${icon}</span>`
+        ).join('');
+    }
+
     function showItemModal(item, marble) {
-        isPaused = true; 
-        currentItem = item; 
+        isPaused = true;
+        currentItem = item;
         currentMarble = marble;
-        
-        const modal = document.getElementById('itemModal');
-        
-        // アイテムタイプの判定用
+
         let newItemType = 'normal';
         if (item.type === 'friendship_homing') newItemType = 'homing';
         else if (item.type === 'friendship_laser') newItemType = 'laser';
@@ -2517,83 +2560,114 @@
         else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
         else if (item.type === 'friendship_energy') newItemType = 'energy';
 
-        // 名称と現在の状況を整理
-        const typeNames = {
-            'homing': 'ホーミングミサイル',
-            'laser': 'レーザービーム',
-            'heal': '友情・回復',
-            'machinegun': '友情・マシンガン',
-            'energy': 'エナジーサークル',
-            'normal': 'なし'
-        };
+        const isFriendship = newItemType !== 'normal';
+        const typeName = FRIENDSHIP_NAMES[newItemType];
+        const isSameAsMain = marble.friendshipType === newItemType;
+        const isSameAsSub  = marble.subFriendshipType === newItemType;
 
-        const typeName = typeNames[newItemType];
-        const currentTypeName = typeNames[marble.friendshipType] || 'なし';
-        const isSameType = (marble.friendshipType === newItemType);
-        const nextLevel = isSameType ? Math.min(marble.friendshipLevel + 1, 5) : 1;
-
-        // 1. 上の名称をセット（ここで統一）
         document.getElementById('itemName').textContent = typeName;
         document.getElementById('itemEmoji').textContent = item.emoji;
         document.getElementById('itemDescription').textContent = item.description;
+        document.getElementById('itemFriendshipName').style.display = 'none';
+        document.getElementById('itemFriendshipDetail').style.display = 'none';
 
-        // 不要な重複箇所（itemFriendshipNameなど）があれば中身を空にするか非表示にする
-        const extraName = document.getElementById('itemFriendshipName');
-        if (extraName) extraName.style.display = 'none';
-
-        // 2. 「NEW」or「レベルアップチャンス」の表示
+        // ステータスラベル
         const statusLabel = document.getElementById('itemStatusLabel');
-        if (isSameType) {
-            statusLabel.textContent = "🔼 レベルアップチャンス！";
-            statusLabel.style.background = "#ff0000";
+        if (isFriendship && isSameAsMain && marble.friendshipLevel < 5) {
+            statusLabel.textContent = '🔼 レベルアップチャンス！'; statusLabel.style.background = '#c0392b';
+        } else if (isFriendship && marble.subFriendshipUnlocked && isSameAsSub && marble.subFriendshipLevel < 5) {
+            statusLabel.textContent = '🔼 サブレベルアップ！'; statusLabel.style.background = '#e67e22';
         } else {
-            statusLabel.textContent = "✨ NEW";
-            statusLabel.style.background = "#1565c0";
+            statusLabel.textContent = '✨ NEW'; statusLabel.style.background = '#1565c0';
         }
 
-        // 3. Lv表示を★で表現
-        let currentStars = '★'.repeat(marble.friendshipLevel) + '☆'.repeat(5 - marble.friendshipLevel);
-        let nextStars = '★'.repeat(nextLevel) + '☆'.repeat(5 - nextLevel);
-        
-        if (marble.friendshipType === 'normal') currentStars = '未装備';
-
-        // 4. 現在の装備情報の表示を更新
-        const characterInfoDiv = document.querySelector('.item-character-info');
-        let currentComboDiv = document.getElementById('currentComboInfo');
-        if (!currentComboDiv) {
-            currentComboDiv = document.createElement('div');
-            currentComboDiv.id = 'currentComboInfo';
-            // text-align: center; を追加
-            currentComboDiv.style.cssText = 'background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid #ddd; text-align: center;';
-            characterInfoDiv.appendChild(currentComboDiv);
+        // メイン友情ボックス
+        const mainInfo = document.getElementById('mainFriendshipInfo');
+        if (isFriendship) {
+            const mainLv = isSameAsMain ? Math.min(marble.friendshipLevel + 1, 5) : marble.friendshipLevel;
+            const mainType = marble.friendshipType;
+            mainInfo.innerHTML = `
+                <div style="font-size:11px;color:#888;font-weight:bold;margin-bottom:4px;">【メイン友情】</div>
+                <div style="font-size:13px;color:#444;margin-bottom:4px;">${FRIENDSHIP_NAMES[mainType] || '未装備'}</div>
+                <div>${iconBar(mainType, marble.friendshipLevel)}</div>
+                ${isSameAsMain && marble.friendshipLevel < 5 ? `<div style="font-size:11px;color:#c0392b;margin-top:4px;">装備後 → ${iconBar(newItemType, mainLv)}</div>` : ''}
+            `;
+        } else {
+            mainInfo.innerHTML = '';
         }
 
-        currentComboDiv.innerHTML = `
-            <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">【現在のステータス】</div>
-            <div style="font-size: 14px; color: #444; margin-bottom: 4px;">装備: <strong>${currentTypeName}</strong></div>
-            <div style="font-size: 14px; color: #f1c40f; letter-spacing: 2px; margin-bottom: 10px;">${currentStars}</div>
-            
-            <div style="margin: 10px auto; width: 80%; border-top: 1px dashed #ccc;"></div>
-            
-            <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">【習得後のレベル】</div>
-            <div style="font-size: 20px; color: #ff9800; letter-spacing: 2px; font-weight: bold;">${nextStars}</div>
-        `;
+        // サブ解放バナー（この装備でLv5になる時）
+        const willUnlock = isFriendship && isSameAsMain && marble.friendshipLevel === 4 && !marble.subFriendshipUnlocked;
+        document.getElementById('subUnlockBanner').style.display = willUnlock ? 'block' : 'none';
 
-        modal.classList.add('active');
+        // サブ友情ボックス
+        const subInfo = document.getElementById('subFriendshipInfo');
+        const subBtn = document.getElementById('itemEquipSubBtn');
+        if (marble.subFriendshipUnlocked && isFriendship) {
+            subInfo.style.display = 'block';
+            const subLv = isSameAsSub ? Math.min(marble.subFriendshipLevel + 1, 5) : marble.subFriendshipLevel;
+            subInfo.innerHTML = `
+                <div style="font-size:11px;color:#e67e22;font-weight:bold;margin-bottom:4px;">【サブ友情 / 威力1/2】</div>
+                <div style="font-size:13px;color:#444;margin-bottom:4px;">${marble.subFriendshipType !== 'normal' ? FRIENDSHIP_NAMES[marble.subFriendshipType] : '未装備'}</div>
+                <div>${iconBar(marble.subFriendshipType, marble.subFriendshipType !== 'normal' ? marble.subFriendshipLevel : 0)}</div>
+                ${isSameAsSub && marble.subFriendshipLevel < 5 ? `<div style="font-size:11px;color:#e67e22;margin-top:4px;">装備後 → ${iconBar(newItemType, subLv)}</div>` : ''}
+            `;
+            subBtn.style.display = 'block';
+        } else {
+            subInfo.style.display = 'none';
+            subBtn.style.display = 'none';
+        }
+
+        document.getElementById('itemModal').classList.add('active');
     }
     
-    function applyFriendshipItem(item, marble) {
+    function applyFriendshipItem(item, marble, equipToSub = false) {
         let newItemType = '', itemName = '';
         if (item.type === 'friendship_homing') { newItemType = 'homing'; itemName = 'ホーミング'; }
         else if (item.type === 'friendship_laser') { newItemType = 'laser'; itemName = 'レーザー'; }
         else if (item.type === 'friendship_heal') { newItemType = 'heal'; itemName = '回復'; }
         else if (item.type === 'friendship_machinegun') { newItemType = 'machinegun'; itemName = 'マシンガン'; }
         else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = 'エナジーサークル'; }
-        if (newItemType) {
+        if (!newItemType) return;
+
+        if (equipToSub) {
+            // サブ友情に装備
+            if (marble.subFriendshipType === newItemType) {
+                if (marble.subFriendshipLevel < 5) {
+                    marble.subFriendshipLevel++;
+                    playLevelUpSound();
+                    showMessage(`🆙 サブ${itemName}がLv.${marble.subFriendshipLevel}に強化！`, 'combo-effect');
+                } else {
+                    showMessage(`⚠️ サブ${itemName}は既に最大レベルです！`, 'info');
+                }
+            } else {
+                marble.subFriendshipType = newItemType;
+                marble.subFriendshipLevel = 1;
+                explosions.push(new CriticalEffect(marble.x, marble.y));
+                showMessage(`✨ サブ${itemName}を装備！(Lv.1 / 威力1/2)`, 'success');
+            }
+        } else {
+            // メイン友情に装備
             if (marble.friendshipType === newItemType) {
-                if (marble.friendshipLevel < 5) { marble.friendshipLevel++; marble.friendshipPower += 0.5; marble.friendshipCount += 2; explosions.push(new HealEffect(marble.x, marble.y)); playLevelUpSound(); showMessage(`🆙 ${itemName}がLv.${marble.friendshipLevel}に強化！`, 'combo-effect'); }
-                else showMessage(`⚠️ ${itemName}は既に最大レベルです！`, 'info');
-            } else { marble.friendshipType = newItemType; marble.friendshipLevel = 1; marble.friendshipPower = 1.0; marble.friendshipCount = 8; explosions.push(new CriticalEffect(marble.x, marble.y)); showMessage(`✨ ${itemName}を装備しました！(Lv.1)`, 'success'); }
+                if (marble.friendshipLevel < 5) {
+                    marble.friendshipLevel++; marble.friendshipPower += 0.5; marble.friendshipCount += 2;
+                    explosions.push(new HealEffect(marble.x, marble.y));
+                    playLevelUpSound();
+                    showMessage(`🆙 ${itemName}がLv.${marble.friendshipLevel}に強化！`, 'combo-effect');
+                    // Lv5でサブ友情解放
+                    if (marble.friendshipLevel === 5 && !marble.subFriendshipUnlocked) {
+                        marble.subFriendshipUnlocked = true;
+                        showMessage(`🔓 サブ友情が解放されました！`, 'combo-effect');
+                    }
+                } else {
+                    showMessage(`⚠️ ${itemName}は既に最大レベルです！`, 'info');
+                }
+            } else {
+                marble.friendshipType = newItemType; marble.friendshipLevel = 1;
+                marble.friendshipPower = 1.0; marble.friendshipCount = 8;
+                explosions.push(new CriticalEffect(marble.x, marble.y));
+                showMessage(`✨ ${itemName}を装備しました！(Lv.1)`, 'success');
+            }
             marble.friendshipItems.push(item);
         }
     }
@@ -2718,7 +2792,15 @@
     
     document.getElementById('itemEquipBtn').addEventListener('click', () => {
         if (currentItem && currentMarble) {
-            applyFriendshipItem(currentItem, currentMarble);
+            applyFriendshipItem(currentItem, currentMarble, false);
+            document.getElementById('itemModal').classList.remove('active');
+            currentItem = null; currentMarble = null; isPaused = false;
+        }
+    });
+
+    document.getElementById('itemEquipSubBtn').addEventListener('click', () => {
+        if (currentItem && currentMarble) {
+            applyFriendshipItem(currentItem, currentMarble, true);
             document.getElementById('itemModal').classList.remove('active');
             currentItem = null; currentMarble = null; isPaused = false;
         }
