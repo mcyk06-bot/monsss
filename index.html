@@ -2493,14 +2493,14 @@
         if (distance > 10) {
             const power = Math.min(distance / 50, 3);
             if (isSpecialShotActive) {
-                if (playerMarbles.some(m => m.isUsed)) { isDragging = false; return; }
-                for (let marble of playerMarbles) {
+                if (playerMarbles.some(m => m.isActive)) { isDragging = false; return; }
+                playerMarbles.forEach((marble, i) => {
                     marble.vx = (dx / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
                     marble.vy = (dy / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
                     marble.isActive = true; marble.isUsed = true; marble.isSpecialShot = true;
                     setTimeout(() => playLaunchSound(power), i * 80);
                     activeMarbles.push(marble);
-                }
+                });
                 const centerX = canvasSize.width / 2, centerY = canvasSize.height / 2;
                 explosions.push(new SpecialShotEffect(centerX, centerY));
                 isSpecialShotActive = false; specialShotCount = 0;
