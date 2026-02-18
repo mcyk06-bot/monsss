@@ -373,22 +373,82 @@
         color: white;
     }
     
-    .help-btn {
+    .gear-btn {
         position: fixed;
-        bottom: 70px;
+        bottom: 12px;
         right: 10px;
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
-        background: #667eea;
+        background: #555;
         color: white;
         border: none;
-        font-size: 20px;
-        font-weight: bold;
+        font-size: 22px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 100;
+        z-index: 200;
+        transition: transform 0.3s;
+        cursor: pointer;
     }
-    
+    .gear-btn.open { transform: rotate(90deg); background: #667eea; }
+
+    .gear-panel {
+        position: fixed;
+        bottom: 64px;
+        right: 10px;
+        background: rgba(30,30,40,0.95);
+        border-radius: 14px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 199;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        transform: scaleY(0) translateY(16px);
+        transform-origin: bottom right;
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), opacity 0.18s;
+        min-width: 160px;
+    }
+    .gear-panel.open {
+        transform: scaleY(1) translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .gear-panel button {
+        background: #444;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        cursor: pointer;
+        text-align: left;
+    }
+    .gear-panel button.active-btn { background: #667eea; }
+    .gear-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .gear-row button { flex: 1; }
+    .gear-row input[type=range] {
+        -webkit-appearance: none;
+        width: 60px;
+        height: 4px;
+        background: #666;
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+    }
+    .gear-row input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #667eea;
+    }
+
     .instructions-modal {
         display: none;
         position: fixed;
@@ -705,29 +765,22 @@
                 </div>
             </div>
         </div>
-        <div class="controls">
-            <button id="resetBtn">🔄 新しいゲーム</button>
+    </div>
 
 ```
-        <span style="position:relative;display:inline-block;">
-            <div class="vol-popup" id="seVolPopup">
-                <label>SE</label>
-                <input type="range" id="seVolSlider" min="0" max="100" value="70" orient="vertical">
-            </div>
-            <button id="seBtn" style="background:#555;">🔇 SE</button>
-        </span>
-
-        <span style="position:relative;display:inline-block;">
-            <div class="vol-popup" id="bgmVolPopup">
-                <label>BGM</label>
-                <input type="range" id="bgmVolSlider" min="0" max="100" value="40" orient="vertical">
-            </div>
-            <button id="bgmBtn" style="background:#555;">🎵 BGM</button>
-        </span>
+<button class="gear-btn" id="gearBtn">⚙️</button>
+<div class="gear-panel" id="gearPanel">
+    <button id="resetBtn">🔄 New Game</button>
+    <button id="helpBtn">❓ ヘルプ</button>
+    <div class="gear-row">
+        <button id="seBtn">🔇 SE</button>
+        <input type="range" id="seVolSlider" min="0" max="100" value="70">
+    </div>
+    <div class="gear-row">
+        <button id="bgmBtn">🎵 BGM</button>
+        <input type="range" id="bgmVolSlider" min="0" max="100" value="40">
     </div>
 </div>
-
-<button class="help-btn" id="helpBtn">?</button>
 <div class="message" id="message"></div>
 
 <div class="instructions-modal" id="instructionsModal">
@@ -928,6 +981,8 @@
     
     document.getElementById('helpBtn').addEventListener('click', () => {
         document.getElementById('instructionsModal').classList.add('active');
+        document.getElementById('gearPanel').classList.remove('open');
+        document.getElementById('gearBtn').classList.remove('open');
     });
     
     document.getElementById('closeBtn').addEventListener('click', () => {
@@ -2593,52 +2648,46 @@
     
     document.getElementById('resetBtn').addEventListener('click', initGame);
 
-    let seVolume = 0.7;
-    let bgmVolume = 0.4;
-
-    // ボリュームポップアップ開閉
-    function toggleVolPopup(popupId) {
-        const popup = document.getElementById(popupId);
-        const isOpen = popup.classList.contains('open');
-        // 全部閉じる
-        document.querySelectorAll('.vol-popup').forEach(p => p.classList.remove('open'));
-        if (!isOpen) popup.classList.add('open');
-    }
-    // ポップアップ外クリックで閉じる
+    // 歯車パネル開閉
+    const gearBtn = document.getElementById('gearBtn');
+    const gearPanel = document.getElementById('gearPanel');
+    gearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = gearPanel.classList.contains('open');
+        gearPanel.classList.toggle('open', !isOpen);
+        gearBtn.classList.toggle('open', !isOpen);
+    });
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.vol-popup') && !e.target.closest('#seBtn') && !e.target.closest('#bgmBtn')) {
-            document.querySelectorAll('.vol-popup').forEach(p => p.classList.remove('open'));
+        if (!e.target.closest('#gearPanel') && !e.target.closest('#gearBtn')) {
+            gearPanel.classList.remove('open');
+            gearBtn.classList.remove('open');
         }
     });
 
-    // SEスライダー
+    // SE
+    document.getElementById('seBtn').addEventListener('click', () => {
+        seEnabled = !seEnabled;
+        const btn = document.getElementById('seBtn');
+        btn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
+        btn.classList.toggle('active-btn', seEnabled);
+        if (seEnabled) resumeAudio();
+    });
     document.getElementById('seVolSlider').addEventListener('input', (e) => {
         seVolume = e.target.value / 100;
         masterGain.gain.value = seVolume;
     });
 
-    // BGMスライダー
-    document.getElementById('bgmVolSlider').addEventListener('input', (e) => {
-        bgmVolume = e.target.value / 100;
-        if (bgmAudio) bgmAudio.volume = bgmVolume;
-    });
-
+    // BGM
     document.getElementById('bgmBtn').addEventListener('click', () => {
         bgmEnabled = !bgmEnabled;
         const btn = document.getElementById('bgmBtn');
-        btn.textContent = bgmEnabled ? '🎵 BGM ON' : '🎵 BGM';
-        btn.style.background = bgmEnabled ? '#667eea' : '#555';
-        if (bgmEnabled) { startBGM(); toggleVolPopup('bgmVolPopup'); }
-        else { stopBGM(); document.getElementById('bgmVolPopup').classList.remove('open'); }
+        btn.textContent = bgmEnabled ? '▶️ BGM' : '🎵 BGM';
+        btn.classList.toggle('active-btn', bgmEnabled);
+        if (bgmEnabled) { startBGM(); } else { stopBGM(); }
     });
-
-    document.getElementById('seBtn').addEventListener('click', () => {
-        seEnabled = !seEnabled;
-        const btn = document.getElementById('seBtn');
-        btn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
-        btn.style.background = seEnabled ? '#667eea' : '#555';
-        if (seEnabled) { resumeAudio(); toggleVolPopup('seVolPopup'); }
-        else { document.getElementById('seVolPopup').classList.remove('open'); }
+    document.getElementById('bgmVolSlider').addEventListener('input', (e) => {
+        bgmVolume = e.target.value / 100;
+        if (bgmAudio) bgmAudio.volume = bgmVolume;
     });
     
     document.getElementById('specialShotBtn').addEventListener('click', () => {
