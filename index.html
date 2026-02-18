@@ -1194,7 +1194,11 @@
         class HomingBullet extends Bullet {
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
-                this.target = null; this.homingStrength = 2.0; this.frame = 0;
+                this.target = null; 
+                this.homingStrength = 0.25; // 変更: 2.0 -> 0.25 (8分の1)
+                this.frame = 0;
+                this.maxSpeed = 5.5; // 追加: 速度上限
+                this.life = 400;
             }
             update() {
                 if (this.delay > 0) { this.delay--; return; }
@@ -1211,7 +1215,18 @@
                 if (this.target) {
                     const dx = this.target.x - this.x, dy = this.target.y - this.y;
                     const dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist > 0) { this.vx += (dx / dist) * this.homingStrength; this.vy += (dy / dist) * this.homingStrength; }
+                    if (dist > 0) { 
+                        this.vx += (dx / dist) * this.homingStrength; 
+                        this.vy += (dy / dist) * this.homingStrength;
+                        
+                        // 追加: 速度制限ロジック
+                        const currentSpeed = Math.hypot(this.vx, this.vy);
+                        if (currentSpeed > this.maxSpeed) {
+                            const scale = this.maxSpeed / currentSpeed;
+                            this.vx *= scale;
+                            this.vy *= scale;
+                        }
+                    }
                 }
                 this.x += this.vx; this.y += this.vy; this.life--;
             }
@@ -1333,16 +1348,14 @@
                 if (speed < 1.5) friction = 0.99;
                 if (speed < 0.5) friction = 0.95;
                 this.vx *= friction; this.vy *= friction;
-                this.x += this.vx * VELOCITY_SCALE; this.y += this.vy * VELOCITY_SCALE;
-                if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -BOUNCE; }
-                else if (this.x + this.radius > canvasSize.width) { this.x = canvasSize.width - this.radius; this.vx *= -BOUNCE; }
-                if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -BOUNCE; }
-                else if (this.y + this.radius > canvasSize.height) { this.y = canvasSize.height - this.radius; this.vy *= -BOUNCE; }
+                // 移動処理はメインループのサブステップへ移動したため削除
+                // 停止判定
                 if (Math.abs(this.vx * VELOCITY_SCALE) < STOP_THRESHOLD && Math.abs(this.vy * VELOCITY_SCALE) < STOP_THRESHOLD) { this.vx = 0; this.vy = 0; }
             }
             isMoving() { return Math.abs(this.vx) > STOP_THRESHOLD || Math.abs(this.vy) > STOP_THRESHOLD; }
             applyHitSlowdown() { this.vx *= HIT_SLOWDOWN; this.vy *= HIT_SLOWDOWN; }
             getSpeed() { return Math.sqrt(this.vx ** 2 + this.vy ** 2); }
+            // ... createBullets, takeDamage などは変更なし ...
             createBullets() {
                 const bulletSpeed = 6;
                 const newBullets = [];
@@ -1531,7 +1544,7 @@
         }
 
         function spawnItems(countMultiplier = 1.0) {
-            if (Math.random() < 0.40 * countMultiplier) {
+            if (Math.random() < 0.60 * countMultiplier) {
                 const rand = Math.random();
                 let itemType;
                 if (rand < 0.30) itemType = 'hp';
@@ -1828,7 +1841,7 @@
                         if (enemy.takeDamage(bulletDamage)) {
                             defeated++; totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
-                            enemies.splice(j, 1);
+                            enemies.splice(i, 1);
                             if (Math.random() < 0.20 && teamHP < MAX_TEAM_HP) {
                                 const healAmount = 10; teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                                 explosions.push(new HealEffect(enemy.x, enemy.y));
@@ -1842,9 +1855,106 @@
                 }
             }
             
-            for (let marble of activeMarbles) { marble.update(); marble.draw(); }
+            // --- 変更箇所開始: サブステップと衝突判定の再構築 ---
+
+            // 1. 摩擦適用（フレーム毎に1回）
+            for (let marble of activeMarbles) { 
+                marble.update(); // 摩擦のみ計算されるようになった
+            }
+
+            // 2. 友情コンボ判定（移動前）
+            if (activeMarbles.length > 0) {
+                const activeMarble = activeMarbles[0];
+                for (let marble of playerMarbles) {
+                    if (marble === activeMarble) continue;
+                    if (checkCollision(activeMarble, marble)) {
+                        const newBullets = triggerFriendshipAttack(activeMarble, marble);
+                        if (newBullets) bullets.push(...newBullets);
+                    }
+                }
+            }
+
+            // 3. 移動・壁判定・敵/アイテム判定（サブステップ処理）
+            const SUBSTEPS = 4; // 1フレームを4分割して判定
+            for (let s = 0; s < SUBSTEPS; s++) {
+                for (let marble of activeMarbles) {
+                    if (!marble.isActive || !marble.isMoving()) continue;
+
+                    // 移動 (1ステップ分)
+                    marble.x += (marble.vx * VELOCITY_SCALE) / SUBSTEPS;
+                    marble.y += (marble.vy * VELOCITY_SCALE) / SUBSTEPS;
+
+                    // 壁判定 (サブステップ毎にチェック)
+                    if (marble.x - marble.radius < 0) { marble.x = marble.radius; marble.vx *= -BOUNCE; }
+                    else if (marble.x + marble.radius > canvasSize.width) { marble.x = canvasSize.width - marble.radius; marble.vx *= -BOUNCE; }
+                    if (marble.y - marble.radius < 0) { marble.y = marble.radius; marble.vy *= -BOUNCE; }
+                    else if (marble.y + marble.radius > canvasSize.height) { marble.y = canvasSize.height - marble.radius; marble.vy *= -BOUNCE; }
+
+                    // アイテム判定 (サブステップ毎にチェック)
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        const item = items[i];
+                        if (item.collected) continue;
+                        const dx = item.x - marble.x, dy = item.y - marble.y;
+                        if (Math.sqrt(dx*dx+dy*dy) < marble.radius + item.radius) {
+                            item.collected = true; items.splice(i, 1);
+                            if (item.type === 'hp') {
+                                MAX_TEAM_HP += 2; teamHP = Math.min(teamHP + 2, MAX_TEAM_HP);
+                                explosions.push(new HealEffect(item.x, item.y));
+                                showMessage(`❤️ HP上限+2！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
+                            } else if (item.type === 'attack') {
+                                playerAttackBonus += 0.5; explosions.push(new CriticalEffect(item.x, item.y));
+                                showMessage(`⚔️ 攻撃力+0.5！ (ボーナス:+${playerAttackBonus})`, 'success');
+                            } else if (item.type === 'death') {
+                                explosions.push(new DeathEffect());
+                                setTimeout(() => {
+                                    enemies.forEach(e => { explosions.push(new Explosion(e.x, e.y, e.radius, e.color)); defeated++; totalDefeated++; });
+                                    enemies = []; showMessage('💀 デス発動！敵を全滅させました！', 'danger');
+                                    setTimeout(() => showStageClear(), 1000);
+                                }, 1000);
+                            } else if (item.type.startsWith('friendship_')) {
+                                showItemModal(item, marble);
+                            }
+                        }
+                    }
+
+                    // 敵衝突判定 (サブステップ毎にチェック)
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const enemy = enemies[i];
+                        if (checkCollision(marble, enemy)) {
+                            let normalX = marble.x - enemy.x, normalY = marble.y - enemy.y;
+                            const dist = Math.sqrt(normalX*normalX + normalY*normalY);
+                            if (dist > 0) { normalX /= dist; normalY /= dist; }
+                            const overlap = marble.radius + enemy.radius - dist;
+                            if (overlap > 0) { marble.x += normalX * (overlap + 0.5); marble.y += normalY * (overlap + 0.5); }
+                            const dotProduct = marble.vx * normalX + marble.vy * normalY;
+                            if (dotProduct < 0) { marble.vx -= 2 * dotProduct * normalX; marble.vy -= 2 * dotProduct * normalY; marble.vx *= 0.85; marble.vy *= 0.85; }
+                            const isCritical = Math.random() < 0.15;
+                            const baseDamage = marble.damage + playerAttackBonus;
+                            const damageToApply = isCritical ? baseDamage + 10 : baseDamage;
+                            if (isCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
+                            if (enemy.takeDamage(damageToApply)) {
+                                defeated++; totalDefeated++;
+                                explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
+                                enemies.splice(i, 1);
+                                if (Math.random() < 0.20 && teamHP < MAX_TEAM_HP) {
+                                    const healAmount = 10; teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
+                                    explosions.push(new HealEffect(enemy.x, enemy.y));
+                                    updateHPBar();
+                                }
+                                updateUI();
+                                if (enemies.length === 0) setTimeout(() => showStageClear(), 500);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. 描画
+            for (let marble of activeMarbles) { marble.draw(); }
             for (let marble of playerMarbles) { if (!marble.isActive) marble.draw(); }
             
+            // --- 変更箇所終了 ---
+
             if (isDragging && !isEnemyTurn && !isGameOver && !isStageClear) {
                 const currentMarble = playerMarbles[currentTurn];
                 const marbleX = currentMarble.x, marbleY = currentMarble.y;
@@ -1898,74 +2008,7 @@
                 if (distance > 50) { ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.fillText('🚀', marbleX, marbleY - currentMarble.radius - 25); }
             }
             
-            if (activeMarbles.length > 0) {
-                const activeMarble = activeMarbles[0];
-                for (let marble of playerMarbles) {
-                    if (marble === activeMarble) continue;
-                    if (checkCollision(activeMarble, marble)) {
-                        const newBullets = triggerFriendshipAttack(activeMarble, marble);
-                        if (newBullets) bullets.push(...newBullets);
-                    }
-                }
-            }
-            
-            for (let marble of activeMarbles) {
-                if (!marble.isActive || !marble.isMoving()) continue;
-                for (let i = items.length - 1; i >= 0; i--) {
-                    const item = items[i];
-                    if (item.collected) continue;
-                    const dx = item.x - marble.x, dy = item.y - marble.y;
-                    if (Math.sqrt(dx*dx+dy*dy) < marble.radius + item.radius) {
-                        item.collected = true; items.splice(i, 1);
-                        if (item.type === 'hp') {
-                            MAX_TEAM_HP += 2; teamHP = Math.min(teamHP + 2, MAX_TEAM_HP);
-                            explosions.push(new HealEffect(item.x, item.y));
-                            showMessage(`❤️ HP上限+2！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
-                        } else if (item.type === 'attack') {
-                            playerAttackBonus += 0.5; explosions.push(new CriticalEffect(item.x, item.y));
-                            showMessage(`⚔️ 攻撃力+0.5！ (ボーナス:+${playerAttackBonus})`, 'success');
-                        } else if (item.type === 'death') {
-                            explosions.push(new DeathEffect());
-                            setTimeout(() => {
-                                enemies.forEach(e => { explosions.push(new Explosion(e.x, e.y, e.radius, e.color)); defeated++; totalDefeated++; });
-                                enemies = []; showMessage('💀 デス発動！敵を全滅させました！', 'danger');
-                                setTimeout(() => showStageClear(), 1000);
-                            }, 1000);
-                        } else if (item.type.startsWith('friendship_')) {
-                            showItemModal(item, marble);
-                        }
-                    }
-                }
-                
-                for (let i = enemies.length - 1; i >= 0; i--) {
-                    const enemy = enemies[i];
-                    if (checkCollision(marble, enemy)) {
-                        let normalX = marble.x - enemy.x, normalY = marble.y - enemy.y;
-                        const dist = Math.sqrt(normalX*normalX + normalY*normalY);
-                        if (dist > 0) { normalX /= dist; normalY /= dist; }
-                        const overlap = marble.radius + enemy.radius - dist;
-                        if (overlap > 0) { marble.x += normalX * (overlap + 0.5); marble.y += normalY * (overlap + 0.5); }
-                        const dotProduct = marble.vx * normalX + marble.vy * normalY;
-                        if (dotProduct < 0) { marble.vx -= 2 * dotProduct * normalX; marble.vy -= 2 * dotProduct * normalY; marble.vx *= 0.85; marble.vy *= 0.85; }
-                        const isCritical = Math.random() < 0.15;
-                        const baseDamage = marble.damage + playerAttackBonus;
-                        const damageToApply = isCritical ? baseDamage + 10 : baseDamage;
-                        if (isCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
-                        if (enemy.takeDamage(damageToApply)) {
-                            defeated++; totalDefeated++;
-                            explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
-                            enemies.splice(i, 1);
-                            if (Math.random() < 0.20 && teamHP < MAX_TEAM_HP) {
-                                const healAmount = 10; teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
-                                explosions.push(new HealEffect(enemy.x, enemy.y));
-                                updateHPBar();
-                            }
-                            updateUI();
-                            if (enemies.length === 0) setTimeout(() => showStageClear(), 500);
-                        }
-                    }
-                }
-            }
+            // 以前の衝突判定ループは削除済み（サブステップ内に統合）
             
             if (activeMarbles.length > 0) {
                 const allStopped = activeMarbles.every(m => !m.isMoving());
