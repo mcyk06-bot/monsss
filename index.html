@@ -29,11 +29,12 @@
     
     .game-container {
         width: 100vw;
-        height: 100vh; /* フォールバック */
-        height: calc(var(--vh, 1vh) * 100);
+        min-height: 100vh;
+        min-height: calc(var(--vh, 1vh) * 100);
         display: flex;
         flex-direction: column;
-        background: white;
+        justify-content: flex-start;
+        background: #1c1c1c;
     }
     
     .header { display: none; }
@@ -144,7 +145,7 @@
     
     .hp-panel {
         padding: 6px 10px;
-        background: #ffffff;
+        background: #1c1c1c;
         border-top: 2px solid #667eea;
         flex-shrink: 0;
     }
@@ -152,7 +153,7 @@
     .hp-label {
         font-size: 12px;
         font-weight: bold;
-        color: #333;
+        color: #ccc;
         margin-bottom: 5px;
         text-align: center;
     }
@@ -202,7 +203,7 @@
     .special-shot-count {
         font-size: 13px;
         font-weight: bold;
-        color: #333;
+        color: #ddd;
         text-align: center;
         padding: 3px 0;
     }
@@ -244,14 +245,13 @@
     }
     
     .canvas-container {
-        flex: 1;
         display: flex;
         justify-content: center;
-        align-items: center;
-        background: #1c1c1c;
+        align-items: flex-start;
+        background: #2f662a;
         overflow: hidden;
         position: relative;
-        min-height: 0;
+        width: 100%;
         padding: 0;
         margin: 0;
     }
@@ -942,25 +942,24 @@
     
     function resizeCanvas() {
         const container = document.querySelector('.canvas-container');
-        const rect = container.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
-        
+
+        // 利用可能な幅に合わせてcanvasサイズを決める（アスペクト比8:9固定）
+        const availableWidth = window.innerWidth;
         const aspectRatio = 8 / 9;
-        let displayWidth = rect.width;
-        let displayHeight = rect.height;
-        
-        if (displayWidth / displayHeight > aspectRatio) {
-            displayWidth = displayHeight * aspectRatio;
-        } else {
-            displayHeight = displayWidth / aspectRatio;
-        }
-        
+        let displayWidth = availableWidth;
+        let displayHeight = displayWidth / aspectRatio;
+
         canvas.width = BASE_WIDTH * dpr;
         canvas.height = BASE_HEIGHT * dpr;
         canvas.style.width = displayWidth + 'px';
         canvas.style.height = displayHeight + 'px';
+
+        // containerをcanvasの高さにぴったり合わせる（余白なし）
+        container.style.height = displayHeight + 'px';
+
         ctx.scale(dpr, dpr);
-        
+
         return { width: BASE_WIDTH, height: BASE_HEIGHT };
     }
     
@@ -2727,9 +2726,35 @@
         try { startStage(); } catch (error) { console.error('❌ ステージ開始エラー:', error); alert(`エラーが発生しました: ${error.message}`); }
     });
     
-    // =====================
-    // 🔊 サウンドシステム
-    // =====================
+    // ============================================================
+    // 🔊 サウンドシステム ── SE編集ガイド
+    // ============================================================
+    // 【音を変えたいときの基本】
+    //   osc.frequency.setValueAtTime(数値, t)  → 音の高さ (Hz)
+    //     目安: C4=262, E4=330, G4=392, A4=440, C5=523, A5=880
+    //   gain.gain.setValueAtTime(0.xx, t)       → 音量 (0〜1)
+    //   osc.type = '種類'                       → 音色
+    //     sine     … 丸くてきれいな音
+    //     square   … ピコピコしたゲーム音
+    //     sawtooth … ギザギザした荒い音
+    //     triangle … sineとsquareの中間
+    //   osc.stop(t + 秒数)                      → 音の長さ
+    //
+    // 【各関数と用途】
+    //   playLaunchSound(power)      発射音（パワーで音程が変わる）
+    //   playHitSound(isCritical)    敵ヒット音（クリティカルで重くなる）
+    //   playCoinSound()             アイテム取得音
+    //   playFriendshipSound(type)   友情攻撃音
+    //     type: 'homing' / 'laser' / 'machinegun' / 'energy' / 'heal'
+    //   playEnemyAttackSound(type)  敵攻撃音
+    //     type: 'beam' / 'bomb' / 'meteor'
+    //   playDeathSound()            デスアイテム発動音
+    //   playStageClearSound()       ステージクリア音
+    //   playSpecialShotSound()      大号令発動音
+    //   playLevelUpSound()          友情レベルアップ音
+    //   playGameOverSound()         ゲームオーバー音
+    //   playBounceSound()           壁バウンド音
+    // ============================================================
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const masterGain = audioCtx.createGain();
     masterGain.gain.value = 0.7;
@@ -2757,6 +2782,7 @@
 
     function resumeAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); }
 
+    // アイテム取得音（コイン）
     function playCoinSound() {
         if (!seEnabled) return;
         resumeAudio();
@@ -2776,6 +2802,7 @@
         });
     }
 
+    // ステージクリア音（ファンファーレ）
     function playStageClearSound() {
         if (!seEnabled) return;
         resumeAudio();
@@ -2794,6 +2821,7 @@
         });
     }
 
+    // 大号令発動音
     function playSpecialShotSound() {
         if (!seEnabled) return;
         resumeAudio();
@@ -2822,6 +2850,7 @@
         osc.start(t + 0.35); osc.stop(t + 0.76);
     }
 
+    // 友情レベルアップ音（キラキラ上昇）
     function playLevelUpSound() {
         if (!seEnabled) return;
         resumeAudio();
@@ -2840,6 +2869,7 @@
         });
     }
 
+    // ゲームオーバー音（下降して消える）
     function playGameOverSound() {
         if (!seEnabled) return;
         resumeAudio();
@@ -2859,6 +2889,7 @@
         });
     }
 
+    // 壁バウンド音（コツッ・連続鳴り間引きあり）
     let lastBounceTime = 0;
     function playBounceSound() {
         if (!seEnabled) return;
@@ -2878,6 +2909,7 @@
         osc.start(now); osc.stop(now + 0.09);
     }
 
+    // デスアイテム発動音（ブワーン＋ハッハッハッハ）
     function playDeathSound() {
         if (!seEnabled) return;
         resumeAudio();
@@ -2920,6 +2952,7 @@
         }
     }
 
+    // 敵攻撃音（type: 'beam'=ビーム / 'bomb'=爆弾 / 'meteor'=メテオ）
     function playEnemyAttackSound(type) {
         if (!seEnabled) return;
         resumeAudio();
@@ -2990,6 +3023,7 @@
         }
     }
 
+    // 友情攻撃音（type: 'homing'=ホーミング / 'laser'=レーザー / 'machinegun'=マシンガン / 'energy'=エナジーサークル / 'heal'=回復）
     function playFriendshipSound(type) {
         if (!seEnabled) return;
         resumeAudio();
@@ -3101,6 +3135,7 @@
         }
     }
 
+    // 発射音（powerの強さで音程が変わる）
     function playLaunchSound(power) {
         if (!seEnabled) return;
         resumeAudio();
@@ -3118,6 +3153,7 @@
         osc.stop(audioCtx.currentTime + 0.18);
     }
 
+    // 敵ヒット音（isCritical=trueで重い音になる）
     function playHitSound(isCritical = false) {
         if (!seEnabled) return;
         resumeAudio();
