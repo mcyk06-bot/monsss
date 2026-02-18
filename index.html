@@ -218,9 +218,12 @@
         border-radius: 8px;
         cursor: pointer;
         transition: all 0.3s;
-        background: #ccc;
-        color: #666;
+        background: #555;
+        color: #aaa;
         width: 100%;
+        min-width: 80px;
+        min-height: 56px;
+        box-sizing: border-box;
     }
     
     .special-shot-btn:disabled {
@@ -933,11 +936,30 @@
 
     let imagesLoaded = 0;
     const totalImages = 11;
+    const charCanvasCache = [null, null, null, null]; // キャッシュ済みcanvas
+
+    function buildCharCache() {
+        charImages.forEach((img, idx) => {
+            if (!img || !img.complete || !img.naturalWidth) return;
+            const cvs = document.createElement('canvas');
+            const sz = 96; // 高解像度でキャッシュ
+            cvs.width = sz; cvs.height = sz;
+            const cctx = cvs.getContext('2d');
+            const iw = img.naturalWidth, ih = img.naturalHeight;
+            const crop = Math.min(iw, ih);
+            const sx = (iw - crop) / 2;
+            const sy = ih > iw ? 0 : (ih - crop) / 2 * 0.3;
+            cctx.drawImage(img, sx, sy, crop, crop, 0, 0, sz, sz);
+            charCanvasCache[idx] = cvs;
+        });
+    }
 
     function checkAllImagesLoaded() {
         imagesLoaded++;
         if (imagesLoaded === totalImages) {
             console.log('✅ 全ての画像が読み込まれました！');
+            buildCharCache();
+            updateFriendshipStatusBar();
         }
     }
 
@@ -2598,28 +2620,33 @@
                 margin: 0 2px;
             `;
 
-            // キャラ画像：canvasで四角トリミング
+            // キャラ画像：キャッシュcanvasから描画
             const cvs = document.createElement('canvas');
             const sz = 48;
             cvs.width = sz; cvs.height = sz;
             cvs.style.cssText = `width:100%;aspect-ratio:1;display:block;`;
             const cctx = cvs.getContext('2d');
-            const img = charImages[m.characterIndex];
-            if (img && img.complete && img.naturalWidth > 0) {
-                // 画像の中央上よりをトリミングして描画
-                const iw = img.naturalWidth, ih = img.naturalHeight;
-                const crop = Math.min(iw, ih);
-                const sx = (iw - crop) / 2;
-                const sy = ih > iw ? 0 : (ih - crop) / 2 * 0.3; // 上寄り
-                cctx.drawImage(img, sx, sy, crop, crop, 0, 0, sz, sz);
+            const cached = charCanvasCache[m.characterIndex];
+            if (cached) {
+                cctx.drawImage(cached, 0, 0, sz, sz);
             } else {
-                cctx.fillStyle = '#667eea';
-                cctx.fillRect(0, 0, sz, sz);
-                cctx.fillStyle = 'white';
-                cctx.font = `bold ${sz*0.4}px Arial`;
-                cctx.textAlign = 'center';
-                cctx.textBaseline = 'middle';
-                cctx.fillText(name[0], sz/2, sz/2);
+                // キャッシュ未生成なら直接描画
+                const img = charImages[m.characterIndex];
+                if (img && img.complete && img.naturalWidth > 0) {
+                    const iw = img.naturalWidth, ih = img.naturalHeight;
+                    const crop = Math.min(iw, ih);
+                    const sx = (iw - crop) / 2;
+                    const sy = ih > iw ? 0 : (ih - crop) / 2 * 0.3;
+                    cctx.drawImage(img, sx, sy, crop, crop, 0, 0, sz, sz);
+                } else {
+                    cctx.fillStyle = '#667eea';
+                    cctx.fillRect(0, 0, sz, sz);
+                    cctx.fillStyle = 'white';
+                    cctx.font = `bold ${sz*0.4}px Arial`;
+                    cctx.textAlign = 'center';
+                    cctx.textBaseline = 'middle';
+                    cctx.fillText(name[0], sz/2, sz/2);
+                }
             }
 
             // メイン友情行
