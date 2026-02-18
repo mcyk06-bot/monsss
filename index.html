@@ -755,8 +755,8 @@
                 <div class="hp-text" id="hpText">10 / 10</div>
             </div>
             <!-- キャラ友情状況 + 大号令ボタン -->
-            <div style="display:flex; gap:6px; margin-top:6px; align-items:stretch;">
-                <div id="friendshipStatusBar" style="display:flex; gap:6px; flex:1;"></div>
+            <div style="display:flex; gap:0; margin-top:5px; align-items:stretch; padding: 0 4px;">
+                <div id="friendshipStatusBar" style="display:flex; flex:1;"></div>
                 <div style="flex-shrink:0;">
                     <button class="special-shot-btn" id="specialShotBtn" disabled style="height:100%;">
                         <span id="specialShotBtnText">大号令</span>
@@ -2586,40 +2586,55 @@
 
             const card = document.createElement('div');
             card.style.cssText = `
-                background: rgba(255,255,255,0.08);
-                border: 1px solid rgba(255,255,255,0.15);
-                border-radius: 6px;
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 5px;
                 text-align: center;
                 flex: 1;
                 min-width: 0;
                 overflow: hidden;
                 display: flex;
                 flex-direction: column;
+                margin: 0 2px;
             `;
 
-            // キャラ画像（四角トリミング・object-fit:cover で拡大）
-            let imgHtml = '';
-            if (charImages[m.characterIndex] && charImages[m.characterIndex].complete && charImages[m.characterIndex].naturalWidth > 0) {
-                imgHtml = `<div style="width:100%;aspect-ratio:1;overflow:hidden;flex-shrink:0;">
-                    <img src="${charImages[m.characterIndex].src}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;">
-                </div>`;
+            // キャラ画像：canvasで四角トリミング
+            const cvs = document.createElement('canvas');
+            const sz = 48;
+            cvs.width = sz; cvs.height = sz;
+            cvs.style.cssText = `width:100%;aspect-ratio:1;display:block;`;
+            const cctx = cvs.getContext('2d');
+            const img = charImages[m.characterIndex];
+            if (img && img.complete && img.naturalWidth > 0) {
+                // 画像の中央上よりをトリミングして描画
+                const iw = img.naturalWidth, ih = img.naturalHeight;
+                const crop = Math.min(iw, ih);
+                const sx = (iw - crop) / 2;
+                const sy = ih > iw ? 0 : (ih - crop) / 2 * 0.3; // 上寄り
+                cctx.drawImage(img, sx, sy, crop, crop, 0, 0, sz, sz);
             } else {
-                imgHtml = `<div style="width:100%;aspect-ratio:1;background:#667eea;display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:bold;flex-shrink:0;">${name[0]}</div>`;
+                cctx.fillStyle = '#667eea';
+                cctx.fillRect(0, 0, sz, sz);
+                cctx.fillStyle = 'white';
+                cctx.font = `bold ${sz*0.4}px Arial`;
+                cctx.textAlign = 'center';
+                cctx.textBaseline = 'middle';
+                cctx.fillText(name[0], sz/2, sz/2);
             }
 
             // メイン友情行
             const mainRow = m.friendshipType !== 'normal'
-                ? `<div style="font-size:11px;line-height:1.4;padding:1px 2px;">${FRIENDSHIP_ICONS[m.friendshipType]}<span style="color:#ffd700;font-size:10px;">Lv${mainLv}</span></div>`
-                : `<div style="font-size:9px;color:#aaa;line-height:1.4;padding:1px 2px;">─</div>`;
+                ? `<div style="font-size:11px;line-height:1.5;padding:0 2px;">${FRIENDSHIP_ICONS[m.friendshipType]}<span style="color:#ffd700;font-size:10px;">Lv${mainLv}</span></div>`
+                : `<div style="font-size:9px;color:#555;line-height:1.5;padding:0 2px;">─</div>`;
 
-            // サブ友情行
             const subRow = subIcon
-                ? `<div style="font-size:11px;line-height:1.4;padding:1px 2px;opacity:0.85;">${subIcon}<span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
+                ? `<div style="font-size:11px;line-height:1.4;padding:0 2px;opacity:0.85;">${subIcon}<span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
                 : (m.subFriendshipUnlocked
-                    ? `<div style="font-size:9px;color:#555;line-height:1.4;padding:1px 2px;">sub─</div>`
+                    ? `<div style="font-size:9px;color:#444;line-height:1.4;padding:0 2px;">sub─</div>`
                     : '');
 
-            card.innerHTML = `${imgHtml}${mainRow}${subRow}`;
+            card.appendChild(cvs);
+            card.insertAdjacentHTML('beforeend', mainRow + subRow);
             bar.appendChild(card);
         });
     }
