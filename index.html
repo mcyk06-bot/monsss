@@ -1788,11 +1788,21 @@
                             setTimeout(resolve, 1200);
                         } else if (type === 'bomb') {
                             showMessage('💣 爆弾攻撃！', 'danger');
-                            const bx = target.x + (Math.random() - 0.5) * 50, by = target.y + (Math.random() - 0.5) * 50;
+                            const bx = target.x + (Math.random() - 0.5) * 50;
+                            const by = target.y + (Math.random() - 0.5) * 50;
                             const blastR = 65 + currentStage * 1.5;
-                            enemyBeams.push(new EnemyBombEffect(bx, by, blastR));
+                            // ★ 飛翔プロジェクタイルを追加
+                            enemyBeams.push(new EnemyBombProjectile(attacker.x, attacker.y, bx, by));
                             setTimeout(() => {
-                                for (const m of playerMarbles) { const dx = m.x - bx, dy = m.y - by; if (Math.sqrt(dx*dx+dy*dy) < blastR) { teamHP -= enemyDamage; m.takeDamage(); explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#ff6600')); } }
+                                // 着弾時に爆発エフェクト
+                                enemyBeams.push(new EnemyBombEffect(bx, by, blastR));
+                                for (const m of playerMarbles) {
+                                    const dx = m.x - bx, dy = m.y - by;
+                                    if (Math.sqrt(dx*dx+dy*dy) < blastR) {
+                                        teamHP -= enemyDamage; m.takeDamage();
+                                        explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#ff6600'));
+                                    }
+                                }
                                 updateHPBar(); triggerGameOver();
                             }, 550);
                             setTimeout(resolve, 1300);
