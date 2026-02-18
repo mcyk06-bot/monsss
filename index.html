@@ -1777,7 +1777,7 @@
             teamHP = Math.min(MAX_TEAM_HP, teamHP + hpRecovery); updateHPBar();
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
-                if (specialShotCount === SPECIAL_SHOT_MAX) showMessage('⚡ 大号令ショット準備完了！', 'combo-effect');
+                if (specialShotCount === SPECIAL_SHOT_MAX) showMessage('⚡ 大号令！', 'combo-effect');
             }
             updateSpecialShotUI();
             document.getElementById('clearStageNum').textContent = `ステージ ${currentStage} クリア！`;
