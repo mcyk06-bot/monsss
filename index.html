@@ -739,6 +739,14 @@
             SPEED: new Image()
         };
 
+        // キャラクター別画像（インデックス0〜3）
+        const charImages = [new Image(), new Image(), new Image(), new Image()];
+        // 0:マイク→002.png, 1:ホッパー→008.png, 2:イレブン→003.png, 3:ダスティン→001.png
+        charImages[0].src = '002.png';
+        charImages[1].src = '008.png';
+        charImages[2].src = '003.png';
+        charImages[3].src = '001.png';
+
         const enemyImages = {
             SMALL: new Image(),
             MEDIUM: new Image(),
@@ -755,7 +763,7 @@
         enemyImages.BOSS.src = '007.png';
 
         let imagesLoaded = 0;
-        const totalImages = 7;
+        const totalImages = 11;
 
         function checkAllImagesLoaded() {
             imagesLoaded++;
@@ -771,6 +779,10 @@
         enemyImages.MEDIUM.onload = checkAllImagesLoaded;
         enemyImages.LARGE.onload = checkAllImagesLoaded;
         enemyImages.BOSS.onload = checkAllImagesLoaded;
+        charImages[0].onload = checkAllImagesLoaded;
+        charImages[1].onload = checkAllImagesLoaded;
+        charImages[2].onload = checkAllImagesLoaded;
+        charImages[3].onload = checkAllImagesLoaded;
 
         marbleImages.NORMAL.onerror = () => console.error('❌ 001.pngが読み込めません');
         marbleImages.POWER.onerror = () => console.error('❌ 002.pngが読み込めません');
@@ -779,6 +791,10 @@
         enemyImages.MEDIUM.onerror = () => console.error('❌ 005.pngが読み込めません');
         enemyImages.LARGE.onerror = () => console.error('❌ 006.pngが読み込めません');
         enemyImages.BOSS.onerror = () => console.error('❌ 007.pngが読み込めません');
+        charImages[0].onerror = () => console.error('❌ 002.png(マイク)が読み込めません');
+        charImages[1].onerror = () => console.error('❌ 008.png(ホッパー)が読み込めません');
+        charImages[2].onerror = () => console.error('❌ 003.png(イレブン)が読み込めません');
+        charImages[3].onerror = () => console.error('❌ 001.png(ダスティン)が読み込めません');
 
         const BASE_WIDTH = 400;
         const BASE_HEIGHT = 450;
@@ -834,6 +850,8 @@
                 document.getElementById('instructionsModal').classList.remove('active');
             }
         });
+        
+        const CHAR_NAMES = ['マイク', 'ホッパー', 'イレブン', 'ダスティン'];
         
         const MARBLE_TYPES = {
             NORMAL: { name: 'ノーマル', color: '#4CAF50', secondaryColor: '#81C784', radius: 23, damage: 1.5, attackMult: 1.00, speedMult: 1.0,  friction: 0.99,  symbol: '●' },
@@ -1463,6 +1481,7 @@
                 this.isPlayer = isPlayer; this.isActive = false; this.isUsed = false; this.isStopped = false;
                 this.hitEnemies = new Set(); this.animationFrame = 0;
                 this.id = Math.random().toString(36).substr(2, 9); this.damageFrame = 0;
+                this.characterIndex = -1; // startStageで設定
                 this.friendshipType = 'normal'; this.friendshipPower = 1.0; this.friendshipCount = 8;
                 this.friendshipItems = []; this.friendshipLevel = 1;
             }
@@ -1478,7 +1497,9 @@
                     ctx.strokeStyle = `rgba(255, 255, 255, ${pulse * 0.6})`; ctx.lineWidth = 2; ctx.stroke();
                 }
                 let img;
-                if (this.type === MARBLE_TYPES.NORMAL) img = marbleImages.NORMAL;
+                if (this.isPlayer && this.characterIndex >= 0 && charImages[this.characterIndex]) {
+                    img = charImages[this.characterIndex];
+                } else if (this.type === MARBLE_TYPES.NORMAL) img = marbleImages.NORMAL;
                 else if (this.type === MARBLE_TYPES.POWER) img = marbleImages.POWER;
                 else if (this.type === MARBLE_TYPES.SPEED) img = marbleImages.SPEED;
                 if (this.isUsed && !this.isActive && !this.isStopped) ctx.globalAlpha = 0.5;
@@ -1784,7 +1805,9 @@
                 const startX = (canvasSize.width - (spacing * 3)) / 2;
                 const yPos = canvasSize.height - 50;
                 for (let i = 0; i < MAX_MARBLES; i++) {
-                    playerMarbles.push(new Marble(startX + (i * spacing), yPos, types[i]));
+                    const m = new Marble(startX + (i * spacing), yPos, types[i]);
+                    m.characterIndex = i;
+                    playerMarbles.push(m);
                 }
             } else {
                 repositionMarbles();
@@ -2225,7 +2248,7 @@
                 const boxWidth = Math.min(100 + distance / 3, 150); const boxHeight = Math.min(40 + distance / 10, 55);
                 ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(arrowEndX - boxWidth/2, arrowEndY - boxHeight - 10, boxWidth, boxHeight);
                 ctx.fillStyle = 'white'; ctx.font = `bold ${Math.min(12 + distance / 30, 18)}px Arial`; ctx.textAlign = 'center';
-                ctx.fillText(`${currentMarble.type.name}`, arrowEndX, arrowEndY - boxHeight + 5);
+                ctx.fillText(`${CHAR_NAMES[currentTurn]}`, arrowEndX, arrowEndY - boxHeight + 5);
                 ctx.font = `${Math.min(10 + distance / 40, 14)}px Arial`;
                 ctx.fillText(`パワー: ${Math.round(power * 10)}%`, arrowEndX, arrowEndY - boxHeight + 25);
                 
