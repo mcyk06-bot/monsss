@@ -1512,7 +1512,7 @@
                                 defeated++; totalDefeated++;
                                 explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
                                 enemies.splice(i, 1);
-                            } else { explosions.push(new CriticalEffect(en.x, en.y)); }
+                            }
                         }
                         updateUI();
                         if (enemies.length === 0) setTimeout(() => showStageClear(), 500);
@@ -1982,8 +1982,11 @@
                     const enemy = enemies[j];
                     if (!bullets[i].hitEnemies.has(enemy) && checkBulletCollision(bullets[i], enemy)) {
                         bullets[i].hitEnemies.add(enemy);
+                        const isBulletCritical = Math.random() < 0.15;
                         const bulletDamage = (0.3 + playerAttackBonus * 0.1) * bullets[i].power;
-                        if (enemy.takeDamage(bulletDamage)) {
+                        const finalBulletDamage = isBulletCritical ? bulletDamage * 3 : bulletDamage;
+                        if (isBulletCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
+                        if (enemy.takeDamage(finalBulletDamage)) {
                             defeated++; totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                             enemies.splice(i, 1);
@@ -2075,7 +2078,7 @@
                             if (dotProduct < 0) { marble.vx -= 2 * dotProduct * normalX; marble.vy -= 2 * dotProduct * normalY; marble.vx *= 0.85; marble.vy *= 0.85; }
                             const isCritical = Math.random() < 0.15;
                             const baseDamage = marble.damage + playerAttackBonus;
-                            const damageToApply = isCritical ? baseDamage + 10 : baseDamage;
+                            const damageToApply = isCritical ? baseDamage * 7.5 : baseDamage;
                             if (isCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
                             if (enemy.takeDamage(damageToApply)) {
                                 defeated++; totalDefeated++;
