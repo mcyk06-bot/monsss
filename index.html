@@ -1153,8 +1153,8 @@
                     const textAlpha = 1 - this.frame / 40;
                     const yOffset = this.y - 30 - this.frame * 0.5;
                     ctx.strokeStyle = '#000000'; ctx.lineWidth = 5; ctx.font = 'bold 26px Arial'; ctx.textAlign = 'center';
-                    ctx.globalAlpha = textAlpha; ctx.strokeText('CRITICAL!', this.x, yOffset);
-                    ctx.fillStyle = this.frame % 6 < 3 ? '#ff0000' : '#ffff00'; ctx.fillText('CRITICAL!', this.x, yOffset); ctx.globalAlpha = 1;
+                    ctx.globalAlpha = textAlpha; ctx.strokeText('ドォォォォン!', this.x, yOffset);
+                    ctx.fillStyle = this.frame % 6 < 3 ? '#ff0000' : '#ffff00'; ctx.fillText('ドォォォォン!', this.x, yOffset); ctx.globalAlpha = 1;
                 }
             }
             isComplete() { return this.frame >= this.maxFrames; }
