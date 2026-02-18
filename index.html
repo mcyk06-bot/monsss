@@ -588,7 +588,7 @@
     <div class="game-container">
         <div class="header"><h1>🎮 monsss</h1></div>
         <div class="monsst-bar" id="monsst-bar">
-            <!-- 左2つ: ターン・ステージ撃破 -->
+            <!-- 左3つ: ターン・ステージ撃破・総撃破 -->
             <div class="monsst-stats">
                 <div class="monsst-stat">
                     <div class="monsst-stat-label">ターン</div>
@@ -610,14 +610,14 @@
                     <div class="monsst-circle-num" id="stageDisplay">1</div>
                 </div>
             </div>
-            <!-- 右3つ: 総撃破・攻撃力・速度 -->
+            <!-- 右2つ: 攻撃力・速度 -->
             <div class="monsst-stats">
                 <div class="monsst-stat">
-                    <div class="monsst-stat-label">⚔️攻撃力</div>
+                    <div class="monsst-stat-label">💪攻撃力</div>
                     <div class="monsst-stat-value" id="attackBonus">+0</div>
                 </div>
                 <div class="monsst-stat">
-                    <div class="monsst-stat-label">💨速度</div>
+                    <div class="monsst-stat-label">🛼速度</div>
                     <div class="monsst-stat-value" id="speedBonus">+0</div>
                 </div>
             </div>
@@ -1321,14 +1321,14 @@
             constructor(x, y, type) {
                 this.x = x; this.y = y; this.type = type; this.radius = 15; this.frame = 0; this.collected = false;
                 if (type === 'hp') { this.emoji = '❤️'; this.color = '#ff1744'; this.name = 'HP上限アップ'; this.description = 'HP上限が2増加します'; }
-                else if (type === 'attack') { this.emoji = '⚔️'; this.color = '#ffd600'; this.name = '攻撃力アップ'; this.description = '攻撃力が0.5増加します'; }
-                else if (type === 'speedup') { this.emoji = '💨'; this.color = '#00bcd4'; this.name = 'スピードアップ'; this.description = '全キャラの移動速度が上がります！'; }
+                else if (type === 'attack') { this.emoji = '💪'; this.color = '#ffd600'; this.name = '攻撃力アップ'; this.description = '攻撃力が0.5増加します'; }
+                else if (type === 'speedup') { this.emoji = '🛼'; this.color = '#00bcd4'; this.name = 'スピードアップ'; this.description = '全キャラの移動速度が上がります！'; }
                 else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
-                else if (type === 'friendship_homing') { this.emoji = '🎯'; this.color = '#00bcd4'; this.name = 'ホーミングミサイル'; this.description = '友情攻撃がホーミングミサイルになります。敵を自動追尾！'; }
+                else if (type === 'friendship_homing') { this.emoji = '🚀'; this.color = '#00bcd4'; this.name = 'ホーミングミサイル'; this.description = '友情攻撃がホーミングミサイルになります。敵を自動追尾！'; }
                 else if (type === 'friendship_laser') { this.emoji = '⚡'; this.color = '#9c27b0'; this.name = 'レーザービーム'; this.description = '友情攻撃が貫通レーザーになります。敵を一直線に貫く！'; }
                 else if (type === 'friendship_heal') { this.emoji = '❤️‍🩹'; this.color = '#ff69b4'; this.name = '友情・回復'; this.description = '友情攻撃発動時、攻撃の代わりにHPを回復します。'; }
                 else if (type === 'friendship_machinegun') { this.emoji = '🔫'; this.color = '#607d8b'; this.name = '友情・マシンガン'; this.description = '弱った敵にめがけて高速弾を16発連射します！'; }
-                else if (type === 'friendship_energy') { this.emoji = '🌀'; this.color = '#00bcd4'; this.name = 'エナジーサークル'; this.description = '自身を中心にエネルギー衝撃波が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
+                else if (type === 'friendship_energy') { this.emoji = '🧿'; this.color = '#00bcd4'; this.name = 'エナジーサークル'; this.description = '自身を中心にエネルギー衝撃波が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
             }
             update() { this.frame++; }
             draw() {
