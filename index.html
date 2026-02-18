@@ -2217,6 +2217,7 @@
                         const baseDamage = (1.5 + playerAttackBonus) * marble.type.attackMult * (marble.isSpecialShot ? 3 : 1);
                         const damageToApply = isCritical ? baseDamage * 7.5 : baseDamage;
                         if (isCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
+                        playHitSound(isCritical);
                         if (enemy.takeDamage(damageToApply)) {
                             defeated++; totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
@@ -2477,6 +2478,7 @@
                     marble.vx = (dx / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
                     marble.vy = (dy / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
                     marble.isActive = true; marble.isUsed = true; marble.isSpecialShot = true;
+                    setTimeout(() => playLaunchSound(power), i * 80);
                     activeMarbles.push(marble);
                 }
                 const centerX = canvasSize.width / 2, centerY = canvasSize.height / 2;
@@ -2490,6 +2492,7 @@
                 marble.vx = (dx / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult;
                 marble.vy = (dy / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult;
                 marble.isActive = true; marble.isUsed = true; activeMarbles.push(marble);
+                playLaunchSound(power);
             }
         }
         isDragging = false;
@@ -2544,6 +2547,58 @@
         try { startStage(); } catch (error) { console.error('❌ ステージ開始エラー:', error); alert(`エラーが発生しました: ${error.message}`); }
     });
     
+    // =====================
+    // 🔊 サウンドシステム
+    // =====================
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function resumeAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); }
+
+    function playLaunchSound(power) {
+        resumeAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        // パワーに応じて音程を変える（低め→高め）
+        const freq = 180 + power * 60;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.4, audioCtx.currentTime + 0.15);
+        osc.type = 'sawtooth';
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.18);
+    }
+
+    function playHitSound(isCritical = false) {
+        resumeAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        // ノイズっぽい衝撃感を出すためにdetuneを使う
+        const distortion = audioCtx.createWaveShaper();
+        const curve = new Float32Array(256);
+        for (let i = 0; i < 256; i++) curve[i] = (i < 128 ? i - 128 : i - 128) / 64;
+        distortion.curve = curve;
+        osc.connect(distortion); distortion.connect(gain); gain.connect(audioCtx.destination);
+        if (isCritical) {
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+            osc.type = 'square';
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.35);
+        } else {
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.12);
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.28, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+    }
+
     initGame();
     update();
 </script>
