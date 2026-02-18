@@ -2580,7 +2580,6 @@
         bar.innerHTML = '';
         playerMarbles.forEach((m, i) => {
             const name = CHAR_NAMES[m.characterIndex] || `P${i+1}`;
-            const mainIcon = FRIENDSHIP_ICONS[m.friendshipType] || '─';
             const mainLv = m.friendshipType !== 'normal' ? m.friendshipLevel : 0;
             const subIcon = m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' ? FRIENDSHIP_ICONS[m.subFriendshipType] : null;
             const subLv = subIcon ? m.subFriendshipLevel : 0;
@@ -2589,32 +2588,35 @@
             card.style.cssText = `
                 background: rgba(255,255,255,0.08);
                 border: 1px solid rgba(255,255,255,0.15);
-                border-radius: 8px;
-                padding: 4px 6px;
+                border-radius: 6px;
                 text-align: center;
                 flex: 1;
                 min-width: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
             `;
 
-            // キャラ画像
-            const imgSize = 28;
+            // キャラ画像（四角トリミング・object-fit:cover で拡大）
             let imgHtml = '';
             if (charImages[m.characterIndex] && charImages[m.characterIndex].complete && charImages[m.characterIndex].naturalWidth > 0) {
-                imgHtml = `<img src="${charImages[m.characterIndex].src}" style="width:${imgSize}px;height:${imgSize}px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);">`;
+                imgHtml = `<div style="width:100%;aspect-ratio:1;overflow:hidden;flex-shrink:0;">
+                    <img src="${charImages[m.characterIndex].src}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;">
+                </div>`;
             } else {
-                imgHtml = `<div style="width:${imgSize}px;height:${imgSize}px;border-radius:50%;background:#667eea;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:white;">${name[0]}</div>`;
+                imgHtml = `<div style="width:100%;aspect-ratio:1;background:#667eea;display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:bold;flex-shrink:0;">${name[0]}</div>`;
             }
 
             // メイン友情行
             const mainRow = m.friendshipType !== 'normal'
-                ? `<div style="font-size:11px;line-height:1.3;">${mainIcon}<span style="color:#ffd700;font-size:10px;">Lv${mainLv}</span></div>`
-                : `<div style="font-size:9px;color:#aaa;line-height:1.3;">─</div>`;
+                ? `<div style="font-size:11px;line-height:1.4;padding:1px 2px;">${FRIENDSHIP_ICONS[m.friendshipType]}<span style="color:#ffd700;font-size:10px;">Lv${mainLv}</span></div>`
+                : `<div style="font-size:9px;color:#aaa;line-height:1.4;padding:1px 2px;">─</div>`;
 
             // サブ友情行
             const subRow = subIcon
-                ? `<div style="font-size:11px;line-height:1.3;opacity:0.75;">${subIcon}<span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
+                ? `<div style="font-size:11px;line-height:1.4;padding:1px 2px;opacity:0.85;">${subIcon}<span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
                 : (m.subFriendshipUnlocked
-                    ? `<div style="font-size:9px;color:#aaa;line-height:1.3;">sub─</div>`
+                    ? `<div style="font-size:9px;color:#555;line-height:1.4;padding:1px 2px;">sub─</div>`
                     : '');
 
             card.innerHTML = `${imgHtml}${mainRow}${subRow}`;
