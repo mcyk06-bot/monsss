@@ -1306,10 +1306,10 @@
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
                 this.target = null; 
-                this.homingStrength = 0.4; // 変更: 2.0 -> 0.25 (8分の1)
+                this.homingStrength = 0.23; // 変更: 2.0 -> 0.25 (8分の1)
                 this.frame = 0;
                 this.maxSpeed = 5.0; // 追加: 速度上限
-                this.life = 250;
+                this.life = 235;
             }
             update() {
                 if (this.delay > 0) { this.delay--; return; }
