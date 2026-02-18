@@ -876,6 +876,80 @@
             isComplete() { return this.frame >= this.maxFrames; }
         }
 
+        // ★ 追加: 爆弾の飛来アニメーション用クラス
+        class EnemyBombProjectile {
+            constructor(startX, startY, targetX, targetY) {
+                this.startX = startX; this.startY = startY;
+                this.targetX = targetX; this.targetY = targetY;
+                this.frame = 0; this.maxFrames = 45; // 着弾までの時間
+                this.x = startX; this.y = startY;
+                this.angle = 0;
+                this.trail = [];
+                // 放物線の高さ
+                this.peakHeight = 180;
+            }
+            draw() {
+                this.frame++;
+                const t = this.frame / this.maxFrames;
+                
+                // 放物線計算 (線形補間 + 高さオフセット)
+                const lx = this.startX + (this.targetX - this.startX) * t;
+                const ly = this.startY + (this.targetY - this.startY) * t;
+                const heightOffset = Math.sin(t * Math.PI) * this.peakHeight;
+                
+                this.x = lx;
+                this.y = ly - heightOffset;
+                
+                // 回転
+                this.angle += 0.4;
+
+                // 軌跡の記録と描画
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > 12) this.trail.shift();
+
+                ctx.save();
+                // 軌跡
+                if (this.trail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.strokeStyle = 'rgba(50, 50, 50, 0.4)'; // 薄い煙のような軌跡
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // 爆弾本体
+                ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                ctx.fillStyle = '#1a1a1a'; ctx.fill(); // 黒
+                // ハイライト
+                ctx.beginPath(); ctx.arc(-5, -5, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#444'; ctx.fill();
+
+                // 導火線
+                ctx.beginPath();
+                ctx.moveTo(0, -14);
+                ctx.quadraticCurveTo(6, -20, 10, -26);
+                ctx.strokeStyle = '#cba'; ctx.lineWidth = 3; ctx.stroke();
+
+                // 導火線の火 (チカチカ点滅)
+                if (Math.floor(this.frame / 2) % 2 === 0) {
+                    ctx.beginPath(); ctx.arc(10, -26, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ff5722'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(10, -26, 8, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth = 2; ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
+
         class EnergySurgeEffect {
             constructor(x, y) {
                 this.x = x; this.y = y; this.frame = 0; this.maxFrames = 75;
@@ -1544,17 +1618,32 @@
         }
 
         function spawnItems(countMultiplier = 1.0) {
+            // 出現率 60%
             if (Math.random() < 0.60 * countMultiplier) {
                 const rand = Math.random();
                 let itemType;
-                if (rand < 0.30) itemType = 'hp';
-                else if (rand < 0.48) itemType = 'attack';
-                else if (rand < 0.53) itemType = 'death';
-                else if (rand < 0.62) itemType = 'friendship_heal';
-                else if (rand < 0.71) itemType = 'friendship_homing';
-                else if (rand < 0.80) itemType = 'friendship_laser';
-                else if (rand < 0.90) itemType = 'friendship_machinegun';
-                else itemType = 'friendship_energy';
+                
+                // 確率の内訳（合計1.0になるように調整）
+                if (rand < 0.30) {
+                    itemType = 'hp';                 // 30% (0.00 - 0.30)
+                } else if (rand < 0.438) {
+                    itemType = 'attack';             // 13.8% (0.30 - 0.438)
+                } else if (rand < 0.448) {
+                    itemType = 'death';              // 1% (0.438 - 0.448) ★激レア化
+                } else if (rand < 0.586) {
+                    itemType = 'friendship_heal';    // 13.8%
+                } else if (rand < 0.724) {
+                    itemType = 'friendship_homing';  // 13.8%
+                } else if (rand < 0.862) {
+                    itemType = 'friendship_laser';   // 13.8%
+                } else if (rand < 1.0) {
+                    // friendship_machinegun と friendship_energy は残り枠をさらに分割
+                    if (Math.random() < 0.5) {
+                        itemType = 'friendship_machinegun';
+                    } else {
+                        itemType = 'friendship_energy';
+                    }
+                }
                 
                 let x, y, valid, attempts = 0;
                 do {
