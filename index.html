@@ -2379,7 +2379,17 @@
         
         document.getElementById('itemCancelBtn').addEventListener('click', () => {
             document.getElementById('itemModal').classList.remove('active');
-            showMessage('アイテムを装備しませんでした', 'info');
+            if (Math.random() < 0.01) {
+                playerAttackBonus += 1;
+                explosions.push(new CriticalEffect(canvasSize.width / 2, canvasSize.height / 2));
+                showMessage('🎉 奇跡！装備しなかったのに攻撃力+1！', 'combo-effect');
+                updateUI();
+            } else {
+                teamHP = Math.min(teamHP + 1, MAX_TEAM_HP);
+                explosions.push(new HealEffect(canvasSize.width / 2, canvasSize.height / 2));
+                showMessage('装備しなかった…でも HP+1 回復！', 'success');
+                updateHPBar();
+            }
             currentItem = null; currentMarble = null; isPaused = false;
         });
         
