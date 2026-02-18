@@ -1537,6 +1537,7 @@
             else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
             else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '友情強化薬'; this.description = '自分の友情コンボ（メイン・サブ）のレベルが1上がる！レア'; }
             else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体友情強化注射'; this.description = '仲間全員の友情コンボのレベルが1上がる！激レア！'; }
+            else if (type === 'friendship_normal') { this.emoji = '⚡'; this.color = '#607d8b'; this.name = '豆粒友情'; this.description = '小さな弾を8発放つ基本の友情コンボ！'; }
             else if (type === 'friendship_homing') { this.emoji = '🚀'; this.color = '#00bcd4'; this.name = 'ホーミングミサイル'; this.description = '友情攻撃がホーミングミサイルになります。敵を自動追尾！'; }
             else if (type === 'friendship_laser') { this.emoji = '⚡'; this.color = '#9c27b0'; this.name = 'レーザービーム'; this.description = '友情攻撃が貫通レーザーになります。敵を一直線に貫く！'; }
             else if (type === 'friendship_heal') { this.emoji = '❤️‍🩹'; this.color = '#ff69b4'; this.name = '友情・回復'; this.description = '友情攻撃発動時、攻撃の代わりにHPを回復します。'; }
@@ -1734,6 +1735,7 @@
                 else if (this.friendshipType === 'heal') icon = '❤️';
                 else if (this.friendshipType === 'machinegun') icon = '🔫';
                 else if (this.friendshipType === 'energy') icon = '🧿';
+                else if (this.friendshipType === 'normal_shot') icon = '💥';
                 else if (this.friendshipPower > 1.0) icon = '💥';
                 else if (this.friendshipCount > 8) icon = '🔢';
                 if (icon) {
@@ -1813,6 +1815,15 @@
                     updateUI();
                     if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
                 }, 350);
+                return [];
+            } else if (this.friendshipType === 'normal_shot') {
+                // 豆粒友情：8発放射
+                for (let i = 0; i < bulletCount; i++) {
+                    const angle = (Math.PI * 2 / bulletCount) * i;
+                    newBullets.push(new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0));
+                }
+            } else if (this.friendshipType === 'normal') {
+                // 未装備は何もしない
                 return [];
             } else {
                 for (let i = 0; i < bulletCount; i++) {
@@ -1973,25 +1984,27 @@
             
             // 確率の内訳（合計1.0になるように調整）
             if (rand < 0.20) {
-                itemType = 'hp';                 // 20%
+                itemType = 'hp';                   // 20%
             } else if (rand < 0.30) {
-                itemType = 'hourglass';          // 10%
+                itemType = 'hourglass';             // 10%
             } else if (rand < 0.42) {
                 itemType = playerSpeedBonus >= 2.0 ? 'attack' : 'speedup'; // 12%
             } else if (rand < 0.54) {
-                itemType = 'attack';             // 12%
+                itemType = 'attack';               // 12%
             } else if (rand < 0.55) {
-                itemType = 'death';              // 1%
+                itemType = 'death';                // 1%
             } else if (rand < 0.57) {
-                itemType = 'friendship_up_self'; // 2% 💊
+                itemType = 'friendship_up_self';   // 2% 💊
             } else if (rand < 0.58) {
-                itemType = 'friendship_up_all';  // 1% 💉
-            } else if (rand < 0.644) {
-                itemType = 'friendship_heal';    // 6.4%
-            } else if (rand < 0.724) {
-                itemType = 'friendship_homing';  // 8%
-            } else if (rand < 0.804) {
-                itemType = 'friendship_laser';   // 8%
+                itemType = 'friendship_up_all';    // 1% 💉
+            } else if (rand < 0.64) {
+                itemType = 'friendship_normal';    // 6% 豆粒（序盤の入門）
+            } else if (rand < 0.70) {
+                itemType = 'friendship_heal';      // 6%
+            } else if (rand < 0.77) {
+                itemType = 'friendship_homing';    // 7%
+            } else if (rand < 0.84) {
+                itemType = 'friendship_laser';     // 7%
             } else if (rand < 1.0) {
                 if (Math.random() < 0.5) {
                     itemType = 'friendship_machinegun';
@@ -2293,7 +2306,8 @@
         const collisionKey = `${currentTurn}_${activeMarble.id}_${hitMarble.id}`;
         if (friendshipAttackHistory.has(collisionKey)) return null;
         friendshipAttackHistory.add(collisionKey);
-        playFriendshipSound(hitMarble.friendshipType);
+        if (hitMarble.friendshipType === 'normal') return null; // 未装備のみスキップ
+        playFriendshipSound(hitMarble.friendshipType === 'normal_shot' ? null : hitMarble.friendshipType);
         if (hitMarble.subFriendshipUnlocked && hitMarble.subFriendshipType !== 'normal') {
             setTimeout(() => playFriendshipSound(hitMarble.subFriendshipType), 150);
         }
@@ -2696,8 +2710,8 @@
         setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
     }
     
-    const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal:'　' };
-    const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal:'なし' };
+    const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'💥', normal:'　' };
+    const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal_shot:'豆粒友情', normal:'なし' };
 
     function iconBar(type, level) {
         const icon = FRIENDSHIP_ICONS[type] || '　';
@@ -2717,6 +2731,7 @@
         else if (item.type === 'friendship_heal') newItemType = 'heal';
         else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
         else if (item.type === 'friendship_energy') newItemType = 'energy';
+        else if (item.type === 'friendship_normal') newItemType = 'normal_shot';
 
         const isFriendship = newItemType !== 'normal';
         const typeName = FRIENDSHIP_NAMES[newItemType];
@@ -2790,6 +2805,7 @@
         else if (item.type === 'friendship_heal') { newItemType = 'heal'; itemName = '回復'; }
         else if (item.type === 'friendship_machinegun') { newItemType = 'machinegun'; itemName = 'マシンガン'; }
         else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = 'エナジーサークル'; }
+        else if (item.type === 'friendship_normal') { newItemType = 'normal_shot'; itemName = '豆粒友情'; }
         if (!newItemType) return;
 
         if (equipToSub) {
@@ -3345,7 +3361,7 @@
 
     // 友情攻撃音（type: 'homing'=ホーミング / 'laser'=レーザー / 'machinegun'=マシンガン / 'energy'=エナジーサークル / 'heal'=回復）
     function playFriendshipSound(type) {
-        if (!seEnabled) return;
+        if (!seEnabled || !type || type === 'normal_shot') return;
         resumeAudio();
         const t = audioCtx.currentTime;
 
