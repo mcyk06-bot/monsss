@@ -487,6 +487,42 @@
             from { transform: scale(0.5); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        /* モーダル内の新しいスタイル */
+        .item-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: white;
+        }
+        .badge-new { background: #ff3e3e; } /* 赤色 */
+        .badge-up { background: #4caf50; }  /* 緑色 */
+
+        .item-name-top {
+            font-size: 24px;
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .level-status {
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .stars { color: #888; font-size: 18px; }
+        .stars-gold { color: #f1c40f; font-size: 22px; text-shadow: 0 0 5px rgba(241, 196, 15, 0.5); }
+
+        .next-level {
+            margin-top: 5px;
+            font-weight: bold;
+            border-top: 1px dashed #ccc;
+            padding-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -2163,12 +2199,13 @@
         }
         
         function showItemModal(item, marble) {
-            isPaused = true; currentItem = item; currentMarble = marble;
-            const modal = document.getElementById('itemModal');
-            document.getElementById('itemEmoji').textContent = item.emoji;
-            document.getElementById('itemName').textContent = item.name;
-            document.getElementById('itemDescription').textContent = item.description;
+            isPaused = true; 
+            currentItem = item; 
+            currentMarble = marble;
             
+            const modal = document.getElementById('itemModal');
+            
+            // アイテムタイプの判定用
             let newItemType = 'normal';
             if (item.type === 'friendship_homing') newItemType = 'homing';
             else if (item.type === 'friendship_laser') newItemType = 'laser';
@@ -2176,40 +2213,65 @@
             else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
             else if (item.type === 'friendship_energy') newItemType = 'energy';
 
-            let isSameType = (marble.friendshipType === newItemType);
-            let nextLevel = isSameType ? Math.min(marble.friendshipLevel + 1, 5) : 1;
-            let typeName = '';
-            if (newItemType === 'homing') typeName = 'ホーミングミサイル';
-            else if (newItemType === 'laser') typeName = 'レーザービーム';
-            else if (newItemType === 'heal') typeName = '友情・回復';
-            else if (newItemType === 'machinegun') typeName = '友情・マシンガン';
-            else if (newItemType === 'energy') typeName = 'エナジーサークル';
-            let currentTypeName = '';
-            if (marble.friendshipType === 'homing') currentTypeName = 'ホーミングミサイル';
-            else if (marble.friendshipType === 'laser') currentTypeName = 'レーザービーム';
-            else if (marble.friendshipType === 'heal') currentTypeName = '友情・回復';
-            else if (marble.friendshipType === 'machinegun') currentTypeName = '友情・マシンガン';
-            else if (marble.friendshipType === 'energy') currentTypeName = 'エナジーサークル';
-            else currentTypeName = 'なし';
-            
-            document.getElementById('itemFriendshipName').textContent = typeName;
+            // 名称と現在の状況を整理
+            const typeNames = {
+                'homing': 'ホーミングミサイル',
+                'laser': 'レーザービーム',
+                'heal': '友情・回復',
+                'machinegun': '友情・マシンガン',
+                'energy': 'エナジーサークル',
+                'normal': 'なし'
+            };
+
+            const typeName = typeNames[newItemType];
+            const currentTypeName = typeNames[marble.friendshipType] || 'なし';
+            const isSameType = (marble.friendshipType === newItemType);
+            const nextLevel = isSameType ? Math.min(marble.friendshipLevel + 1, 5) : 1;
+
+            // 1. 上の名称をセット（ここで統一）
+            document.getElementById('itemName').textContent = typeName;
+            document.getElementById('itemEmoji').textContent = item.emoji;
+            document.getElementById('itemDescription').textContent = item.description;
+
+            // 不要な重複箇所（itemFriendshipNameなど）があれば中身を空にするか非表示にする
+            const extraName = document.getElementById('itemFriendshipName');
+            if (extraName) extraName.style.display = 'none';
+
+            // 2. 「NEW」or「レベルアップチャンス」の表示
             const statusLabel = document.getElementById('itemStatusLabel');
-            if (isSameType) { statusLabel.textContent = "🔼 レベルアップチャンス"; statusLabel.style.background = "#ff9800"; }
-            else { statusLabel.textContent = "✨ NEW"; statusLabel.style.background = "#1565c0"; }
+            if (isSameType) {
+                statusLabel.textContent = "🔼 レベルアップチャンス";
+                statusLabel.style.background = "#ff9800";
+            } else {
+                statusLabel.textContent = "✨ NEW";
+                statusLabel.style.background = "#1565c0";
+            }
+
+            // 3. Lv表示を★で表現
+            let currentStars = '★'.repeat(marble.friendshipLevel) + '☆'.repeat(5 - marble.friendshipLevel);
+            let nextStars = '★'.repeat(nextLevel) + '☆'.repeat(5 - nextLevel);
             
-            let starDisplay = '';
-            for (let i = 1; i <= 5; i++) starDisplay += (i <= nextLevel) ? '★' : '☆';
-            document.getElementById('itemFriendshipDetail').textContent = starDisplay;
-            
+            if (marble.friendshipType === 'normal') currentStars = '未装備';
+
+            // 4. 現在の装備情報の表示を更新
             const characterInfoDiv = document.querySelector('.item-character-info');
             let currentComboDiv = document.getElementById('currentComboInfo');
             if (!currentComboDiv) {
                 currentComboDiv = document.createElement('div');
                 currentComboDiv.id = 'currentComboInfo';
-                currentComboDiv.style.cssText = 'background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px; border: 2px solid #1565c0;';
+                currentComboDiv.style.cssText = 'background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid #ddd; text-align: left;';
                 characterInfoDiv.appendChild(currentComboDiv);
             }
-            currentComboDiv.innerHTML = `<div style="font-size: 12px; color: #666; margin-bottom: 3px;">現在の友情コンボ</div><div style="font-weight: bold; font-size: 16px; color: #1565c0;">${currentTypeName} Lv.${marble.friendshipLevel}</div>`;
+
+            currentComboDiv.innerHTML = `
+                <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">【現在のステータス】</div>
+                <div style="font-size: 14px; color: #444; margin-bottom: 4px;">装備: <strong>${currentTypeName}</strong></div>
+                <div style="font-size: 14px; color: #f1c40f; letter-spacing: 2px;">${currentStars}</div>
+                <div style="margin: 8px 0; border-top: 1px dashed #ccc;"></div>
+                <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">【習得後のレベル】</div>
+                <div style="font-size: 18px; color: #ff9800; letter-spacing: 2px;">${nextStars}</div>
+            `;
+
             modal.classList.add('active');
         }
         
