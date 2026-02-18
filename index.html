@@ -2053,6 +2053,9 @@
         const availableTargets = playerMarbles.filter(m => !m.isUsed || m.isStopped);
         if (availableTargets.length === 0) { endEnemyTurn(); return; }
         let attackCount = 1;
+        const hasBoss = enemies.some(e => e.isBoss);
+        if (hasBoss) {
+            // ボスがいる場合は連続攻撃そのまま
             if (currentStage >= 40) {
                 const r = Math.random();
                 if (r < 0.10) attackCount = 3;
@@ -2060,6 +2063,18 @@
             } else if (currentStage >= 20) {
                 if (Math.random() < 0.40) attackCount = 2;
             }
+        } else {
+            // 通常は敵の数が上限（1体しかいなければ1回だけ）
+            let wanted = 1;
+            if (currentStage >= 40) {
+                const r = Math.random();
+                if (r < 0.10) wanted = 3;
+                else if (r < 0.60) wanted = 2;
+            } else if (currentStage >= 20) {
+                if (Math.random() < 0.40) wanted = 2;
+            }
+            attackCount = Math.min(wanted, enemies.length);
+        }
         function pickAttackType() {
             const r = Math.random();
             if (currentStage < 5) return 'beam';
@@ -2067,11 +2082,16 @@
             else if (currentStage < 15) { if (r < 0.55) return 'beam'; if (r < 0.75) return 'bomb'; return 'meteor'; }
             else { if (r < 0.45) return 'beam'; if (r < 0.65) return 'bomb'; return 'meteor'; }
         }
+        const usedAttackers = new Set();
         function doOneAttack(delayMs) {
             return new Promise(resolve => {
                 setTimeout(() => {
                     if (enemies.length === 0) { resolve(); return; }
-                    const attacker = enemies[Math.floor(Math.random() * enemies.length)];
+                    // 使用済みでない敵から選ぶ（全員使用済みならリセット）
+                    let candidates = enemies.filter(e => !usedAttackers.has(e));
+                    if (candidates.length === 0) candidates = enemies;
+                    const attacker = candidates[Math.floor(Math.random() * candidates.length)];
+                    usedAttackers.add(attacker);
                     const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                     const type = pickAttackType();
                     if (type === 'beam') {
