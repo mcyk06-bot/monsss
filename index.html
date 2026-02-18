@@ -46,6 +46,7 @@
         justify-content: space-between;
         flex-shrink: 0;
         background: linear-gradient(180deg, #f5c542 0%, #a76700 50%, #f5c542 100%);
+        border-top: 3px solid #b8600a;
         border-bottom: 3px solid #b8600a;
         padding: 6px 10px;
         position: relative;
@@ -146,7 +147,8 @@
     .hp-panel {
         padding: 6px 10px;
         background: #1c1c1c;
-        border-top: 2px solid #667eea;
+        border-top: 3px solid #b8600a;
+        border-bottom: 3px solid #b8600a;
         flex-shrink: 0;
     }
     
@@ -757,7 +759,7 @@
                 <div style="flex: 3;">
                     <div class="special-shot-container">
                         <button class="special-shot-btn" id="specialShotBtn" disabled>
-                            <span id="specialShotBtnText">準備中...</span>
+                            <span id="specialShotBtnText">大号令</span>
                             <span id="specialShotText" style="font-size:10px; opacity:0.8; display:block; margin-top:1px;">0 / 24</span>
                         </button>
                     </div>
@@ -2528,7 +2530,7 @@
             if (isSpecialShotActive) { btn.classList.remove('ready'); btn.classList.add('active'); btnText.textContent = '⚡ 大号令！'; }
             else { btn.classList.add('ready'); btn.classList.remove('active'); btnText.textContent = '⚡ 大号令！'; }
         } else {
-            isSpecialShotReady = false; btn.disabled = true; btn.classList.remove('ready', 'active'); btnText.textContent = '準備中...';
+            isSpecialShotReady = false; btn.disabled = true; btn.classList.remove('ready', 'active'); btnText.textContent = '大号令';
         }
     }
     
