@@ -1740,7 +1740,7 @@
                 if (rand < 0.25) {
                     itemType = 'hp';                 // 25%
                 } else if (rand < 0.37) {
-                    itemType = 'speedup';            // 12%
+                    itemType = playerSpeedBonus >= 2.0 ? 'attack' : 'speedup'; // 上限なら攻撃力に振り替え
                 } else if (rand < 0.49) {
                     itemType = 'attack';             // 12%
                 } else if (rand < 0.50) {
@@ -2128,8 +2128,8 @@
                                 explosions.push(new HealEffect(item.x, item.y));
                                 showMessage(`❤️ HP上限+2！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
                             } else if (item.type === 'speedup') {
-                                playerSpeedBonus += 0.1; explosions.push(new CriticalEffect(item.x, item.y));
-                                showMessage(`💨 スピード+0.1！ (ボーナス:+${playerSpeedBonus.toFixed(1)})`, 'success');
+                                playerSpeedBonus = Math.min(playerSpeedBonus + 0.1, 2.0); explosions.push(new CriticalEffect(item.x, item.y));
+                                showMessage(`🛼 スピード+0.1！ (ボーナス:+${playerSpeedBonus.toFixed(1)})`, 'success');
                                 updateUI();
                             } else if (item.type === 'attack') {
                                 playerAttackBonus += 0.5; explosions.push(new CriticalEffect(item.x, item.y));
