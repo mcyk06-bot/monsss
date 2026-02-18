@@ -656,6 +656,7 @@
         </div>
         <div class="controls">
             <button id="resetBtn">🔄 新しいゲーム</button>
+            <button id="seBtn" style="background:#555;">🔇 SE</button>
         </div>
     </div>
 
@@ -2508,6 +2509,14 @@
     canvas.addEventListener('touchcancel', handleEnd);
     
     document.getElementById('resetBtn').addEventListener('click', initGame);
+
+    document.getElementById('seBtn').addEventListener('click', () => {
+        seEnabled = !seEnabled;
+        const btn = document.getElementById('seBtn');
+        btn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
+        btn.style.background = seEnabled ? '#667eea' : '#555';
+        if (seEnabled) resumeAudio();
+    });
     
     document.getElementById('specialShotBtn').addEventListener('click', () => {
         if (isSpecialShotReady && !isEnemyTurn && !isGameOver && !isStageClear && !isPaused) {
@@ -2552,9 +2561,12 @@
     // =====================
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+    let seEnabled = false; // デフォルトOFF
+
     function resumeAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); }
 
     function playLaunchSound(power) {
+        if (!seEnabled) return;
         resumeAudio();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -2571,6 +2583,7 @@
     }
 
     function playHitSound(isCritical = false) {
+        if (!seEnabled) return;
         resumeAudio();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
