@@ -268,7 +268,57 @@
         text-align: center;
         background: white;
         flex-shrink: 0;
+        position: relative;
     }
+
+    .vol-popup {
+        position: absolute;
+        bottom: calc(100% + 6px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(30,30,40,0.92);
+        border-radius: 12px;
+        padding: 10px 8px 6px;
+        gap: 6px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        transform: scaleY(0) translateY(10px);
+        transform-origin: bottom center;
+        transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), opacity 0.18s;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 100;
+    }
+    .vol-popup.open {
+        transform: scaleY(1) translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .vol-popup label {
+        color: #fff;
+        font-size: 10px;
+        letter-spacing: 0.5px;
+    }
+    .vol-popup input[type=range] {
+        -webkit-appearance: none;
+        writing-mode: vertical-lr;
+        direction: rtl;
+        width: 6px;
+        height: 70px;
+        background: #555;
+        border-radius: 3px;
+        outline: none;
+        cursor: pointer;
+    }
+    .vol-popup input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #667eea;
+        box-shadow: 0 0 4px rgba(102,126,234,0.7);
+    }
+
     
     button {
         background: #667eea;
@@ -657,12 +707,26 @@
         </div>
         <div class="controls">
             <button id="resetBtn">🔄 新しいゲーム</button>
-            <button id="seBtn" style="background:#555;">🔇 SE</button>
-            <button id="bgmBtn" style="background:#555;">🎵 BGM</button>
-        </div>
-    </div>
 
 ```
+        <span style="position:relative;display:inline-block;">
+            <div class="vol-popup" id="seVolPopup">
+                <label>SE</label>
+                <input type="range" id="seVolSlider" min="0" max="100" value="70" orient="vertical">
+            </div>
+            <button id="seBtn" style="background:#555;">🔇 SE</button>
+        </span>
+
+        <span style="position:relative;display:inline-block;">
+            <div class="vol-popup" id="bgmVolPopup">
+                <label>BGM</label>
+                <input type="range" id="bgmVolSlider" min="0" max="100" value="40" orient="vertical">
+            </div>
+            <button id="bgmBtn" style="background:#555;">🎵 BGM</button>
+        </span>
+    </div>
+</div>
+
 <button class="help-btn" id="helpBtn">?</button>
 <div class="message" id="message"></div>
 
@@ -2529,12 +2593,43 @@
     
     document.getElementById('resetBtn').addEventListener('click', initGame);
 
+    let seVolume = 0.7;
+    let bgmVolume = 0.4;
+
+    // ボリュームポップアップ開閉
+    function toggleVolPopup(popupId) {
+        const popup = document.getElementById(popupId);
+        const isOpen = popup.classList.contains('open');
+        // 全部閉じる
+        document.querySelectorAll('.vol-popup').forEach(p => p.classList.remove('open'));
+        if (!isOpen) popup.classList.add('open');
+    }
+    // ポップアップ外クリックで閉じる
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.vol-popup') && !e.target.closest('#seBtn') && !e.target.closest('#bgmBtn')) {
+            document.querySelectorAll('.vol-popup').forEach(p => p.classList.remove('open'));
+        }
+    });
+
+    // SEスライダー
+    document.getElementById('seVolSlider').addEventListener('input', (e) => {
+        seVolume = e.target.value / 100;
+        masterGain.gain.value = seVolume;
+    });
+
+    // BGMスライダー
+    document.getElementById('bgmVolSlider').addEventListener('input', (e) => {
+        bgmVolume = e.target.value / 100;
+        if (bgmAudio) bgmAudio.volume = bgmVolume;
+    });
+
     document.getElementById('bgmBtn').addEventListener('click', () => {
         bgmEnabled = !bgmEnabled;
         const btn = document.getElementById('bgmBtn');
         btn.textContent = bgmEnabled ? '🎵 BGM ON' : '🎵 BGM';
         btn.style.background = bgmEnabled ? '#667eea' : '#555';
-        if (bgmEnabled) { startBGM(); } else { stopBGM(); }
+        if (bgmEnabled) { startBGM(); toggleVolPopup('bgmVolPopup'); }
+        else { stopBGM(); document.getElementById('bgmVolPopup').classList.remove('open'); }
     });
 
     document.getElementById('seBtn').addEventListener('click', () => {
@@ -2542,7 +2637,8 @@
         const btn = document.getElementById('seBtn');
         btn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
         btn.style.background = seEnabled ? '#667eea' : '#555';
-        if (seEnabled) resumeAudio();
+        if (seEnabled) { resumeAudio(); toggleVolPopup('seVolPopup'); }
+        else { document.getElementById('seVolPopup').classList.remove('open'); }
     });
     
     document.getElementById('specialShotBtn').addEventListener('click', () => {
@@ -2587,6 +2683,9 @@
     // 🔊 サウンドシステム
     // =====================
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.7;
+    masterGain.connect(audioCtx.destination);
 
     let seEnabled = false; // デフォルトOFF
     let bgmEnabled = false;
@@ -2618,7 +2717,7 @@
         frequencies.forEach((freq, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc.type = 'square';
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.07);
             gain.gain.setValueAtTime(0, audioCtx.currentTime + i * 0.07);
@@ -2638,7 +2737,7 @@
         notes.forEach((freq, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc.type = 'square';
             osc.frequency.setValueAtTime(freq, t + i * 0.1);
             gain.gain.setValueAtTime(0.18, t + i * 0.1);
@@ -2655,7 +2754,7 @@
         for (let i = 0; i < 4; i++) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(200 - i * 20, t + i * 0.07);
             osc.frequency.exponentialRampToValueAtTime(80, t + i * 0.07 + 0.2);
@@ -2666,7 +2765,7 @@
         // 最後にドォォン
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.connect(gain); gain.connect(masterGain);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(100, t + 0.35);
         osc.frequency.exponentialRampToValueAtTime(35, t + 0.7);
@@ -2684,7 +2783,7 @@
         notes.forEach((freq, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, t + i * 0.07);
             gain.gain.setValueAtTime(0.2, t + i * 0.07);
@@ -2702,7 +2801,7 @@
         notes.forEach((freq, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, t + i * 0.22);
             osc.frequency.exponentialRampToValueAtTime(freq * 0.85, t + i * 0.22 + 0.3);
@@ -2722,7 +2821,7 @@
         resumeAudio();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.connect(gain); gain.connect(masterGain);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(320, now);
         osc.frequency.exponentialRampToValueAtTime(180, now + 0.06);
@@ -2762,7 +2861,7 @@
             const gain = audioCtx.createGain();
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'lowpass'; filter.frequency.value = 500;
-            osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(80, t + delay);
             osc.frequency.exponentialRampToValueAtTime(40, t + delay + 0.12);
@@ -2782,7 +2881,7 @@
             // ブゥゥン（低めのチャージ→放射）
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(60, t);
             osc.frequency.linearRampToValueAtTime(180, t + 0.08);
@@ -2853,7 +2952,7 @@
             [0, 0.08].forEach(delay => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.connect(gain); gain.connect(masterGain);
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(400, t + delay);
                 osc.frequency.exponentialRampToValueAtTime(900, t + delay + 0.12);
@@ -2898,7 +2997,7 @@
             for (let i = 0; i < 4; i++) {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.connect(gain); gain.connect(masterGain);
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(180 + Math.random() * 40, t + i * 0.055);
                 gain.gain.setValueAtTime(0.15, t + i * 0.055);
@@ -2912,7 +3011,7 @@
             const gain = audioCtx.createGain();
             const osc2 = audioCtx.createOscillator();
             const gain2 = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc2.connect(gain2); gain2.connect(audioCtx.destination);
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(80, t);
@@ -2932,7 +3031,7 @@
             [523, 659, 784].forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.connect(gain); gain.connect(masterGain);
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq, t + i * 0.09);
                 gain.gain.setValueAtTime(0.18, t + i * 0.09);
@@ -2944,7 +3043,7 @@
             // 通常友情（ポンッ）
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(gain); gain.connect(masterGain);
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(500, t);
             osc.frequency.exponentialRampToValueAtTime(250, t + 0.1);
@@ -2959,7 +3058,7 @@
         resumeAudio();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.connect(gain); gain.connect(masterGain);
         // パワーに応じて音程を変える（低め→高め）
         const freq = 180 + power * 60;
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
@@ -2981,7 +3080,7 @@
         const curve = new Float32Array(256);
         for (let i = 0; i < 256; i++) curve[i] = (i < 128 ? i - 128 : i - 128) / 64;
         distortion.curve = curve;
-        osc.connect(distortion); distortion.connect(gain); gain.connect(audioCtx.destination);
+        osc.connect(distortion); distortion.connect(gain); gain.connect(masterGain);
         if (isCritical) {
             osc.frequency.setValueAtTime(120, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
