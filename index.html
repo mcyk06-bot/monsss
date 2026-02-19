@@ -1856,12 +1856,18 @@
                 this.size = size; this.maxHp = size.maxHp; this.hp = this.maxHp;
                 this.radius = size.radius; this.isActive = false; this.lastHitTime = 0;
                 this.color = size.color; this.secondaryColor = size.secondaryColor;
-                this.shakeFrame = -1; // ★ ノックバックシェイク用
+                this.shakeFrame = -1;
+                this.floatPhase = Math.random() * Math.PI * 2; // 初期位相ランダム
             }
             
             draw() {
                 this.animationFrame++;
-                
+
+                // 浮遊モーション（サイズ別周期）
+                const floatSpeed = this.isBoss ? 0.022 : (this.size.name === '小' ? 0.052 : this.size.name === '中' ? 0.038 : 0.028);
+                this.floatPhase += floatSpeed;
+                const floatY = Math.sin(this.floatPhase) * (this.isBoss ? 4 : 3);
+
                 // ★ ノックバックシェイクエフェクト
                 const SHAKE_DURATION = 20;
                 let shakeOffsetX = 0, shakeOffsetY = 0;
@@ -1880,9 +1886,9 @@
                 }
 
                 ctx.save();
-                // シェイクは描画位置のみオフセット（実際のx,yは変えない）
-                if (shakeOffsetX !== 0 || shakeOffsetY !== 0) {
-                    ctx.translate(shakeOffsetX, shakeOffsetY);
+                // 浮遊 + シェイクを合算してtranslate
+                if (shakeOffsetX !== 0 || shakeOffsetY !== 0 || floatY !== 0) {
+                    ctx.translate(shakeOffsetX, shakeOffsetY + floatY);
                 }
 
                 let img;
