@@ -1700,7 +1700,12 @@
                 if (this.isUsed && !this.isActive && !this.isStopped) ctx.globalAlpha = 0.5;
                 if (this.damageFrame > 0) { this.damageFrame--; if (this.damageFrame % 4 < 2) ctx.globalAlpha = 0.3; }
                 if (img && img.complete && img.naturalWidth > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.clip();
                     ctx.drawImage(img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+                    ctx.restore();
                 } else {
                     const gradient = ctx.createRadialGradient(this.x - this.radius/3, this.y - this.radius/3, 0, this.x, this.y, this.radius);
                     gradient.addColorStop(0, this.secondaryColor); gradient.addColorStop(1, this.color);
