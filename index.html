@@ -2795,8 +2795,8 @@
                 const normalBossHp = 15 + currentStage * 1.5;
                 const darkBossHp = Math.floor(normalBossHp * 1.5); // 通常の1.5倍
                 const bossSizeBase = isBossDark
-                    ? { name: 'ボス', radius: 55, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
-                    : { name: 'ボス', radius: 50, maxHp: normalBossHp, color: '#8b0000', secondaryColor: '#ff0000' };
+                    ? { name: 'ボス', radius: 83, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
+                    : { name: 'ボス', radius: 75, maxHp: normalBossHp, color: '#8b0000', secondaryColor: '#ff0000' };
                 const boss = new Enemy(canvasSize.width / 2, 150, bossSizeBase);
                 boss.isBoss = true; enemies.push(boss);
                 const minionCount = Math.min(2 + Math.floor(currentStage / 5), 3);
