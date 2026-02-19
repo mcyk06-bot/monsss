@@ -1654,8 +1654,13 @@
 
         class EnergySurgeEffect {
             constructor(x, y) {
-                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 75;
-                this.rings = [{delay: 0, maxR: 270}, {delay: 10, maxR: 310}, {delay: 20, maxR: 350}];
+                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 90;
+                // 画面対角線より大きく広がるように maxR を大きく設定
+                this.rings = [
+                    {delay: 0,  maxR: 900, color1: [0,240,255], color2: [140,0,255]},
+                    {delay: 12, maxR: 950, color1: [0,200,255], color2: [180,40,255]},
+                    {delay: 24, maxR: 1000, color1: [80,255,255], color2: [220,80,255]},
+                ];
             }
             draw() {
                 this.frame++;
@@ -1665,28 +1670,41 @@
                     if (f <= 0) continue;
                     const dur = this.maxFrames - ring.delay;
                     const p = Math.min(f / dur, 1);
-                    const r = ring.maxR * Math.pow(p, 0.55);
-                    const alpha = p < 0.25 ? p / 0.25 : (1 - p) * 1.3;
+                    // イーズインで勢いよく広がる
+                    const r = ring.maxR * Math.pow(p, 0.5);
+                    // フェードインだけ、消えない（画面外に飛び出す）
+                    const alpha = p < 0.15 ? p / 0.15 : Math.max(0, 1 - (p - 0.7) / 0.3);
                     if (alpha <= 0) continue;
-                    const gr = ctx.createRadialGradient(this.x, this.y, r*0.7, this.x, this.y, r);
-                    gr.addColorStop(0, `rgba(0,220,255,0)`);
-                    gr.addColorStop(0.5,`rgba(0,200,255,${alpha*0.45})`);
-                    gr.addColorStop(0.82,`rgba(160,60,255,${alpha*0.8})`);
-                    gr.addColorStop(1, `rgba(255,255,255,0)`);
+
+                    const [r1,g1,b1] = ring.color1;
+                    const [r2,g2,b2] = ring.color2;
+                    const lineW = Math.max(18 - p * 12, 4);
+
+                    // 輝くリング本体
                     ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
-                    ctx.fillStyle = gr; ctx.fill();
-                    ctx.strokeStyle = `rgba(180,80,255,${alpha * 0.9})`; ctx.lineWidth = Math.max(5 - p * 3, 1);
-                    ctx.shadowColor = `rgba(0,200,255,${alpha})`; ctx.shadowBlur = 12;
-                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2); ctx.stroke();
+                    ctx.strokeStyle = `rgba(${r1},${g1},${b1},${alpha * 0.9})`;
+                    ctx.lineWidth = lineW;
+                    ctx.shadowColor = `rgba(${r1},${g1},${b1},1)`;
+                    ctx.shadowBlur = 28;
+                    ctx.stroke();
+
+                    // 外側グロー
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(${r2},${g2},${b2},${alpha * 0.6})`;
+                    ctx.lineWidth = lineW * 2.5;
+                    ctx.shadowColor = `rgba(${r2},${g2},${b2},0.8)`;
+                    ctx.shadowBlur = 40;
+                    ctx.stroke();
                     ctx.shadowBlur = 0;
                 }
-                if (this.frame < 18) {
-                    const fa = 1 - this.frame / 18;
-                    const fg = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 65);
+                // 中心フラッシュ
+                if (this.frame < 20) {
+                    const fa = 1 - this.frame / 20;
+                    const fg = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 90);
                     fg.addColorStop(0, `rgba(255,255,255,${fa})`);
-                    fg.addColorStop(0.5,`rgba(80,200,255,${fa*0.6})`);
+                    fg.addColorStop(0.4, `rgba(80,220,255,${fa*0.8})`);
                     fg.addColorStop(1, `rgba(80,200,255,0)`);
-                    ctx.beginPath(); ctx.arc(this.x, this.y, 65, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 90, 0, Math.PI * 2);
                     ctx.fillStyle = fg; ctx.fill();
                 }
                 ctx.restore();
@@ -4465,6 +4483,8 @@
         const masterGain = audioCtx.createGain();
         masterGain.gain.value = 0.7;
         masterGain.connect(audioCtx.destination);
+        let seVolume = 0.7;
+        let bgmVolume = 0.5;
 
         let seEnabled = false; // デフォルトOFF
         let bgmEnabled = false;
@@ -4630,7 +4650,7 @@
             vibrato.frequency.value = 4;
             vibratoGain.gain.value = 12;
             vibrato.connect(vibratoGain); vibratoGain.connect(osc1.frequency);
-            osc1.connect(gain1); gain1.connect(audioCtx.destination);
+            osc1.connect(gain1); gain1.connect(masterGain);
             osc1.type = 'sawtooth';
             osc1.frequency.setValueAtTime(55, t);
             osc1.frequency.linearRampToValueAtTime(38, t + 1.2);
@@ -4684,7 +4704,7 @@
                 // 飛ぶ音
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
-                osc1.connect(gain1); gain1.connect(audioCtx.destination);
+                osc1.connect(gain1); gain1.connect(masterGain);
                 osc1.type = 'sine';
                 osc1.frequency.setValueAtTime(600, t);
                 osc1.frequency.exponentialRampToValueAtTime(200, t + 0.25);
@@ -4696,7 +4716,7 @@
                 const gain2 = audioCtx.createGain();
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'lowpass'; filter.frequency.value = 400;
-                osc2.connect(filter); filter.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.connect(filter); filter.connect(gain2); gain2.connect(masterGain);
                 osc2.type = 'sawtooth';
                 osc2.frequency.setValueAtTime(100, t + 0.4);
                 osc2.frequency.exponentialRampToValueAtTime(25, t + 0.75);
@@ -4709,7 +4729,7 @@
                 // ゴォォォ→ドスン（落下→着弾）
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
-                osc1.connect(gain1); gain1.connect(audioCtx.destination);
+                osc1.connect(gain1); gain1.connect(masterGain);
                 osc1.type = 'sawtooth';
                 osc1.frequency.setValueAtTime(300, t);
                 osc1.frequency.exponentialRampToValueAtTime(80, t + 0.45);
@@ -4720,7 +4740,7 @@
                 // 着弾ドスン
                 const osc2 = audioCtx.createOscillator();
                 const gain2 = audioCtx.createGain();
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.connect(gain2); gain2.connect(masterGain);
                 osc2.type = 'sine';
                 osc2.frequency.setValueAtTime(55, t + 0.42);
                 osc2.frequency.exponentialRampToValueAtTime(25, t + 0.65);
@@ -4833,8 +4853,8 @@
                 filter.frequency.setValueAtTime(1200, t);
                 filter.frequency.exponentialRampToValueAtTime(300, t + 0.4);
                 filter.Q.value = 8;
-                osc1.connect(filter); filter.connect(gain1); gain1.connect(audioCtx.destination);
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc1.connect(filter); filter.connect(gain1); gain1.connect(masterGain);
+                osc2.connect(gain2); gain2.connect(masterGain);
                 // メイン：ズバッと下降
                 osc1.type = 'sawtooth';
                 osc1.frequency.setValueAtTime(1800, t);
@@ -4873,7 +4893,7 @@
                 const osc2 = audioCtx.createOscillator();
                 const gain2 = audioCtx.createGain();
                 osc.connect(gain); gain.connect(masterGain);
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.connect(gain2); gain2.connect(masterGain);
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(80, t);
                 osc.frequency.exponentialRampToValueAtTime(30, t + 0.5);
