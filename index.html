@@ -1422,7 +1422,7 @@
                 ctx.save();
                 // つる：全本まとめて1パスずつ描画（重さ軽減）
                 ctx.lineWidth = 4; ctx.lineCap = 'round';
-                ctx.strokeStyle = `rgba(5, 15, 0, ${alpha})`;
+                ctx.strokeStyle = `rgba(50, 90, 20, ${alpha})`;
                 for (const t of this.tendrils) {
                     if (t.length < t.maxLength) {
                         t.angle += (Math.random() - 0.5) * 0.45;
@@ -1439,7 +1439,7 @@
                     }
                 }
                 // トゲ：間引きを広くして軽量化
-                ctx.lineWidth = 2; ctx.strokeStyle = `rgba(15, 40, 0, ${alpha})`;
+                ctx.lineWidth = 2; ctx.strokeStyle = `rgba(86, 130, 52, ${alpha})`;
                 for (const t of this.tendrils) {
                     for (let i = 0; i < t.segments.length - 2; i += 12) {
                         const s = t.segments[i];
@@ -1818,6 +1818,10 @@
                 else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '友情強化薬'; this.description = '自分の友情コンボ（メイン・サブ）のレベルが1上がる！レア'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体友情強化注射'; this.description = '仲間全員の友情コンボのレベルが1上がる！激レア！'; }
                 else if (type === 'friendship_normal') { this.emoji = '🫛'; this.color = '#607d8b'; this.name = '豆粒友情'; this.description = '小さな弾を8発放つ基本の友情コンボ！'; }
+                else if (type === 'friendship_sixteen_ring') { this.emoji = '◎'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
+                else if (type === 'friendship_white_light') { this.emoji = '◉'; this.color = '#e0f0ff'; this.name = '白い光'; this.description = '自身の周りに白い光ゾーンが広がり範囲にダメージ！'; }
+                else if (type === 'friendship_glow_homing') { this.emoji = '⚕'; this.color = '#aaddff'; this.name = '発光群'; this.description = '高速の白い光ホーミングビームが敵を追う！'; }
+                else if (type === 'friendship_light_thread') { this.emoji = '✚'; this.color = '#ffffff'; this.name = '光の糸'; this.description = '仲間3人に光のビームが飛び十字に分裂攻撃！'; }
                 else if (type === 'friendship_homing') { this.emoji = '🚀'; this.color = '#00bcd4'; this.name = 'ホーミングミサイル'; this.description = '友情攻撃がホーミングミサイルになります。敵を自動追尾！'; }
                 else if (type === 'friendship_laser') { this.emoji = '⚡'; this.color = '#9c27b0'; this.name = 'レーザービーム'; this.description = '友情攻撃が貫通レーザーになります。敵を一直線に貫く！'; }
                 else if (type === 'friendship_heal') { this.emoji = '❤️‍🩹'; this.color = '#ff69b4'; this.name = '友情・回復'; this.description = '友情攻撃発動時、攻撃の代わりにHPを回復します。'; }
@@ -1871,7 +1875,299 @@
             }
             isAlive() { return this.life > 0; }
         }
-        
+
+        // ★ 十六輪：光リングが飛び回り壁で3回反射
+        class SixteenRingBullet {
+            constructor(x, y, power) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 5 + Math.random() * 3;
+                this.x = x; this.y = y;
+                this.vx = Math.cos(angle) * spd; this.vy = Math.sin(angle) * spd;
+                this.power = power; this.bounces = 0; this.maxBounces = 3;
+                this.radius = 10; this.life = 300;
+                this.frame = 0;
+                this.hue = Math.random() * 60 + 40; // 黄〜白の光
+            }
+            update() {
+                this.frame++; this.life--;
+                this.x += this.vx; this.y += this.vy;
+                const W = canvasSize.width, H = canvasSize.height;
+                if (this.x < this.radius) { this.x = this.radius; this.vx = Math.abs(this.vx); this.bounces++; }
+                if (this.x > W - this.radius) { this.x = W - this.radius; this.vx = -Math.abs(this.vx); this.bounces++; }
+                if (this.y < this.radius) { this.y = this.radius; this.vy = Math.abs(this.vy); this.bounces++; }
+                if (this.y > H - this.radius) { this.y = H - this.radius; this.vy = -Math.abs(this.vy); this.bounces++; }
+            }
+            draw() {
+                const alpha = this.bounces >= this.maxBounces ? Math.max(0, this.life / 60) : 1;
+                ctx.save();
+                // 外側グロー
+                const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 2.5);
+                glow.addColorStop(0, `hsla(${this.hue},100%,95%,${alpha * 0.6})`);
+                glow.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = glow; ctx.fill();
+                // リング本体
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `hsla(${this.hue},100%,95%,${alpha})`; ctx.lineWidth = 3; ctx.stroke();
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2);
+                ctx.strokeStyle = `hsla(${this.hue},100%,80%,${alpha * 0.7})`; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.restore();
+            }
+            isAlive() { return this.life > 0 && this.bounces <= this.maxBounces; }
+        }
+
+        class WhiteLightZone {
+            constructor(marble) {
+                this.marble = marble;
+                this.x = marble.x; this.y = marble.y;
+                this.power = 0;
+                this.frame = 0;
+                this.phase = 'aura';   // 'aura' → 'explode' → 'fade'
+                this.explodeRadius = 0;
+                this.maxExplodeRadius = Math.min(canvasSize.width, canvasSize.height) * 0.52; // 画面の半分強
+                this.explodeFrame = 0;
+                this.damaged = false;
+            }
+            update() {
+                this.frame++;
+                if (this.phase === 'aura') {
+                    this.x = this.marble.x; this.y = this.marble.y;
+                    if (this.marble.isStopped || !this.marble.isMoving()) {
+                        this.phase = 'explode';
+                    }
+                } else if (this.phase === 'explode') {
+                    this.explodeFrame++;
+                    this.explodeRadius = Math.min(this.explodeRadius + 10, this.maxExplodeRadius);
+                    if (this.explodeRadius >= this.maxExplodeRadius) this.phase = 'fade';
+                } else if (this.phase === 'fade') {
+                    this.explodeFrame++;
+                }
+            }
+            draw() {
+                ctx.save();
+                if (this.phase === 'aura') {
+                    const pulse = Math.sin(this.frame * 0.18) * 0.3 + 0.7;
+                    const r = this.marble.radius * 1.8 * pulse;
+                    const g = ctx.createRadialGradient(this.x, this.y, this.marble.radius * 0.5, this.x, this.y, r);
+                    g.addColorStop(0, 'rgba(255,255,255,0.5)');
+                    g.addColorStop(0.5, 'rgba(200,230,255,0.3)');
+                    g.addColorStop(1, 'rgba(150,200,255,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = g; ctx.fill();
+                    for (let i = 0; i < 8; i++) {
+                        const a = this.frame * 0.1 + i * Math.PI / 4;
+                        const sr = this.marble.radius * 1.3;
+                        ctx.beginPath(); ctx.arc(this.x + Math.cos(a)*sr, this.y + Math.sin(a)*sr, 3, 0, Math.PI*2);
+                        ctx.fillStyle = `rgba(255,255,255,${0.5 + pulse * 0.5})`; ctx.fill();
+                    }
+                } else {
+                    const fadeDuration = 40;
+                    const fadeAlpha = this.phase === 'fade' ? Math.max(0, 1 - this.explodeFrame / fadeDuration) : 1;
+                    const r = this.explodeRadius;
+
+                    // ★ 画面フラッシュ：爆発が最大になった瞬間に画面全体を白く染める
+                    if (this.phase === 'explode' && r >= this.maxExplodeRadius * 0.9) {
+                        const flashStrength = (r - this.maxExplodeRadius * 0.9) / (this.maxExplodeRadius * 0.1);
+                        ctx.fillStyle = `rgba(255,255,255,${(flashStrength * 0.75).toFixed(3)})`;
+                        ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+                    }
+
+                    // ★ 複数リングをフレームずらして重ねて描画（ゴーストリング）
+                    const ringOffsets = [0, 10, 20, 30];
+                    for (let k = 0; k < ringOffsets.length; k++) {
+                        const rk = Math.max(0, r - ringOffsets[k]);
+                        if (rk <= 0) continue;
+                        const kAlpha = fadeAlpha * (1 - k * 0.2);
+                        if (kAlpha <= 0) continue;
+                        ctx.beginPath(); ctx.arc(this.x, this.y, rk, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(255,255,255,${(kAlpha * 0.9).toFixed(3)})`;
+                        ctx.lineWidth = 8 - k * 1.5; ctx.stroke();
+                        ctx.beginPath(); ctx.arc(this.x, this.y, rk, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(200,230,255,${(kAlpha * 0.5).toFixed(3)})`;
+                        ctx.lineWidth = 20 - k * 3; ctx.stroke();
+                    }
+
+                    // 内部グラデーション（白い光で充満している感じ）
+                    const gx = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r);
+                    gx.addColorStop(0,    `rgba(255,255,255,${(fadeAlpha * 0.92).toFixed(3)})`);
+                    gx.addColorStop(0.35, `rgba(240,248,255,${(fadeAlpha * 0.65).toFixed(3)})`);
+                    gx.addColorStop(0.65, `rgba(210,235,255,${(fadeAlpha * 0.35).toFixed(3)})`);
+                    gx.addColorStop(0.9,  `rgba(190,220,255,${(fadeAlpha * 0.12).toFixed(3)})`);
+                    gx.addColorStop(1,    'rgba(180,210,255,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = gx; ctx.fill();
+
+                    // 放射スパーク＋輝き線
+                    if (fadeAlpha > 0.05) {
+                        for (let i = 0; i < 24; i++) {
+                            const a = (i / 24) * Math.PI * 2;
+                            const sx = this.x + Math.cos(a) * r;
+                            const sy = this.y + Math.sin(a) * r;
+                            ctx.beginPath(); ctx.arc(sx, sy, 6 * fadeAlpha, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255,255,255,${fadeAlpha})`; ctx.fill();
+                            ctx.beginPath();
+                            ctx.moveTo(sx, sy);
+                            ctx.lineTo(sx + Math.cos(a) * 14 * fadeAlpha, sy + Math.sin(a) * 14 * fadeAlpha);
+                            ctx.strokeStyle = `rgba(255,255,255,${fadeAlpha * 0.7})`; ctx.lineWidth = 2; ctx.stroke();
+                        }
+                    }
+                }
+                ctx.restore();
+            }
+            isAlive() {
+                if (this.phase === 'fade') return this.explodeFrame < 40;
+                return true;
+            }
+        }
+
+        // ★ 発光群：高速白色ホーミングビーム（かっこいい光の軌跡付き）
+        class GlowHomingBullet {
+            constructor(x, y, power) {
+                const angle = Math.random() * Math.PI * 2;
+                this.x = x; this.y = y;
+                this.vx = Math.cos(angle) * 5; this.vy = Math.sin(angle) * 5;
+                this.power = power; this.target = null;
+                this.homingStrength = 1.2; this.maxSpeed = 7;
+                this.life = 200; this.frame = 0; this.radius = 10;
+                this.trail = [];
+            }
+            update() {
+                this.frame++; this.life--;
+                if (!this.target || this.target.hp <= 0) {
+                    let closest = null, minD = Infinity;
+                    for (const e of enemies) { const d = Math.hypot(e.x-this.x, e.y-this.y); if (d < minD) { minD = d; closest = e; } }
+                    this.target = closest;
+                }
+                if (this.target) {
+                    const dx = this.target.x - this.x, dy = this.target.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist > 0) {
+                        this.vx += dx / dist * this.homingStrength;
+                        this.vy += dy / dist * this.homingStrength;
+                        const spd = Math.hypot(this.vx, this.vy);
+                        if (spd > this.maxSpeed) { this.vx = this.vx / spd * this.maxSpeed; this.vy = this.vy / spd * this.maxSpeed; }
+                    }
+                }
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > 18) this.trail.shift();
+                this.x += this.vx; this.y += this.vy;
+            }
+            draw() {
+                ctx.save();
+                // 光の軌跡
+                for (let i = 1; i < this.trail.length; i++) {
+                    const t = i / this.trail.length;
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[i-1].x, this.trail[i-1].y);
+                    ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    ctx.strokeStyle = `rgba(200,230,255,${t * 0.9})`;
+                    ctx.lineWidth = t * 5; ctx.lineCap = 'round'; ctx.stroke();
+                    // 輝く白コア
+                    ctx.strokeStyle = `rgba(255,255,255,${t * 0.6})`;
+                    ctx.lineWidth = t * 2; ctx.stroke();
+                }
+                // 本体グロー
+                const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 14);
+                g.addColorStop(0, 'rgba(255,255,255,1)');
+                g.addColorStop(0.4, 'rgba(180,220,255,0.9)');
+                g.addColorStop(1, 'rgba(100,180,255,0)');
+                ctx.beginPath(); ctx.arc(this.x, this.y, 14, 0, Math.PI * 2);
+                ctx.fillStyle = g; ctx.fill();
+                ctx.restore();
+            }
+            isAlive() { return this.life > 0; }
+        }
+
+        // ★ 光の糸：仲間へ飛んでいき十字に分裂するビーム
+        // ★ 光の糸：太い白いレーザーが仲間へ飛び、到達で十字派手爆発
+        class LightThreadBeam {
+            constructor(fromX, fromY, toMarble, power, splitOnHit = true) {
+                this.fromX = fromX; this.fromY = fromY;
+                this.toMarble = toMarble;
+                this.x = fromX; this.y = fromY;
+                this.power = power; this.splitOnHit = splitOnHit;
+                const dx = toMarble.x - fromX, dy = toMarble.y - fromY;
+                const dist = Math.hypot(dx, dy) || 1;
+                this.spd = 12;
+                this.vx = dx / dist * this.spd; this.vy = dy / dist * this.spd;
+                this.frame = 0; this.hit = false; this.life = 140;
+                this.path = [{x: fromX, y: fromY}]; // 軌跡を記録（レーザービーム描画用）
+                this.angle = Math.atan2(dy, dx);
+                // 十字爆発用
+                this.crossBeams = []; this.crossFrame = 0;
+            }
+            update() {
+                this.frame++; this.life--;
+                if (!this.hit) {
+                    this.x += this.vx; this.y += this.vy;
+                    this.path.push({x: this.x, y: this.y});
+                } else {
+                    this.crossFrame++;
+                }
+            }
+            draw() {
+                ctx.save();
+                if (!this.hit) {
+                    // 飛行中ビーム（より白く・太く）
+                    if (this.path.length > 1) {
+                        const first = this.path[0];
+                        const last = this.path[this.path.length - 1];
+                        // 最外グロー
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(200,230,255,0.35)'; ctx.lineWidth = 34; ctx.lineCap = 'round'; ctx.stroke();
+                        // 外グロー
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(230,245,255,0.6)'; ctx.lineWidth = 20; ctx.stroke();
+                        // 中間層
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(245,252,255,0.9)'; ctx.lineWidth = 10; ctx.stroke();
+                        // コア（純白）
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(255,255,255,1)'; ctx.lineWidth = 5; ctx.stroke();
+                    }
+                    // 先端フレア
+                    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 26);
+                    g.addColorStop(0, 'rgba(255,255,255,1)');
+                    g.addColorStop(0.4, 'rgba(220,240,255,0.85)');
+                    g.addColorStop(0.75, 'rgba(180,220,255,0.4)');
+                    g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 26, 0, Math.PI * 2);
+                    ctx.fillStyle = g; ctx.fill();
+                } else {
+                    // ★ 十字爆発：画面外まで伸びる超長い十字
+                    const screenDiag = Math.sqrt(canvasSize.width ** 2 + canvasSize.height ** 2);
+                    const crossLen = Math.min(this.crossFrame * 30, screenDiag); // 高速に伸びて画面端を突き抜ける
+                    const alpha = Math.max(0, 1 - this.crossFrame * 0.028); // 60フレームでフェード
+                    const crossAngles = [this.angle, this.angle + Math.PI, this.angle + Math.PI/2, this.angle - Math.PI/2];
+                    for (const ca of crossAngles) {
+                        const ex = this.x + Math.cos(ca) * crossLen;
+                        const ey = this.y + Math.sin(ca) * crossLen;
+                        // 最外グロー（薄く広い）
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(180,225,255,${(alpha * 0.35).toFixed(3)})`; ctx.lineWidth = 40; ctx.lineCap = 'round'; ctx.stroke();
+                        // 外グロー
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(220,242,255,${(alpha * 0.65).toFixed(3)})`; ctx.lineWidth = 22; ctx.stroke();
+                        // 中間層
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(245,252,255,${(alpha * 0.9).toFixed(3)})`; ctx.lineWidth = 12; ctx.stroke();
+                        // 純白コア
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`; ctx.lineWidth = 5; ctx.stroke();
+                    }
+                    // 中心フラッシュ（大きく光る）
+                    const fc = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 50 + this.crossFrame * 3);
+                    fc.addColorStop(0, `rgba(255,255,255,${alpha.toFixed(3)})`);
+                    fc.addColorStop(0.5, `rgba(220,240,255,${(alpha * 0.5).toFixed(3)})`);
+                    fc.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 50 + this.crossFrame * 3, 0, Math.PI * 2);
+                    ctx.fillStyle = fc; ctx.fill();
+                }
+                ctx.restore();
+            }
+            isAlive() { return this.life > 0; }
+        }
+
         class HomingBullet extends Bullet {
             constructor(x, y, vx, vy, color, power = 1.0, delay = 0) {
                 super(x, y, vx, vy, color, power, delay);
@@ -2021,6 +2317,10 @@
                     else if (this.friendshipType === 'machinegun') icon = '🔫';
                     else if (this.friendshipType === 'energy') icon = '🧿';
                     else if (this.friendshipType === 'normal_shot') icon = '🫛';
+                    else if (this.friendshipType === 'sixteen_ring') icon = '◎';
+                    else if (this.friendshipType === 'white_light') icon = '◉';
+                    else if (this.friendshipType === 'glow_homing') icon = '⚕';
+                    else if (this.friendshipType === 'light_thread') icon = '✚';
                     if (icon) {
                         ctx.font = '14px Arial'; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 2;
                         const iconX = this.x + this.radius * 0.5; const iconY = this.y + this.radius * 0.5;
@@ -2106,7 +2406,32 @@
                         newBullets.push(new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0));
                     }
                 } else if (this.friendshipType === 'normal') {
-                    // 未装備は何もしない
+                    return [];
+                } else if (this.friendshipType === 'sixteen_ring') {
+                    // 十六輪：16個のリングをランダム方向に
+                    const count = 16 + (this.friendshipLevel - 1) * 2;
+                    for (let i = 0; i < count; i++) {
+                        newBullets.push(new SixteenRingBullet(this.x, this.y, power * 1.25));
+                    }
+                } else if (this.friendshipType === 'white_light') {
+                    // triggerFriendshipAttack側でactiveMarbleに付けるため、ここでは何もしない
+                    return [];
+                } else if (this.friendshipType === 'glow_homing') {
+                    // 発光群：高速白色ホーミング 8発
+                    const count = 8 + (this.friendshipLevel - 1) * 2;
+                    for (let i = 0; i < count; i++) {
+                        newBullets.push(new GlowHomingBullet(this.x, this.y, power * 1.25));
+                    }
+                } else if (this.friendshipType === 'light_thread') {
+                    // 光の糸：仲間3人に順次ビームを発射
+                    const others = playerMarbles.filter(m => m !== this).slice(0, 3);
+                    const selfRef = this;
+                    others.forEach((m, i) => {
+                        setTimeout(() => {
+                            const beam = new LightThreadBeam(selfRef.x, selfRef.y, m, power * 1.25 * (1 + selfRef.friendshipLevel * 0.2));
+                            bullets.push(beam);
+                        }, i * 120);
+                    });
                     return [];
                 } else {
                     for (let i = 0; i < bulletCount; i++) {
@@ -2294,19 +2619,21 @@
                 } else if (rand < 0.58) {
                     itemType = 'friendship_up_all';    // 1% 💉
                 } else if (rand < 0.64) {
-                    itemType = 'friendship_normal';    // 6% 豆粒（序盤の入門）
+                    itemType = 'friendship_normal';    // 6% 豆粒
                 } else if (rand < 0.70) {
                     itemType = 'friendship_heal';      // 6%
                 } else if (rand < 0.77) {
                     itemType = 'friendship_homing';    // 7%
                 } else if (rand < 0.84) {
                     itemType = 'friendship_laser';     // 7%
-                } else if (rand < 1.0) {
-                    if (Math.random() < 0.5) {
-                        itemType = 'friendship_machinegun';
-                    } else {
-                        itemType = 'friendship_energy';
-                    }
+                } else if (currentStage >= 40) {        // 40ステージ以降：新友情が混入
+                    const r2 = Math.random();
+                    if (r2 < 0.25) itemType = 'friendship_sixteen_ring';
+                    else if (r2 < 0.50) itemType = 'friendship_white_light';
+                    else if (r2 < 0.75) itemType = 'friendship_glow_homing';
+                    else itemType = 'friendship_light_thread';
+                } else {
+                    itemType = Math.random() < 0.5 ? 'friendship_machinegun' : 'friendship_energy';
                 }
                 
                 let x, y, valid, attempts = 0;
@@ -2685,6 +3012,7 @@
             }
             if (currentTurn >= MAX_MARBLES) {
                 currentTurn = 0;
+                friendshipAttackHistory = new Set(); // ターンリセット時に友情履歴もクリア
                 for (let marble of playerMarbles) { marble.isUsed = false; marble.isActive = false; marble.hitEnemies = new Set(); }
                 stoppedMarbles = [];
             }
@@ -2720,8 +3048,16 @@
                 const healAmount = 3 + (hitMarble.friendshipLevel - 1) * 2;
                 teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                 explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
-                //showMessage(`💚 HP回復友情(Lv${hitMarble.friendshipLevel})！ +${healAmount}`, 'success');
                 updateHPBar(); return null;
+            }
+            // 白い光：activeMarble（手番キャラ）にゾーンを付ける
+            if (hitMarble.friendshipType === 'white_light') {
+                const power = hitMarble.friendshipPower * 1.25 * (1 + playerAttackBonus * 0.15) * (1 + hitMarble.friendshipLevel * 0.3);
+                const zone = new WhiteLightZone(activeMarble);
+                zone.power = power;
+                explosions.push(zone);
+                const subBullets = hitMarble.createSubBullets();
+                return subBullets.length > 0 ? subBullets : null;
             }
             const bullets = hitMarble.createBullets();
             const subBullets = hitMarble.createSubBullets();
@@ -2738,34 +3074,116 @@
         function update() {
             if (isPaused) { requestAnimationFrame(update); return; }
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-            ctx.fillStyle = '#2f662a'; ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+            ctx.fillStyle = currentStage >= 50 ? '#363554' : '#2f662a';
+            ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
             
             for (let i = enemyBeams.length - 1; i >= 0; i--) { enemyBeams[i].draw(); if (enemyBeams[i].isComplete()) enemyBeams.splice(i, 1); }
-            for (let i = explosions.length - 1; i >= 0; i--) { explosions[i].draw(); if (explosions[i].isComplete()) explosions.splice(i, 1); }
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const ef = explosions[i];
+                if (ef instanceof WhiteLightZone) {
+                    ef.update(); ef.draw();
+                    // 爆発が最大半径に達したら一度だけ敵にダメージ
+                    if (!ef.damaged && ef.phase !== 'aura' && ef.explodeRadius >= ef.maxExplodeRadius) {
+                        ef.damaged = true;
+                        for (let j = enemies.length - 1; j >= 0; j--) {
+                            const en = enemies[j];
+                            if (Math.hypot(en.x - ef.x, en.y - ef.y) < ef.maxExplodeRadius + en.radius) {
+                                if (en.takeDamage(ef.power)) {
+                                    defeated++; totalDefeated++;
+                                    explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
+                                    enemies.splice(j, 1);
+                                    updateUI();
+                                    if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                }
+                            }
+                        }
+                        updateHPBar();
+                    }
+                    if (!ef.isAlive()) explosions.splice(i, 1);
+                } else {
+                    ef.draw();
+                    if (ef.isComplete()) explosions.splice(i, 1);
+                }
+            }
             if (explosions.length > 50) explosions.splice(0, explosions.length - 30);
             for (let i = enemies.length - 1; i >= 0; i--) enemies[i].draw();
             for (let i = items.length - 1; i >= 0; i--) { items[i].update(); items[i].draw(); }
             
             for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].update(); bullets[i].draw();
-                if (!bullets[i].isAlive()) { bullets.splice(i, 1); continue; }
-                if (bullets[i].delay > 0) continue;
+                const b = bullets[i];
+                b.update(); b.draw();
+                if (!b.isAlive()) { bullets.splice(i, 1); continue; }
+
+                // --- LightThreadBeam：仲間に当たったら十字分裂爆発 ---
+                if (b instanceof LightThreadBeam) {
+                    if (!b.hit) {
+                        const tm = b.toMarble;
+                        if (Math.hypot(b.x - tm.x, b.y - tm.y) < tm.radius + 15) {
+                            b.hit = true; b.life = 60; // 十字爆発アニメ分のlife
+                            if (b.splitOnHit) {
+                                const crossAngles = [b.angle, b.angle + Math.PI, b.angle + Math.PI/2, b.angle - Math.PI/2];
+                                for (const ca of crossAngles) {
+                                    for (let j = enemies.length - 1; j >= 0; j--) {
+                                        const en = enemies[j];
+                                        const dist = Math.hypot(en.x - b.x, en.y - b.y);
+                                        const dot = ((en.x - b.x) * Math.cos(ca) + (en.y - b.y) * Math.sin(ca)) / (dist || 1);
+                                        if (dot > 0.75 && dist < 300) {
+                                            if (en.takeDamage(b.power * 0.9)) {
+                                                defeated++; totalDefeated++;
+                                                explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
+                                                enemies.splice(j, 1);
+                                                updateUI();
+                                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    continue; // hit後もここでcontinueして下のhitEnemiesチェックに落とさない
+                }
+
+                // --- WhiteLightZone：explosionsで管理されているのでスキップ ---
+                if (b instanceof WhiteLightZone) continue;
+
+                if (b.delay > 0) continue;
+
+                // --- SixteenRingBullet / GlowHomingBullet の当たり判定 ---
+                if (b instanceof SixteenRingBullet || b instanceof GlowHomingBullet) {
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        const enemy = enemies[j];
+                        if (Math.hypot(b.x - enemy.x, b.y - enemy.y) < b.radius + enemy.radius) {
+                            const dmg = (0.3 + playerAttackBonus * 0.07) * b.power;
+                            if (enemy.takeDamage(dmg)) {
+                                defeated++; totalDefeated++;
+                                explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
+                                enemies.splice(j, 1);
+                                updateUI();
+                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                            }
+                            bullets.splice(i, 1); break;
+                        }
+                    }
+                    continue;
+                }
+
+                if (!b.hitEnemies) { bullets.splice(i, 1); continue; }
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     const enemy = enemies[j];
-                    if (!bullets[i].hitEnemies.has(enemy) && checkBulletCollision(bullets[i], enemy)) {
-                        bullets[i].hitEnemies.add(enemy);
+                    if (!b.hitEnemies.has(enemy) && checkBulletCollision(b, enemy)) {
+                        b.hitEnemies.add(enemy);
                         const isBulletCritical = Math.random() < 0.15;
-                        const bonusCoeff = bullets[i] instanceof LaserBeam ? 0.09 : 0.07;
-                        const bulletDamage = (0.3 + playerAttackBonus * bonusCoeff) * bullets[i].power;
+                        const bonusCoeff = b instanceof LaserBeam ? 0.09 : 0.07;
+                        const bulletDamage = (0.3 + playerAttackBonus * bonusCoeff) * b.power;
                         const finalBulletDamage = isBulletCritical ? bulletDamage * 3 : bulletDamage;
-                        // マシンガン弾はクリティカルエフェクトを省略（処理軽減）
-                        if (isBulletCritical && !(bullets[i] instanceof HomingBullet) && bullets[i].power >= 0.5) {
+                        if (isBulletCritical && !(b instanceof HomingBullet) && b.power >= 0.5) {
                             explosions.push(new CriticalEffect(enemy.x, enemy.y));
                         }
                         if (enemy.takeDamage(finalBulletDamage)) {
                             defeated++; totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
-                            enemies.splice(j, 1); // ← j（敵のインデックス）で削除
+                            enemies.splice(j, 1);
                             if (Math.random() < 0.20 && teamHP < MAX_TEAM_HP) {
                                 const healAmount = 10; teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                                 explosions.push(new HealEffect(enemy.x, enemy.y));
@@ -3115,8 +3533,8 @@
             setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
         }
         
-        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'🫛', normal:'　' };
-        const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal_shot:'豆粒友情', normal:'なし' };
+        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'🫛', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
+        const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal_shot:'豆粒友情', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
 
         function iconBar(type, level) {
             const icon = FRIENDSHIP_ICONS[type] || '　';
@@ -3137,6 +3555,10 @@
             else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
             else if (item.type === 'friendship_energy') newItemType = 'energy';
             else if (item.type === 'friendship_normal') newItemType = 'normal_shot';
+            else if (item.type === 'friendship_sixteen_ring') newItemType = 'sixteen_ring';
+            else if (item.type === 'friendship_white_light') newItemType = 'white_light';
+            else if (item.type === 'friendship_glow_homing') newItemType = 'glow_homing';
+            else if (item.type === 'friendship_light_thread') newItemType = 'light_thread';
 
             const isFriendship = newItemType !== 'normal';
             const typeName = FRIENDSHIP_NAMES[newItemType];
@@ -3211,6 +3633,10 @@
             else if (item.type === 'friendship_machinegun') { newItemType = 'machinegun'; itemName = 'マシンガン'; }
             else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = 'エナジーサークル'; }
             else if (item.type === 'friendship_normal') { newItemType = 'normal_shot'; itemName = '豆粒友情'; }
+            else if (item.type === 'friendship_sixteen_ring') { newItemType = 'sixteen_ring'; itemName = '十六輪'; }
+            else if (item.type === 'friendship_white_light') { newItemType = 'white_light'; itemName = '白い光'; }
+            else if (item.type === 'friendship_glow_homing') { newItemType = 'glow_homing'; itemName = '発光群'; }
+            else if (item.type === 'friendship_light_thread') { newItemType = 'light_thread'; itemName = '光の糸'; }
             if (!newItemType) return;
 
             if (equipToSub) {
@@ -3406,7 +3832,13 @@
                 item.type === 'friendship_homing' ? 'homing' :
                 item.type === 'friendship_laser' ? 'laser' :
                 item.type === 'friendship_heal' ? 'heal' :
-                item.type === 'friendship_machinegun' ? 'machinegun' : 'energy'
+                item.type === 'friendship_machinegun' ? 'machinegun' :
+                item.type === 'friendship_energy' ? 'energy' :
+                item.type === 'friendship_normal' ? 'normal_shot' :
+                item.type === 'friendship_sixteen_ring' ? 'sixteen_ring' :
+                item.type === 'friendship_white_light' ? 'white_light' :
+                item.type === 'friendship_glow_homing' ? 'glow_homing' :
+                item.type === 'friendship_light_thread' ? 'light_thread' : 'normal'
             ]}`;
 
             // 自分以外の3人のパネルを生成
