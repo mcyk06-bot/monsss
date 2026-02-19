@@ -3846,6 +3846,7 @@
                     playerMarbles.forEach((marble, i) => {
                         marble.vx = (dx / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
                         marble.vy = (dy / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
+                        marble.launchEaseFrame = 0;
                         marble.isActive = true; marble.isUsed = true; marble.isSpecialShot = true;
                         setTimeout(() => playLaunchSound(power), i * 80);
                         activeMarbles.push(marble);
@@ -3860,6 +3861,7 @@
                     if (marble.isUsed) { isDragging = false; return; } 
                     marble.vx = (dx / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult;
                     marble.vy = (dy / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult;
+                    marble.launchEaseFrame = 0;
                     marble.isActive = true; marble.isUsed = true; activeMarbles.push(marble);
                     playLaunchSound(power);
                 }
@@ -3937,7 +3939,7 @@
         
         // 装備確定処理（確認後に呼ばれる共通関数）
         // モーダルを閉じてから少し待ってポーズ解除（ガチャガチャ防止）
-        const MODAL_CLOSE_DELAY = 400; // ms
+        const MODAL_CLOSE_DELAY = 300; // ms
         function unpauseAfterDelay() {
             setTimeout(() => { isPaused = false; }, MODAL_CLOSE_DELAY);
         }
