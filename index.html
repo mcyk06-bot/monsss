@@ -1921,7 +1921,7 @@
 
         class Item {
             constructor(x, y, type) {
-                this.x = x; this.y = y; this.type = type; this.radius = 15; this.frame = 0; this.collected = false;
+                this.x = x; this.y = y; this.type = type; this.radius = 22; this.frame = 0; this.collected = false;
                 if (type === 'hp') { this.emoji = '❤️'; this.color = '#ff1744'; this.name = 'HP上限アップ'; this.description = 'HP上限が4増加します'; }
                 else if (type === 'hourglass') { this.emoji = '⏳'; this.color = '#ff9800'; this.name = '砂時計'; this.description = '大号令カウントを4短縮します！'; }
                 else if (type === 'attack') { this.emoji = '💪'; this.color = '#ffd600'; this.name = '攻撃力アップ'; this.description = '攻撃力が0.5増加します'; }
@@ -1950,7 +1950,7 @@
                 gradient.addColorStop(0, this.color + 'aa'); gradient.addColorStop(0.5, this.color + '44'); gradient.addColorStop(1, this.color + '00');
                 ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize * 1.5, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = this.color + 'dd'; ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize, 0, Math.PI * 2); ctx.fill();
-                ctx.font = 'bold 24px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'white';
+                ctx.font = 'bold 28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'white';
                 ctx.fillText(this.emoji, this.x, currentY);
                 if (this.frame % 20 < 10) {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = 'bold 12px Arial';
