@@ -1818,8 +1818,8 @@
                 else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '友情強化薬'; this.description = '自分の友情コンボ（メイン・サブ）のレベルが1上がる！レア'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体友情強化注射'; this.description = '仲間全員の友情コンボのレベルが1上がる！激レア！'; }
                 else if (type === 'friendship_normal') { this.emoji = '🫛'; this.color = '#607d8b'; this.name = '豆粒友情'; this.description = '小さな弾を8発放つ基本の友情コンボ！'; }
-                else if (type === 'friendship_sixteen_ring') { this.emoji = '⚙'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
-                else if (type === 'friendship_white_light') { this.emoji = '⚛'; this.color = '#e0f0ff'; this.name = '白い光'; this.description = '自身の周りに白い光ゾーンが広がり範囲にダメージ！'; }
+                else if (type === 'friendship_sixteen_ring') { this.emoji = '◎'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
+                else if (type === 'friendship_white_light') { this.emoji = '◉'; this.color = '#e0f0ff'; this.name = '白い光'; this.description = '自身の周りに白い光ゾーンが広がり範囲にダメージ！'; }
                 else if (type === 'friendship_glow_homing') { this.emoji = '⚕'; this.color = '#aaddff'; this.name = '発光群'; this.description = '高速の白い光ホーミングビームが敵を追う！'; }
                 else if (type === 'friendship_light_thread') { this.emoji = '✚'; this.color = '#ffffff'; this.name = '光の糸'; this.description = '仲間3人に光のビームが飛び十字に分裂攻撃！'; }
                 else if (type === 'friendship_homing') { this.emoji = '🚀'; this.color = '#00bcd4'; this.name = 'ホーミングミサイル'; this.description = '友情攻撃がホーミングミサイルになります。敵を自動追尾！'; }
@@ -1916,8 +1916,6 @@
             isAlive() { return this.life > 0 && this.bounces <= this.maxBounces; }
         }
 
-        // ★ 白い光：味方に触れたら広がるゾーン
-        // ★ 白い光：手番キャラが動いている間まとい、停止したら爆発
         class WhiteLightZone {
             constructor(marble) {
                 this.marble = marble;
@@ -1926,7 +1924,7 @@
                 this.frame = 0;
                 this.phase = 'aura';   // 'aura' → 'explode' → 'fade'
                 this.explodeRadius = 0;
-                this.maxExplodeRadius = 130;
+                this.maxExplodeRadius = Math.min(canvasSize.width, canvasSize.height) * 0.52; // 画面の半分強
                 this.explodeFrame = 0;
                 this.damaged = false;
             }
@@ -1934,20 +1932,20 @@
                 this.frame++;
                 if (this.phase === 'aura') {
                     this.x = this.marble.x; this.y = this.marble.y;
-                    // マーブルが停止したら爆発フェーズへ
                     if (this.marble.isStopped || !this.marble.isMoving()) {
                         this.phase = 'explode';
                     }
                 } else if (this.phase === 'explode') {
                     this.explodeFrame++;
-                    this.explodeRadius = Math.min(this.explodeRadius + 5, this.maxExplodeRadius);
+                    this.explodeRadius = Math.min(this.explodeRadius + 10, this.maxExplodeRadius);
                     if (this.explodeRadius >= this.maxExplodeRadius) this.phase = 'fade';
+                } else if (this.phase === 'fade') {
+                    this.explodeFrame++;
                 }
             }
             draw() {
                 ctx.save();
                 if (this.phase === 'aura') {
-                    // オーラ：キャラの周りで白く輝く
                     const pulse = Math.sin(this.frame * 0.18) * 0.3 + 0.7;
                     const r = this.marble.radius * 1.8 * pulse;
                     const g = ctx.createRadialGradient(this.x, this.y, this.marble.radius * 0.5, this.x, this.y, r);
@@ -1956,7 +1954,6 @@
                     g.addColorStop(1, 'rgba(150,200,255,0)');
                     ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
                     ctx.fillStyle = g; ctx.fill();
-                    // 周回スパーク
                     for (let i = 0; i < 8; i++) {
                         const a = this.frame * 0.1 + i * Math.PI / 4;
                         const sr = this.marble.radius * 1.3;
@@ -1964,34 +1961,46 @@
                         ctx.fillStyle = `rgba(255,255,255,${0.5 + pulse * 0.5})`; ctx.fill();
                     }
                 } else {
-                    // 爆発フェーズ
-                    const progress = this.explodeRadius / this.maxExplodeRadius;
-                    const alpha = this.phase === 'fade' ? Math.max(0, 1 - this.explodeFrame * 0.04) : 1;
-                    // 外側リング
-                    ctx.beginPath(); ctx.arc(this.x, this.y, this.explodeRadius, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 4; ctx.stroke();
-                    ctx.beginPath(); ctx.arc(this.x, this.y, this.explodeRadius * 0.85, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(180,220,255,${alpha * 0.6})`; ctx.lineWidth = 2; ctx.stroke();
-                    // 内側グロー
-                    const gx = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.explodeRadius);
-                    gx.addColorStop(0, `rgba(255,255,255,${alpha * 0.4})`);
-                    gx.addColorStop(0.5, `rgba(200,230,255,${alpha * 0.2})`);
-                    gx.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.beginPath(); ctx.arc(this.x, this.y, this.explodeRadius, 0, Math.PI * 2);
+                    // fade期間: 40フレームかけてゆっくり消える
+                    const fadeDuration = 40;
+                    const fadeAlpha = this.phase === 'fade' ? Math.max(0, 1 - this.explodeFrame / fadeDuration) : 1;
+                    
+                    // 最終段階（explodeが完成したとき）は一瞬真っ白にフラッシュ
+                    const flashAlpha = this.phase === 'explode' && this.explodeRadius >= this.maxExplodeRadius * 0.95
+                        ? (this.explodeRadius / this.maxExplodeRadius) * 0.9 : 0;
+
+                    const r = this.explodeRadius;
+                    
+                    // 内部を白く塗りつぶす（フェードグラデーション）
+                    const gx = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r);
+                    gx.addColorStop(0, `rgba(255,255,255,${(fadeAlpha * 0.85 + flashAlpha).toFixed(3)})`);
+                    gx.addColorStop(0.4, `rgba(230,240,255,${(fadeAlpha * 0.5).toFixed(3)})`);
+                    gx.addColorStop(0.75, `rgba(200,225,255,${(fadeAlpha * 0.25).toFixed(3)})`);
+                    gx.addColorStop(1, 'rgba(180,210,255,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
                     ctx.fillStyle = gx; ctx.fill();
+
+                    // 外縁リング
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(255,255,255,${fadeAlpha})`; ctx.lineWidth = 5; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r * 0.88, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(180,220,255,${fadeAlpha * 0.6})`; ctx.lineWidth = 2; ctx.stroke();
+                    
                     // 放射スパーク
-                    for (let i = 0; i < 12; i++) {
-                        const a = (i / 12) * Math.PI * 2;
-                        const sx = this.x + Math.cos(a) * this.explodeRadius;
-                        const sy = this.y + Math.sin(a) * this.explodeRadius;
-                        ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-                        ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fill();
+                    if (fadeAlpha > 0.1) {
+                        for (let i = 0; i < 16; i++) {
+                            const a = (i / 16) * Math.PI * 2;
+                            const sx = this.x + Math.cos(a) * r;
+                            const sy = this.y + Math.sin(a) * r;
+                            ctx.beginPath(); ctx.arc(sx, sy, 5 * fadeAlpha, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255,255,255,${fadeAlpha})`; ctx.fill();
+                        }
                     }
                 }
                 ctx.restore();
             }
             isAlive() {
-                if (this.phase === 'fade') return this.explodeFrame < 25;
+                if (this.phase === 'fade') return this.explodeFrame < 40;
                 return true;
             }
         }
@@ -2066,7 +2075,7 @@
                 const dist = Math.hypot(dx, dy) || 1;
                 this.spd = 12;
                 this.vx = dx / dist * this.spd; this.vy = dy / dist * this.spd;
-                this.frame = 0; this.hit = false; this.life = 80;
+                this.frame = 0; this.hit = false; this.life = 140;
                 this.path = [{x: fromX, y: fromY}]; // 軌跡を記録（レーザービーム描画用）
                 this.angle = Math.atan2(dy, dx);
                 // 十字爆発用
@@ -2979,6 +2988,7 @@
             }
             if (currentTurn >= MAX_MARBLES) {
                 currentTurn = 0;
+                friendshipAttackHistory = new Set(); // ターンリセット時に友情履歴もクリア
                 for (let marble of playerMarbles) { marble.isUsed = false; marble.isActive = false; marble.hitEnemies = new Set(); }
                 stoppedMarbles = [];
             }
@@ -3085,7 +3095,7 @@
                     if (!b.hit) {
                         const tm = b.toMarble;
                         if (Math.hypot(b.x - tm.x, b.y - tm.y) < tm.radius + 15) {
-                            b.hit = true; b.life = 35; // 十字爆発アニメ分のlife
+                            b.hit = true; b.life = 60; // 十字爆発アニメ分のlife
                             if (b.splitOnHit) {
                                 const crossAngles = [b.angle, b.angle + Math.PI, b.angle + Math.PI/2, b.angle - Math.PI/2];
                                 for (const ca of crossAngles) {
