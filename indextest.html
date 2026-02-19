@@ -2001,10 +2001,10 @@
             constructor(x, y, power) {
                 const angle = Math.random() * Math.PI * 2;
                 this.x = x; this.y = y;
-                this.vx = Math.cos(angle) * 9; this.vy = Math.sin(angle) * 9;
+                this.vx = Math.cos(angle) * 5; this.vy = Math.sin(angle) * 5;
                 this.power = power; this.target = null;
-                this.homingStrength = 0.6; this.maxSpeed = 12;
-                this.life = 180; this.frame = 0; this.radius = 10;
+                this.homingStrength = 1.2; this.maxSpeed = 7;
+                this.life = 200; this.frame = 0; this.radius = 10;
                 this.trail = [];
             }
             update() {
@@ -2284,8 +2284,8 @@
                     else if (this.friendshipType === 'machinegun') icon = '🔫';
                     else if (this.friendshipType === 'energy') icon = '🧿';
                     else if (this.friendshipType === 'normal_shot') icon = '🫛';
-                    else if (this.friendshipType === 'sixteen_ring') icon = '⚙';
-                    else if (this.friendshipType === 'white_light') icon = '⚛';
+                    else if (this.friendshipType === 'sixteen_ring') icon = '◎';
+                    else if (this.friendshipType === 'white_light') icon = '◉';
                     else if (this.friendshipType === 'glow_homing') icon = '⚕';
                     else if (this.friendshipType === 'light_thread') icon = '✚';
                     if (icon) {
@@ -2381,10 +2381,7 @@
                         newBullets.push(new SixteenRingBullet(this.x, this.y, power * 1.25));
                     }
                 } else if (this.friendshipType === 'white_light') {
-                    // 白い光：WhiteLightZoneを生成してexplosionsに追加
-                    const zone = new WhiteLightZone(this);
-                    zone.power = power * 1.25 * (1 + playerAttackBonus * 0.15) * (1 + this.friendshipLevel * 0.3);
-                    explosions.push(zone);
+                    // triggerFriendshipAttack側でactiveMarbleに付けるため、ここでは何もしない
                     return [];
                 } else if (this.friendshipType === 'glow_homing') {
                     // 発光群：高速白色ホーミング 8発
@@ -3017,8 +3014,16 @@
                 const healAmount = 3 + (hitMarble.friendshipLevel - 1) * 2;
                 teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
                 explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
-                //showMessage(`💚 HP回復友情(Lv${hitMarble.friendshipLevel})！ +${healAmount}`, 'success');
                 updateHPBar(); return null;
+            }
+            // 白い光：activeMarble（手番キャラ）にゾーンを付ける
+            if (hitMarble.friendshipType === 'white_light') {
+                const power = hitMarble.friendshipPower * 1.25 * (1 + playerAttackBonus * 0.15) * (1 + hitMarble.friendshipLevel * 0.3);
+                const zone = new WhiteLightZone(activeMarble);
+                zone.power = power;
+                explosions.push(zone);
+                const subBullets = hitMarble.createSubBullets();
+                return subBullets.length > 0 ? subBullets : null;
             }
             const bullets = hitMarble.createBullets();
             const subBullets = hitMarble.createSubBullets();
@@ -3076,31 +3081,33 @@
                 if (!b.isAlive()) { bullets.splice(i, 1); continue; }
 
                 // --- LightThreadBeam：仲間に当たったら十字分裂爆発 ---
-                if (b instanceof LightThreadBeam && !b.hit) {
-                    const tm = b.toMarble;
-                    if (Math.hypot(b.x - tm.x, b.y - tm.y) < tm.radius + 15) {
-                        b.hit = true; b.life = 25;
-                        if (b.splitOnHit) {
-                            const crossAngles = [b.angle, b.angle + Math.PI, b.angle + Math.PI/2, b.angle - Math.PI/2];
-                            for (const ca of crossAngles) {
-                                for (let j = enemies.length - 1; j >= 0; j--) {
-                                    const en = enemies[j];
-                                    const dist = Math.hypot(en.x - b.x, en.y - b.y);
-                                    const dot = ((en.x - b.x) * Math.cos(ca) + (en.y - b.y) * Math.sin(ca)) / (dist || 1);
-                                    if (dot > 0.80 && dist < 280) {
-                                        if (en.takeDamage(b.power * 0.9)) {
-                                            defeated++; totalDefeated++;
-                                            explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
-                                            enemies.splice(j, 1);
-                                            updateUI();
-                                            if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                if (b instanceof LightThreadBeam) {
+                    if (!b.hit) {
+                        const tm = b.toMarble;
+                        if (Math.hypot(b.x - tm.x, b.y - tm.y) < tm.radius + 15) {
+                            b.hit = true; b.life = 35; // 十字爆発アニメ分のlife
+                            if (b.splitOnHit) {
+                                const crossAngles = [b.angle, b.angle + Math.PI, b.angle + Math.PI/2, b.angle - Math.PI/2];
+                                for (const ca of crossAngles) {
+                                    for (let j = enemies.length - 1; j >= 0; j--) {
+                                        const en = enemies[j];
+                                        const dist = Math.hypot(en.x - b.x, en.y - b.y);
+                                        const dot = ((en.x - b.x) * Math.cos(ca) + (en.y - b.y) * Math.sin(ca)) / (dist || 1);
+                                        if (dot > 0.75 && dist < 300) {
+                                            if (en.takeDamage(b.power * 0.9)) {
+                                                defeated++; totalDefeated++;
+                                                explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
+                                                enemies.splice(j, 1);
+                                                updateUI();
+                                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                    continue;
+                    continue; // hit後もここでcontinueして下のhitEnemiesチェックに落とさない
                 }
 
                 // --- WhiteLightZone：explosionsで管理されているのでスキップ ---
@@ -3492,7 +3499,7 @@
             setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
         }
         
-        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'🫛', sixteen_ring:'⚙', white_light:'⚛', glow_homing:'⚕', light_thread:'✚', normal:'　' };
+        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'🫛', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
         const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal_shot:'豆粒友情', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
 
         function iconBar(type, level) {
