@@ -1961,39 +1961,54 @@
                         ctx.fillStyle = `rgba(255,255,255,${0.5 + pulse * 0.5})`; ctx.fill();
                     }
                 } else {
-                    // fade期間: 40フレームかけてゆっくり消える
                     const fadeDuration = 40;
                     const fadeAlpha = this.phase === 'fade' ? Math.max(0, 1 - this.explodeFrame / fadeDuration) : 1;
-                    
-                    // 最終段階（explodeが完成したとき）は一瞬真っ白にフラッシュ
-                    const flashAlpha = this.phase === 'explode' && this.explodeRadius >= this.maxExplodeRadius * 0.95
-                        ? (this.explodeRadius / this.maxExplodeRadius) * 0.9 : 0;
-
                     const r = this.explodeRadius;
-                    
-                    // 内部を白く塗りつぶす（フェードグラデーション）
+
+                    // ★ 画面フラッシュ：爆発が最大になった瞬間に画面全体を白く染める
+                    if (this.phase === 'explode' && r >= this.maxExplodeRadius * 0.9) {
+                        const flashStrength = (r - this.maxExplodeRadius * 0.9) / (this.maxExplodeRadius * 0.1);
+                        ctx.fillStyle = `rgba(255,255,255,${(flashStrength * 0.75).toFixed(3)})`;
+                        ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+                    }
+
+                    // ★ 複数リングをフレームずらして重ねて描画（ゴーストリング）
+                    const ringOffsets = [0, 10, 20, 30];
+                    for (let k = 0; k < ringOffsets.length; k++) {
+                        const rk = Math.max(0, r - ringOffsets[k]);
+                        if (rk <= 0) continue;
+                        const kAlpha = fadeAlpha * (1 - k * 0.2);
+                        if (kAlpha <= 0) continue;
+                        ctx.beginPath(); ctx.arc(this.x, this.y, rk, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(255,255,255,${(kAlpha * 0.9).toFixed(3)})`;
+                        ctx.lineWidth = 8 - k * 1.5; ctx.stroke();
+                        ctx.beginPath(); ctx.arc(this.x, this.y, rk, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(200,230,255,${(kAlpha * 0.5).toFixed(3)})`;
+                        ctx.lineWidth = 20 - k * 3; ctx.stroke();
+                    }
+
+                    // 内部グラデーション（白い光で充満している感じ）
                     const gx = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r);
-                    gx.addColorStop(0, `rgba(255,255,255,${(fadeAlpha * 0.85 + flashAlpha).toFixed(3)})`);
-                    gx.addColorStop(0.4, `rgba(230,240,255,${(fadeAlpha * 0.5).toFixed(3)})`);
-                    gx.addColorStop(0.75, `rgba(200,225,255,${(fadeAlpha * 0.25).toFixed(3)})`);
-                    gx.addColorStop(1, 'rgba(180,210,255,0)');
+                    gx.addColorStop(0,    `rgba(255,255,255,${(fadeAlpha * 0.92).toFixed(3)})`);
+                    gx.addColorStop(0.35, `rgba(240,248,255,${(fadeAlpha * 0.65).toFixed(3)})`);
+                    gx.addColorStop(0.65, `rgba(210,235,255,${(fadeAlpha * 0.35).toFixed(3)})`);
+                    gx.addColorStop(0.9,  `rgba(190,220,255,${(fadeAlpha * 0.12).toFixed(3)})`);
+                    gx.addColorStop(1,    'rgba(180,210,255,0)');
                     ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
                     ctx.fillStyle = gx; ctx.fill();
 
-                    // 外縁リング
-                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(255,255,255,${fadeAlpha})`; ctx.lineWidth = 5; ctx.stroke();
-                    ctx.beginPath(); ctx.arc(this.x, this.y, r * 0.88, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(180,220,255,${fadeAlpha * 0.6})`; ctx.lineWidth = 2; ctx.stroke();
-                    
-                    // 放射スパーク
-                    if (fadeAlpha > 0.1) {
-                        for (let i = 0; i < 16; i++) {
-                            const a = (i / 16) * Math.PI * 2;
+                    // 放射スパーク＋輝き線
+                    if (fadeAlpha > 0.05) {
+                        for (let i = 0; i < 24; i++) {
+                            const a = (i / 24) * Math.PI * 2;
                             const sx = this.x + Math.cos(a) * r;
                             const sy = this.y + Math.sin(a) * r;
-                            ctx.beginPath(); ctx.arc(sx, sy, 5 * fadeAlpha, 0, Math.PI * 2);
+                            ctx.beginPath(); ctx.arc(sx, sy, 6 * fadeAlpha, 0, Math.PI * 2);
                             ctx.fillStyle = `rgba(255,255,255,${fadeAlpha})`; ctx.fill();
+                            ctx.beginPath();
+                            ctx.moveTo(sx, sy);
+                            ctx.lineTo(sx + Math.cos(a) * 14 * fadeAlpha, sy + Math.sin(a) * 14 * fadeAlpha);
+                            ctx.strokeStyle = `rgba(255,255,255,${fadeAlpha * 0.7})`; ctx.lineWidth = 2; ctx.stroke();
                         }
                     }
                 }
@@ -2093,50 +2108,59 @@
             draw() {
                 ctx.save();
                 if (!this.hit) {
-                    // 太い白いレーザービーム（出発点〜現在位置まで）
+                    // 飛行中ビーム（より白く・太く）
                     if (this.path.length > 1) {
                         const first = this.path[0];
                         const last = this.path[this.path.length - 1];
-                        // 外側グロー
+                        // 最外グロー
                         ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
-                        ctx.strokeStyle = 'rgba(180,220,255,0.4)'; ctx.lineWidth = 22; ctx.lineCap = 'round'; ctx.stroke();
+                        ctx.strokeStyle = 'rgba(200,230,255,0.35)'; ctx.lineWidth = 34; ctx.lineCap = 'round'; ctx.stroke();
+                        // 外グロー
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(230,245,255,0.6)'; ctx.lineWidth = 20; ctx.stroke();
                         // 中間層
                         ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
-                        ctx.strokeStyle = 'rgba(200,235,255,0.75)'; ctx.lineWidth = 12; ctx.stroke();
-                        // コア
+                        ctx.strokeStyle = 'rgba(245,252,255,0.9)'; ctx.lineWidth = 10; ctx.stroke();
+                        // コア（純白）
                         ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
                         ctx.strokeStyle = 'rgba(255,255,255,1)'; ctx.lineWidth = 5; ctx.stroke();
                     }
-                    // 先端グロー
-                    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 18);
+                    // 先端フレア
+                    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 26);
                     g.addColorStop(0, 'rgba(255,255,255,1)');
-                    g.addColorStop(0.5, 'rgba(180,220,255,0.7)');
+                    g.addColorStop(0.4, 'rgba(220,240,255,0.85)');
+                    g.addColorStop(0.75, 'rgba(180,220,255,0.4)');
                     g.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.beginPath(); ctx.arc(this.x, this.y, 18, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 26, 0, Math.PI * 2);
                     ctx.fillStyle = g; ctx.fill();
                 } else {
-                    // 十字爆発：4方向にレーザー伸長
-                    const crossLen = Math.min(this.crossFrame * 8, 200);
-                    const alpha = Math.max(0, 1 - this.crossFrame * 0.045);
+                    // ★ 十字爆発：画面外まで伸びる超長い十字
+                    const screenDiag = Math.sqrt(canvasSize.width ** 2 + canvasSize.height ** 2);
+                    const crossLen = Math.min(this.crossFrame * 30, screenDiag); // 高速に伸びて画面端を突き抜ける
+                    const alpha = Math.max(0, 1 - this.crossFrame * 0.028); // 60フレームでフェード
                     const crossAngles = [this.angle, this.angle + Math.PI, this.angle + Math.PI/2, this.angle - Math.PI/2];
                     for (const ca of crossAngles) {
                         const ex = this.x + Math.cos(ca) * crossLen;
                         const ey = this.y + Math.sin(ca) * crossLen;
-                        // グロー
+                        // 最外グロー（薄く広い）
                         ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
-                        ctx.strokeStyle = `rgba(180,220,255,${alpha * 0.5})`; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
-                        // 中間
+                        ctx.strokeStyle = `rgba(180,225,255,${(alpha * 0.35).toFixed(3)})`; ctx.lineWidth = 40; ctx.lineCap = 'round'; ctx.stroke();
+                        // 外グロー
                         ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
-                        ctx.strokeStyle = `rgba(220,240,255,${alpha * 0.8})`; ctx.lineWidth = 10; ctx.stroke();
-                        // コア
+                        ctx.strokeStyle = `rgba(220,242,255,${(alpha * 0.65).toFixed(3)})`; ctx.lineWidth = 22; ctx.stroke();
+                        // 中間層
                         ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
-                        ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 4; ctx.stroke();
+                        ctx.strokeStyle = `rgba(245,252,255,${(alpha * 0.9).toFixed(3)})`; ctx.lineWidth = 12; ctx.stroke();
+                        // 純白コア
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`; ctx.lineWidth = 5; ctx.stroke();
                     }
-                    // 中心フラッシュ
-                    const fc = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 30 + this.crossFrame * 2);
-                    fc.addColorStop(0, `rgba(255,255,255,${alpha})`);
+                    // 中心フラッシュ（大きく光る）
+                    const fc = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 50 + this.crossFrame * 3);
+                    fc.addColorStop(0, `rgba(255,255,255,${alpha.toFixed(3)})`);
+                    fc.addColorStop(0.5, `rgba(220,240,255,${(alpha * 0.5).toFixed(3)})`);
                     fc.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.beginPath(); ctx.arc(this.x, this.y, 30 + this.crossFrame * 2, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 50 + this.crossFrame * 3, 0, Math.PI * 2);
                     ctx.fillStyle = fc; ctx.fill();
                 }
                 ctx.restore();
