@@ -2117,7 +2117,7 @@
             teamHP = Math.min(MAX_TEAM_HP, teamHP + hpRecovery); updateHPBar();
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
-                if (specialShotCount === SPECIAL_SHOT_MAX) showMessage('⚡ 大号令ショット準備完了！', 'combo-effect');
+                if (specialShotCount === SPECIAL_SHOT_MAX) updateSpecialShotUI();
             }
             updateSpecialShotUI();
             document.getElementById('clearStageNum').textContent = `ステージ ${currentStage} クリア！`;
@@ -2279,9 +2279,9 @@
         function endEnemyTurn() {
             isEnemyTurn = false; currentTurn++; totalTurns++;
             spawnItems();
+            if (currentStage <= 20 && Math.random() < 0.50) spawnItems();
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
-                if (specialShotCount === SPECIAL_SHOT_MAX) showMessage('⚡ 大号令ショット準備完了！', 'combo-effect');
             }
             if (currentTurn >= MAX_MARBLES) {
                 currentTurn = 0;
@@ -2468,7 +2468,7 @@
                                 if (leveled) {
                                     playLevelUpSound();
                                     explosions.push(new HealEffect(marble.x, marble.y));
-                                    showMessage(`💊 友情強化！メイン/サブのレベルが上がった！`, 'combo-effect');
+                                    showMessage(`💊 友情コンボレベルアップ！`, 'combo-effect');
                                 } else {
                                     showMessage(`💊 友情強化薬…でも効果なし（未装備orMAX）`, 'info');
                                 }
@@ -2491,7 +2491,7 @@
                                 if (count > 0) {
                                     playLevelUpSound();
                                     playerMarbles.forEach(m => explosions.push(new HealEffect(m.x, m.y)));
-                                    showMessage(`💉 全体友情強化！${count}個のレベルが上がった！`, 'combo-effect');
+                                    showMessage(`💉 全員の友情コンボレベルアップ！`, 'combo-effect');
                                 } else {
                                     showMessage(`💉 全体友情強化注射…効果なし（未装備orMAX）`, 'info');
                                 }
