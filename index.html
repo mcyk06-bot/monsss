@@ -1188,6 +1188,7 @@
         let totalTurns = 0;
         let totalDefeated = 0;
         let isStageClear = false;
+        let pendingStageClear = false; // 全滅確認済み、キャラ停止待ち
         
         let teamHP = 10;
         let MAX_TEAM_HP = 10;
@@ -2495,7 +2496,7 @@
                             }
                         }
                         updateUI();
-                        if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                        if (enemies.length === 0) pendingStageClear = true;
                     }, 350);
                     return [];
                 } else if (this.friendshipType === 'normal_shot') {
@@ -2773,7 +2774,7 @@
             stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; enemyBeams = []; items = [];
             defeated = 0; currentTurn = 0; friendshipAttackHistory = new Set();
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false;
-            stageEnemyTurnsCount = 0;
+            stageEnemyTurnsCount = 0; pendingStageClear = false;
             
             const isBossStage = currentStage % 5 === 0;
             const isDarkStage = currentStage >= 50; // 50ステージ以降
@@ -3163,6 +3164,11 @@
                 stoppedMarbles = [];
             }
             updateTurnIndicator(); updateUI();
+            // 敵ターン中に全滅した場合もここでクリアを発火
+            if (pendingStageClear && !isStageClear) {
+                pendingStageClear = false;
+                setTimeout(() => showStageClear(), 300);
+            }
         }
         
         function checkCollision(m1, m2) {
@@ -3239,7 +3245,7 @@
                                     explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
                                     enemies.splice(j, 1);
                                     updateUI();
-                                    if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                    if (enemies.length === 0) pendingStageClear = true;
                                 }
                             }
                         }
@@ -3279,7 +3285,7 @@
                                                 explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
                                                 enemies.splice(j, 1);
                                                 updateUI();
-                                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                                if (enemies.length === 0) pendingStageClear = true;
                                             }
                                         }
                                     }
@@ -3306,7 +3312,7 @@
                                 explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                                 enemies.splice(j, 1);
                                 updateUI();
-                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                if (enemies.length === 0) pendingStageClear = true;
                             }
                             bullets.splice(i, 1); break;
                         }
@@ -3336,7 +3342,7 @@
                                 showMessage(`💚 HP回復！ +${healAmount}`, 'success'); updateHPBar();
                             }
                             updateUI();
-                            if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                            if (enemies.length === 0) pendingStageClear = true;
                         }
                         bullets.splice(i, 1); break;
                     }
@@ -3413,7 +3419,7 @@
                                 setTimeout(() => {
                                     enemies.forEach(e => { explosions.push(new Explosion(e.x, e.y, e.radius, e.color)); defeated++; totalDefeated++; });
                                     enemies = []; showMessage('💀 デス発動！敵を全滅させました！', 'danger');
-                                    ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 1000))(currentStage);
+                                    pendingStageClear = true;
                                 }, 1000);
                             } else if (item.type === 'friendship_up_self') {
                                 // 自分の友情レベルを1上げる
@@ -3491,7 +3497,7 @@
                                     updateHPBar();
                                 }
                                 updateUI();
-                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                if (enemies.length === 0) pendingStageClear = true;
                             }
                         }
                     }
@@ -3572,7 +3578,12 @@
                         marble.isSpecialShot = false;
                     }
                     activeMarbles = [];
-                    setTimeout(() => executeEnemyAttack(), 500);
+                    if (pendingStageClear) {
+                        pendingStageClear = false;
+                        setTimeout(() => showStageClear(), 300);
+                    } else {
+                        setTimeout(() => executeEnemyAttack(), 500);
+                    }
                 }
             }
             
