@@ -698,6 +698,86 @@
             border-top: 1px dashed #ccc;
             padding-top: 5px;
         }
+
+        /* ====== 装備しない抽選演出パネル ====== */
+        #lotteryPanel {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 10px 10px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-radius: 14px;
+            margin-top: 4px;
+            border: 2px solid #e94560;
+            position: relative;
+        }
+        #lotteryTitle {
+            font-size: 11px;
+            font-weight: bold;
+            color: #aaa;
+            letter-spacing: 2px;
+        }
+        #lotterySlot {
+            width: 100%;
+            height: 60px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #lotterySlotText {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            padding: 0 8px;
+            line-height: 1.3;
+            text-shadow: 0 0 12px rgba(255,200,0,0.8);
+        }
+        #lotteryResult {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            animation: resultReveal 0.4s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes resultReveal {
+            from { transform: scale(0.6); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        #lotteryResultIcon { font-size: 38px; }
+        #lotteryResultText {
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            line-height: 1.4;
+        }
+        #lotteryResultRarity {
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .rarity-miracle { background: linear-gradient(90deg,#f39c12,#e74c3c); color:#fff; }
+        .rarity-rare    { background: #9b59b6; color: #fff; }
+        .rarity-normal  { background: #555; color: #ddd; }
+        #lotteryOkBtn {
+            padding: 8px 28px;
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -872,6 +952,17 @@
                 <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">サブに装備 ⚡</button>
                 <button class="item-btn" id="itemGiveBtn" style="display:none; background:linear-gradient(135deg,#00bcd4,#0097a7); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">仲間に渡す 🤝</button>
                 <button class="item-btn item-btn-cancel" id="itemCancelBtn">装備しない ✗</button>
+            </div>
+            <!-- 抽選演出パネル（装備しない時に表示） -->
+            <div id="lotteryPanel">
+                <div id="lotteryTitle">🎰 おたのしみ抽選</div>
+                <div id="lotterySlot"><div id="lotterySlotText">...</div></div>
+                <div id="lotteryResult">
+                    <div id="lotteryResultIcon">🎁</div>
+                    <div id="lotteryResultText">結果テキスト</div>
+                    <div id="lotteryResultRarity" class="rarity-normal">NORMAL</div>
+                </div>
+                <button id="lotteryOkBtn">OK！</button>
             </div>
         </div>
     </div>
@@ -3892,85 +3983,235 @@
             }
         });
         
-        document.getElementById('itemCancelBtn').addEventListener('click', () => {
+        // ====== 抽選演出システム ======
+        function closeLotteryAndModal() {
+            document.getElementById('lotteryPanel').style.display = 'none';
+            document.getElementById('lotteryResult').style.display = 'none';
+            document.getElementById('lotteryOkBtn').style.display = 'none';
+            document.getElementById('lotterySlot').style.display = 'flex';
             document.getElementById('itemModal').classList.remove('active');
-            const savedMarble = currentMarble;
-            currentItem = null; currentMarble = null; isPaused = false;
+            // ボタン群を元に戻す（次回表示のため）
+            document.getElementById('itemModalButtons').style.display = 'flex';
+        }
 
+        function resolveLotteryResult(savedMarble) {
             const r = Math.random();
             const FRIENDSHIP_TYPES = ['homing','laser','heal','machinegun','energy','normal_shot','sixteen_ring','white_light','glow_homing','light_thread'];
 
+            // 結果データ: { icon, text, rarity:'miracle'|'rare'|'normal', apply:fn }
+            let result;
+
             if (r < 0.004) {
-                // 0.4% 全員の友情が1レベルアップ
-                playerMarbles.forEach(m => {
-                    if (m.friendshipType !== 'normal' && m.friendshipLevel < 5) {
-                        m.friendshipLevel++; m.friendshipPower += 0.5; m.friendshipCount += 2;
+                result = {
+                    icon: '🌟', rarity: 'miracle',
+                    rarityLabel: '✨ MIRACLE',
+                    text: '全員の友情が\n1レベルアップ！',
+                    apply() {
+                        playerMarbles.forEach(m => {
+                            if (m.friendshipType !== 'normal' && m.friendshipLevel < 5) {
+                                m.friendshipLevel++; m.friendshipPower += 0.5; m.friendshipCount += 2;
+                            }
+                            if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
+                                m.subFriendshipLevel++;
+                            }
+                        });
+                        playLevelUpSound(); updateFriendshipStatusBar();
+                        explosions.push(new CriticalEffect(canvasSize.width/2, canvasSize.height/2));
                     }
-                    if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
-                        m.subFriendshipLevel++;
-                    }
-                });
-                explosions.push(new CriticalEffect(canvasSize.width / 2, canvasSize.height / 2));
-                playLevelUpSound();
-                showMessage('✨ 奇跡！全員の友情が1レベルアップ！', 'combo-effect');
-                updateFriendshipStatusBar();
+                };
             } else if (r < 0.008) {
-                // 0.4% HP上限値が10アップ
-                MAX_TEAM_HP += 10; teamHP = Math.min(teamHP, MAX_TEAM_HP);
-                explosions.push(new HealEffect(canvasSize.width / 2, canvasSize.height / 2));
-                showMessage('💖 奇跡！HP上限値+10！', 'combo-effect');
-                updateHPBar();
+                result = {
+                    icon: '💖', rarity: 'miracle',
+                    rarityLabel: '✨ MIRACLE',
+                    text: 'HP上限値\n+10！',
+                    apply() {
+                        MAX_TEAM_HP += 10; updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
             } else if (r < 0.012) {
-                // 0.4% 別のランダムな友情コンボに変化
-                if (savedMarble) {
-                    const others = FRIENDSHIP_TYPES.filter(t => t !== savedMarble.friendshipType);
-                    const newType = others[Math.floor(Math.random() * others.length)];
-                    savedMarble.friendshipType = newType;
-                    savedMarble.friendshipLevel = Math.max(savedMarble.friendshipLevel, 1);
-                    savedMarble.friendshipPower = savedMarble.friendshipLevel;
-                    savedMarble.friendshipCount = 8;
-                    explosions.push(new CriticalEffect(savedMarble.x, savedMarble.y));
-                    showMessage(`🎲 奇跡！友情が「${FRIENDSHIP_NAMES[newType]}」に変化！`, 'combo-effect');
-                    updateFriendshipStatusBar();
-                }
+                const FRIENDSHIP_TYPES2 = ['homing','laser','heal','machinegun','energy','normal_shot','sixteen_ring','white_light','glow_homing','light_thread'];
+                const others = savedMarble ? FRIENDSHIP_TYPES2.filter(t => t !== savedMarble.friendshipType) : FRIENDSHIP_TYPES2;
+                const newType = others[Math.floor(Math.random() * others.length)];
+                result = {
+                    icon: '🎲', rarity: 'miracle',
+                    rarityLabel: '✨ MIRACLE',
+                    text: `友情が「${FRIENDSHIP_NAMES[newType]}」\nに変化！`,
+                    apply() {
+                        if (savedMarble) {
+                            savedMarble.friendshipType = newType;
+                            savedMarble.friendshipLevel = Math.max(savedMarble.friendshipLevel, 1);
+                            savedMarble.friendshipPower = savedMarble.friendshipLevel;
+                            savedMarble.friendshipCount = 8;
+                            explosions.push(new CriticalEffect(savedMarble.x, savedMarble.y));
+                            updateFriendshipStatusBar();
+                        }
+                    }
+                };
             } else if (r < 0.024) {
-                // 1.2% 本人の友情が1レベルアップ
-                if (savedMarble && savedMarble.friendshipType !== 'normal' && savedMarble.friendshipLevel < 5) {
-                    savedMarble.friendshipLevel++; savedMarble.friendshipPower += 0.5; savedMarble.friendshipCount += 2;
-                    playLevelUpSound();
-                    showMessage(`🆙 本人の友情が1レベルアップ！Lv${savedMarble.friendshipLevel}`, 'combo-effect');
-                    updateFriendshipStatusBar();
-                } else {
-                    teamHP = Math.min(teamHP + 10, MAX_TEAM_HP);
-                    explosions.push(new HealEffect(canvasSize.width / 2, canvasSize.height / 2));
-                    showMessage('装備しなかった…でも HP+10 回復！', 'success');
-                    updateHPBar();
-                }
+                const canUp = savedMarble && savedMarble.friendshipType !== 'normal' && savedMarble.friendshipLevel < 5;
+                result = {
+                    icon: '🆙', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: canUp ? `本人の友情が\n1レベルアップ！` : 'HP +10 回復！',
+                    apply() {
+                        if (canUp) {
+                            savedMarble.friendshipLevel++; savedMarble.friendshipPower += 0.5; savedMarble.friendshipCount += 2;
+                            playLevelUpSound(); updateFriendshipStatusBar();
+                        } else {
+                            teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
+                            explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                        }
+                    }
+                };
             } else if (r < 0.036) {
-                // 1.2% HP上限値が4アップ
-                MAX_TEAM_HP += 4; teamHP = Math.min(teamHP, MAX_TEAM_HP);
-                explosions.push(new HealEffect(canvasSize.width / 2, canvasSize.height / 2));
-                showMessage('💖 HP上限値+4！', 'success');
-                updateHPBar();
+                result = {
+                    icon: '💗', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: 'HP上限値 +4！',
+                    apply() {
+                        MAX_TEAM_HP += 4; updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
             } else if (r < 0.048) {
-                // 1.2% 攻撃力が1アップ
-                playerAttackBonus += 1;
-                explosions.push(new CriticalEffect(canvasSize.width / 2, canvasSize.height / 2));
-                showMessage('💪 攻撃力+1！', 'combo-effect');
-                updateUI();
+                result = {
+                    icon: '💪', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: '攻撃力 +1！',
+                    apply() {
+                        playerAttackBonus += 1; updateUI();
+                        explosions.push(new CriticalEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
             } else if (r < 0.148) {
-                // 10% HPが全回復
-                teamHP = MAX_TEAM_HP;
-                explosions.push(new HealEffect(canvasSize.width / 2, canvasSize.height / 2));
-                showMessage('💚 HP全回復！', 'success');
-                updateHPBar();
+                result = {
+                    icon: '💚', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: 'HP 全回復！',
+                    apply() {
+                        teamHP = MAX_TEAM_HP; updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
             } else {
-                // それ以外 HPが10回復
-                teamHP = Math.min(teamHP + 10, MAX_TEAM_HP);
-                explosions.push(new HealEffect(canvasSize.width / 2, canvasSize.height / 2));
-                showMessage('装備しなかった…でも HP+10 回復！', 'success');
-                updateHPBar();
+                result = {
+                    icon: '❤️', rarity: 'normal',
+                    rarityLabel: 'NORMAL',
+                    text: 'HP +10 回復',
+                    apply() {
+                        teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
             }
+            return result;
+        }
+
+        function runLotteryAnimation(result) {
+            const panel = document.getElementById('lotteryPanel');
+            const slot = document.getElementById('lotterySlot');
+            const slotText = document.getElementById('lotterySlotText');
+            const resultDiv = document.getElementById('lotteryResult');
+            const resultIcon = document.getElementById('lotteryResultIcon');
+            const resultText = document.getElementById('lotteryResultText');
+            const resultRarity = document.getElementById('lotteryResultRarity');
+            const okBtn = document.getElementById('lotteryOkBtn');
+
+            // ボタンを隠して抽選パネルを表示
+            document.getElementById('itemModalButtons').style.display = 'none';
+            panel.style.display = 'flex';
+            resultDiv.style.display = 'none';
+            okBtn.style.display = 'none';
+            slotText.style.fontSize = '14px';
+
+            // スロット演出用の候補リスト
+            const candidates = [
+                '❤️ HP+10回復', '💪 攻撃力+1', '💗 HP上限+4',
+                '💚 HP全回復', '🆙 友情LvUp', '🌟 全員LvUp！',
+                '💖 HP上限+10', '🎲 友情変化', '❤️ HP+10回復',
+                '💚 HP全回復', '💪 攻撃力+1', '🆙 友情LvUp',
+            ];
+
+            // 高速→低速でスロットを回す
+            let frame = 0;
+            const totalFrames = 28; // 総フレーム数
+            let idx = Math.floor(Math.random() * candidates.length);
+            let skipped = false; // タップでスキップされたか
+
+            // ランダムなスタートから徐々にスローダウン
+            const intervals = [];
+            // 高速フェーズ: 50ms×10回
+            for (let i = 0; i < 10; i++) {
+                intervals.push(50);
+            }
+            // 中速フェーズ: 80ms×6回
+            for (let i = 0; i < 6; i++) {
+                intervals.push(80);
+            }
+            // 低速フェーズ: 140ms×5回 → 結果へ
+            for (let i = 0; i < 5; i++) {
+                intervals.push(140 + i * 30);
+            }
+
+            // タップでスキップ
+            function onSkipTap() {
+                if (skipped) return;
+                skipped = true;
+                panel.removeEventListener('click', onSkipTap);
+                panel.removeEventListener('touchstart', onSkipTap);
+                showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn);
+            }
+            panel.addEventListener('click', onSkipTap);
+            panel.addEventListener('touchstart', onSkipTap);
+
+            function tick(stepIdx) {
+                if (skipped) return; // スキップ済みなら停止
+                if (stepIdx >= intervals.length) {
+                    panel.removeEventListener('click', onSkipTap);
+                    panel.removeEventListener('touchstart', onSkipTap);
+                    // 結果表示へ
+                    showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn);
+                    return;
+                }
+                idx = (idx + 1) % candidates.length;
+                slotText.textContent = candidates[idx];
+                // 色を交互に変える
+                slotText.style.color = stepIdx % 2 === 0 ? '#ffe082' : '#80d8ff';
+                setTimeout(() => tick(stepIdx + 1), intervals[stepIdx]);
+            }
+            tick(0);
+        }
+
+        function showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn) {
+            // スロットを結果表示に切り替え
+            slot.style.display = 'none';
+            resultDiv.style.display = 'flex';
+            resultIcon.textContent = result.icon;
+            resultText.textContent = result.text;
+            resultRarity.textContent = result.rarityLabel;
+            resultRarity.className = `rarity-${result.rarity}`;
+
+            // 効果を実際に適用
+            result.apply();
+
+            // OKボタン表示
+            okBtn.style.display = 'block';
+
+            // 1.5秒後に自動クローズ（OKボタンでも閉じられる）
+            let closed = false;
+            const autoClose = setTimeout(() => {
+                if (!closed) { closed = true; closeLotteryAndModal(); currentItem = null; currentMarble = null; isPaused = false; }
+            }, 1000);
+            okBtn.onclick = () => {
+                if (!closed) { closed = true; clearTimeout(autoClose); closeLotteryAndModal(); currentItem = null; currentMarble = null; isPaused = false; }
+            };
+        }
+
+        document.getElementById('itemCancelBtn').addEventListener('click', () => {
+            const savedMarble = currentMarble;
+            const result = resolveLotteryResult(savedMarble);
+            runLotteryAnimation(result);
         });
         
         document.getElementById('continueBtn').addEventListener('click', () => {
