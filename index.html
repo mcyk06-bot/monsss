@@ -1166,19 +1166,19 @@
         const CHAR_NAMES = ['マイク', 'ホッパー', 'イレブン', 'ダスティン'];
         
         const MARBLE_TYPES = {
-            NORMAL: { name: 'ノーマル', color: '#4CAF50', secondaryColor: '#81C784', radius: 23, damage: 1.5, attackMult: 1.00, speedMult: 1.0,  friction: 0.99,  symbol: '●' },
-            POWER:  { name: 'パワー',   color: '#f44336', secondaryColor: '#e57373', radius: 23, damage: 1.5, attackMult: 1.25, speedMult: 0.7,  friction: 0.97,  symbol: '◆' },
-            SPEED:  { name: 'スピード', color: '#2196F3', secondaryColor: '#64B5F6', radius: 23, damage: 1.5, attackMult: 0.85, speedMult: 1.5,  friction: 0.995, symbol: '★' }
+            NORMAL: { name: 'ノーマル', color: '#4CAF50', secondaryColor: '#81C784', radius: 28, damage: 1.5, attackMult: 1.00, speedMult: 1.0,  friction: 0.99,  symbol: '●' },
+            POWER:  { name: 'パワー',   color: '#f44336', secondaryColor: '#e57373', radius: 28, damage: 1.5, attackMult: 1.25, speedMult: 0.7,  friction: 0.97,  symbol: '◆' },
+            SPEED:  { name: 'スピード', color: '#2196F3', secondaryColor: '#64B5F6', radius: 28, damage: 1.5, attackMult: 0.85, speedMult: 1.5,  friction: 0.995, symbol: '★' }
         };
         
         const ENEMY_SIZES = {
-            SMALL:  { name: '小', radius: 20, maxHp: 1, color: '#43a047', secondaryColor: '#66bb6a' },
-            MEDIUM: { name: '中', radius: 25, maxHp: 3, color: '#fb8c00', secondaryColor: '#ffa726' },
+            SMALL:  { name: '小', radius: 28, maxHp: 1, color: '#43a047', secondaryColor: '#66bb6a' },
+            MEDIUM: { name: '中', radius: 35, maxHp: 3, color: '#fb8c00', secondaryColor: '#ffa726' },
             LARGE:  { name: '大', radius: 40, maxHp: 5, color: '#e53935', secondaryColor: '#ef5350' }
         };
         const DARK_ENEMY_SIZES = {
-            SMALL:  { name: '小', radius: 20, maxHp: 2,  color: '#4a0080', secondaryColor: '#9b00cc', isDark: true },
-            MEDIUM: { name: '中', radius: 25, maxHp: 5,  color: '#2a0050', secondaryColor: '#7700aa', isDark: true },
+            SMALL:  { name: '小', radius: 28, maxHp: 2,  color: '#4a0080', secondaryColor: '#9b00cc', isDark: true },
+            MEDIUM: { name: '中', radius: 35, maxHp: 5,  color: '#2a0050', secondaryColor: '#7700aa', isDark: true },
             LARGE:  { name: '大', radius: 40, maxHp: 10, color: '#1a0040', secondaryColor: '#5500aa', isDark: true }
         };
         
@@ -2690,9 +2690,9 @@
         }
 
         function repositionMarbles() {
-            const spacing = Math.min(80, canvasSize.width / 5);
+            const spacing = Math.min(90, canvasSize.width / 5);
             const startX = (canvasSize.width - (spacing * 3)) / 2;
-            const yPos = canvasSize.height - 50;
+            const yPos = canvasSize.height - 55;
             for (let i = 0; i < playerMarbles.length; i++) {
                 playerMarbles[i].x = startX + (i * spacing); playerMarbles[i].y = yPos;
                 playerMarbles[i].vx = 0; playerMarbles[i].vy = 0;
@@ -2770,9 +2770,9 @@
             
             if (playerMarbles.length === 0) {
                 const types = [MARBLE_TYPES.NORMAL, MARBLE_TYPES.POWER, MARBLE_TYPES.SPEED, MARBLE_TYPES.NORMAL];
-                const spacing = Math.min(80, canvasSize.width / 5);
+                const spacing = Math.min(90, canvasSize.width / 5);
                 const startX = (canvasSize.width - (spacing * 3)) / 2;
-                const yPos = canvasSize.height - 50;
+                const yPos = canvasSize.height - 55;
                 for (let i = 0; i < MAX_MARBLES; i++) {
                     const m = new Marble(startX + (i * spacing), yPos, types[i]);
                     m.characterIndex = i;
