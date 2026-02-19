@@ -2884,7 +2884,7 @@
                 stageClearAnim = {
                     phase: 'rise',
                     y: canvasSize.height + 60,
-                    vy: -28,
+                    vy: -35,
                     alpha: 1,
                     timer: 0,
                     text: mainText,
@@ -3593,29 +3593,29 @@
                 const cx = canvasSize.width / 2;
                 const centerY = canvasSize.height / 2;
 
-                // 物理更新
+                // 物理更新（centerYが「床」、上方向へ跳ね返る）
                 if (anim.phase === 'rise') {
-                    anim.y += anim.vy;
+                    anim.y += anim.vy; // vy=-35で上昇
                     if (anim.y <= centerY) {
                         anim.y = centerY;
-                        anim.vy = Math.abs(anim.vy) * 0.45; // バウンス
+                        anim.vy = -Math.abs(anim.vy) * 0.7; // 上方向に跳ね返る
                         anim.phase = 'bounce';
                     }
                 } else if (anim.phase === 'bounce') {
-                    anim.vy += 1.8; // 重力
+                    anim.vy += 2.2; // 重力（下向きに加速）
                     anim.y += anim.vy;
-                    if (anim.y >= centerY) {
+                    if (anim.y >= centerY) { // 床に当たったら再バウンス
                         anim.y = centerY;
-                        anim.vy = -Math.abs(anim.vy) * 0.35;
-                        if (Math.abs(anim.vy) < 3) {
+                        anim.vy = -Math.abs(anim.vy) * 0.62;
+                        if (Math.abs(anim.vy) < 2) {
                             anim.phase = 'fly';
-                            anim.vy = -8;
+                            anim.vy = -9;
                         }
                     }
                 } else if (anim.phase === 'fly') {
-                    anim.vy -= 0.7; // 加速しながら上へ
+                    anim.vy -= 0.6;
                     anim.y += anim.vy;
-                    anim.alpha = Math.max(0, anim.alpha - 0.025);
+                    anim.alpha = Math.max(0, anim.alpha - 0.022);
                 }
 
                 // 描画
@@ -3624,8 +3624,8 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                // メインテキスト
-                const fontSize = Math.floor(canvasSize.width / 8);
+                // メインテキスト（70%サイズ）
+                const fontSize = Math.floor(canvasSize.width / 8 * 0.7);
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.strokeStyle = 'rgba(0,0,30,0.7)';
                 ctx.lineWidth = fontSize / 6;
