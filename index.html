@@ -2971,6 +2971,7 @@
                         const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                         const type = pickAttackType(attacker);
                         if (type === 'dark_flame') {
+                            playEnemyAttackSound('dark_flame');
                             showMessage('🔥 黒い炎！', 'danger');
                             const proj = new DarkFlameProjectile(attacker.x, attacker.y, target.x, target.y);
                             enemyBeams.push(proj);
@@ -2990,6 +2991,7 @@
                             }, 16);
                             setTimeout(resolve, 1500);
                         } else if (type === 'thorns') {
+                            playEnemyAttackSound('thorns');
                             showMessage('🌿 イバラが這い回る！', 'danger');
                             const thorns = new ThornsEffect();
                             enemyBeams.push(thorns);
@@ -3004,6 +3006,7 @@
                             }, 800);
                             setTimeout(resolve, 2200);
                         } else if (type === 'instakill') {
+                            playEnemyAttackSound('instakill');
                             showMessage('⚡ 瞬殺レーザー！', 'danger');
                             const laser = new InstakillLaser(attacker.x, attacker.y, target.x, target.y);
                             enemyBeams.push(laser);
@@ -3030,6 +3033,7 @@
                             }, 600);
                             setTimeout(resolve, 1800);
                         } else if (type === 'poison_dome') {
+                            playEnemyAttackSound('poison_dome');
                             showMessage('🔮 ポイズンドーム！', 'danger');
                             const dome = new PoisonDome(attacker);
                             enemyBeams.push(dome);
@@ -4723,6 +4727,78 @@
                 gain2.gain.setValueAtTime(0.4, t + 0.42);
                 gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
                 osc2.start(t + 0.42); osc2.stop(t + 0.72);
+
+            } else if (type === 'dark_flame') {
+                // 黒い炎：ドロドロ低音＋歪んだ唸り＋ダークノイズ
+                const df1 = audioCtx.createOscillator(); const dfg1 = audioCtx.createGain();
+                df1.connect(dfg1); dfg1.connect(masterGain); df1.type = 'sawtooth';
+                df1.frequency.setValueAtTime(55,t); df1.frequency.linearRampToValueAtTime(40,t+0.5);
+                dfg1.gain.setValueAtTime(0,t); dfg1.gain.linearRampToValueAtTime(0.28,t+0.06); dfg1.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+                df1.start(t); df1.stop(t+0.62);
+                const df2 = audioCtx.createOscillator(); const dfg2 = audioCtx.createGain();
+                df2.connect(dfg2); dfg2.connect(masterGain); df2.type = 'sawtooth';
+                df2.frequency.setValueAtTime(110,t); df2.frequency.exponentialRampToValueAtTime(65,t+0.45);
+                dfg2.gain.setValueAtTime(0,t); dfg2.gain.linearRampToValueAtTime(0.14,t+0.05); dfg2.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+                df2.start(t); df2.stop(t+0.52);
+                const dnSz = audioCtx.sampleRate*0.55; const dnBuf = audioCtx.createBuffer(1,dnSz,audioCtx.sampleRate);
+                const dnDat = dnBuf.getChannelData(0); for (let j=0;j<dnSz;j++) dnDat[j]=Math.random()*2-1;
+                const dnSrc = audioCtx.createBufferSource(); dnSrc.buffer = dnBuf;
+                const dnFlt = audioCtx.createBiquadFilter(); dnFlt.type='lowpass'; dnFlt.frequency.value=400;
+                const dnGain = audioCtx.createGain(); dnSrc.connect(dnFlt); dnFlt.connect(dnGain); dnGain.connect(masterGain);
+                dnGain.gain.setValueAtTime(0,t); dnGain.gain.linearRampToValueAtTime(0.12,t+0.08); dnGain.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+                dnSrc.start(t); dnSrc.stop(t+0.56);
+
+            } else if (type === 'thorns') {
+                // イバラ：じわじわ這う低音＋爪でひっかく高音
+                const th1 = audioCtx.createOscillator(); const thg1 = audioCtx.createGain();
+                th1.connect(thg1); thg1.connect(masterGain); th1.type = 'sawtooth';
+                th1.frequency.setValueAtTime(40,t); th1.frequency.linearRampToValueAtTime(55,t+0.8);
+                thg1.gain.setValueAtTime(0,t); thg1.gain.linearRampToValueAtTime(0.22,t+0.1); thg1.gain.linearRampToValueAtTime(0.18,t+0.7); thg1.gain.exponentialRampToValueAtTime(0.001,t+1.0);
+                th1.start(t); th1.stop(t+1.02);
+                [0.05,0.18,0.35,0.52].forEach(d => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(800+Math.random()*300,t+d); osc.frequency.exponentialRampToValueAtTime(300,t+d+0.12);
+                    gain.gain.setValueAtTime(0.08,t+d); gain.gain.exponentialRampToValueAtTime(0.001,t+d+0.14);
+                    osc.start(t+d); osc.stop(t+d+0.15);
+                });
+
+            } else if (type === 'instakill') {
+                // 瞬殺レーザー：真空を切る鋭い高音→着弾ドンッ
+                const il1 = audioCtx.createOscillator(); const ilg1 = audioCtx.createGain();
+                il1.connect(ilg1); ilg1.connect(masterGain); il1.type = 'square';
+                il1.frequency.setValueAtTime(2400,t); il1.frequency.exponentialRampToValueAtTime(180,t+0.22);
+                ilg1.gain.setValueAtTime(0,t); ilg1.gain.linearRampToValueAtTime(0.24,t+0.01); ilg1.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+                il1.start(t); il1.stop(t+0.26);
+                const il2 = audioCtx.createOscillator(); const ilg2 = audioCtx.createGain();
+                il2.connect(ilg2); ilg2.connect(masterGain); il2.type = 'sine';
+                il2.frequency.setValueAtTime(70,t+0.2); il2.frequency.exponentialRampToValueAtTime(20,t+0.55);
+                ilg2.gain.setValueAtTime(0,t+0.2); ilg2.gain.linearRampToValueAtTime(0.35,t+0.22); ilg2.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+                il2.start(t+0.2); il2.stop(t+0.62);
+                const il3 = audioCtx.createOscillator(); const ilg3 = audioCtx.createGain();
+                il3.connect(ilg3); ilg3.connect(masterGain); il3.type = 'sawtooth';
+                il3.frequency.setValueAtTime(140,t+0.2); il3.frequency.exponentialRampToValueAtTime(50,t+0.5);
+                ilg3.gain.setValueAtTime(0,t+0.2); ilg3.gain.linearRampToValueAtTime(0.16,t+0.23); ilg3.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+                il3.start(t+0.2); il3.stop(t+0.56);
+
+            } else if (type === 'poison_dome') {
+                // ポイズンドーム：不気味なコード＋泡立ちノイズ
+                [65,77,92].forEach(freq => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq,t); osc.frequency.linearRampToValueAtTime(freq*0.97,t+1.2);
+                    gain.gain.setValueAtTime(0,t); gain.gain.linearRampToValueAtTime(0.10,t+0.15); gain.gain.linearRampToValueAtTime(0.08,t+0.9); gain.gain.exponentialRampToValueAtTime(0.001,t+1.3);
+                    osc.start(t); osc.stop(t+1.32);
+                });
+                for (let k=0; k<5; k++) {
+                    const bSz = audioCtx.sampleRate*0.07; const bBuf = audioCtx.createBuffer(1,bSz,audioCtx.sampleRate);
+                    const bDat = bBuf.getChannelData(0); for (let j=0;j<bSz;j++) bDat[j]=Math.random()*2-1;
+                    const bSrc = audioCtx.createBufferSource(); bSrc.buffer = bBuf;
+                    const bFlt = audioCtx.createBiquadFilter(); bFlt.type='bandpass'; bFlt.frequency.value=300+k*80; bFlt.Q.value=3;
+                    const bGain = audioCtx.createGain(); bSrc.connect(bFlt); bFlt.connect(bGain); bGain.connect(masterGain);
+                    bGain.gain.setValueAtTime(0.09,t+k*0.18);
+                    bSrc.start(t+k*0.18); bSrc.stop(t+k*0.18+0.08);
+                }
             }
         }
 
@@ -4823,6 +4899,85 @@
                     gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.2);
                     osc.start(t + i * 0.09); osc.stop(t + i * 0.09 + 0.22);
                 });
+
+            } else if (type === 'sixteen_ring') {
+                // 光のリング：高音の残響リングが広がっていく神々しい音
+                [1046, 1318, 1568, 2093].forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t + i * 0.07); osc.frequency.linearRampToValueAtTime(freq * 1.015, t + i * 0.07 + 0.3);
+                    gain.gain.setValueAtTime(0, t + i * 0.07); gain.gain.linearRampToValueAtTime(0.13, t + i * 0.07 + 0.03); gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.55);
+                    osc.start(t + i * 0.07); osc.stop(t + i * 0.07 + 0.56);
+                });
+                const nbSz = audioCtx.sampleRate * 0.5; const nbBuf = audioCtx.createBuffer(1, nbSz, audioCtx.sampleRate);
+                const nbDat = nbBuf.getChannelData(0); for (let j = 0; j < nbSz; j++) nbDat[j] = (Math.random()*2-1)*0.25;
+                const nbSrc = audioCtx.createBufferSource(); nbSrc.buffer = nbBuf;
+                const nbFlt = audioCtx.createBiquadFilter(); nbFlt.type = 'highpass'; nbFlt.frequency.value = 3500;
+                const nbGain = audioCtx.createGain(); nbSrc.connect(nbFlt); nbFlt.connect(nbGain); nbGain.connect(masterGain);
+                nbGain.gain.setValueAtTime(0,t); nbGain.gain.linearRampToValueAtTime(0.06,t+0.1); nbGain.gain.linearRampToValueAtTime(0,t+0.5);
+                nbSrc.start(t); nbSrc.stop(t+0.51);
+
+            } else if (type === 'white_light') {
+                // 白い光：広がるドローン＋高域の輝き＋風ノイズ
+                [523, 784, 1047].forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t); osc.frequency.linearRampToValueAtTime(freq*1.008, t+0.6);
+                    gain.gain.setValueAtTime(0,t); gain.gain.linearRampToValueAtTime(0.10-i*0.02,t+0.08); gain.gain.linearRampToValueAtTime(0.001,t+0.7);
+                    osc.start(t); osc.stop(t+0.72);
+                });
+                const shOsc = audioCtx.createOscillator(); const shGain = audioCtx.createGain();
+                shOsc.connect(shGain); shGain.connect(masterGain); shOsc.type = 'sine';
+                shOsc.frequency.setValueAtTime(2800,t); shOsc.frequency.exponentialRampToValueAtTime(3600,t+0.4);
+                shGain.gain.setValueAtTime(0,t); shGain.gain.linearRampToValueAtTime(0.09,t+0.05); shGain.gain.exponentialRampToValueAtTime(0.001,t+0.45);
+                shOsc.start(t); shOsc.stop(t+0.46);
+                const wSz = audioCtx.sampleRate*0.6; const wBuf = audioCtx.createBuffer(1,wSz,audioCtx.sampleRate);
+                const wDat = wBuf.getChannelData(0); for (let j=0;j<wSz;j++) wDat[j]=Math.random()*2-1;
+                const wSrc = audioCtx.createBufferSource(); wSrc.buffer = wBuf;
+                const wFlt = audioCtx.createBiquadFilter(); wFlt.type='bandpass'; wFlt.frequency.value=2000; wFlt.Q.value=0.8;
+                const wGain = audioCtx.createGain(); wSrc.connect(wFlt); wFlt.connect(wGain); wGain.connect(masterGain);
+                wGain.gain.setValueAtTime(0,t); wGain.gain.linearRampToValueAtTime(0.07,t+0.15); wGain.gain.linearRampToValueAtTime(0,t+0.6);
+                wSrc.start(t); wSrc.stop(t+0.61);
+
+            } else if (type === 'glow_homing') {
+                // 発光群：光の粒が飛ぶ、高音きらきら＋風ノイズ
+                [0,0.06,0.12,0.18].forEach((delay,i) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    const bf = 1400+i*180;
+                    osc.frequency.setValueAtTime(bf,t+delay); osc.frequency.exponentialRampToValueAtTime(bf*1.6,t+delay+0.18);
+                    gain.gain.setValueAtTime(0.12,t+delay); gain.gain.exponentialRampToValueAtTime(0.001,t+delay+0.22);
+                    osc.start(t+delay); osc.stop(t+delay+0.23);
+                });
+                const gSz = audioCtx.sampleRate*0.4; const gBuf = audioCtx.createBuffer(1,gSz,audioCtx.sampleRate);
+                const gDat = gBuf.getChannelData(0); for (let j=0;j<gSz;j++) gDat[j]=Math.random()*2-1;
+                const gSrc = audioCtx.createBufferSource(); gSrc.buffer = gBuf;
+                const gFlt = audioCtx.createBiquadFilter(); gFlt.type='highpass'; gFlt.frequency.value=5000;
+                const gGain = audioCtx.createGain(); gSrc.connect(gFlt); gFlt.connect(gGain); gGain.connect(masterGain);
+                gGain.gain.setValueAtTime(0,t); gGain.gain.linearRampToValueAtTime(0.08,t+0.05); gGain.gain.linearRampToValueAtTime(0,t+0.4);
+                gSrc.start(t); gSrc.stop(t+0.41);
+
+            } else if (type === 'light_thread') {
+                // 光の糸：チャキン→スゥゥ＋細ノイズ
+                const chOsc = audioCtx.createOscillator(); const chGain = audioCtx.createGain();
+                chOsc.connect(chGain); chGain.connect(masterGain); chOsc.type = 'triangle';
+                chOsc.frequency.setValueAtTime(1760,t); chOsc.frequency.exponentialRampToValueAtTime(3520,t+0.08);
+                chGain.gain.setValueAtTime(0,t); chGain.gain.linearRampToValueAtTime(0.18,t+0.02); chGain.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+                chOsc.start(t); chOsc.stop(t+0.26);
+                [880,1320,1760].forEach(freq => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq,t+0.05);
+                    gain.gain.setValueAtTime(0,t+0.05); gain.gain.linearRampToValueAtTime(0.08,t+0.12); gain.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+                    osc.start(t+0.05); osc.stop(t+0.51);
+                });
+                const lSz = audioCtx.sampleRate*0.45; const lBuf = audioCtx.createBuffer(1,lSz,audioCtx.sampleRate);
+                const lDat = lBuf.getChannelData(0); for (let j=0;j<lSz;j++) lDat[j]=Math.random()*2-1;
+                const lSrc = audioCtx.createBufferSource(); lSrc.buffer = lBuf;
+                const lFlt = audioCtx.createBiquadFilter(); lFlt.type='bandpass'; lFlt.frequency.value=6000; lFlt.Q.value=2;
+                const lGain = audioCtx.createGain(); lSrc.connect(lFlt); lFlt.connect(lGain); lGain.connect(masterGain);
+                lGain.gain.setValueAtTime(0,t); lGain.gain.linearRampToValueAtTime(0.06,t+0.1); lGain.gain.linearRampToValueAtTime(0,t+0.45);
+                lSrc.start(t); lSrc.stop(t+0.46);
 
             } else {
                 // 通常友情（ポンッ）
