@@ -918,7 +918,11 @@
             SMALL: new Image(),
             MEDIUM: new Image(),
             LARGE: new Image(),
-            BOSS: new Image()
+            BOSS: new Image(),
+            DARK_SMALL: new Image(),
+            DARK_MEDIUM: new Image(),
+            DARK_LARGE: new Image(),
+            DARK_BOSS: new Image()
         };
 
         marbleImages.NORMAL.src = '001.png';
@@ -928,9 +932,13 @@
         enemyImages.MEDIUM.src = '005.png';
         enemyImages.LARGE.src = '006.png';
         enemyImages.BOSS.src = '007.png';
+        enemyImages.DARK_SMALL.src = '010.png';
+        enemyImages.DARK_MEDIUM.src = '011.png';
+        enemyImages.DARK_LARGE.src = '012.png';
+        enemyImages.DARK_BOSS.src = '013.png';
 
         let imagesLoaded = 0;
-        const totalImages = 11;
+        const totalImages = 15;
         const charCanvasCache = [null, null, null, null]; // キャッシュ済みcanvas
 
         function buildCharCache() {
@@ -965,6 +973,10 @@
         enemyImages.MEDIUM.onload = checkAllImagesLoaded;
         enemyImages.LARGE.onload = checkAllImagesLoaded;
         enemyImages.BOSS.onload = checkAllImagesLoaded;
+        enemyImages.DARK_SMALL.onload = checkAllImagesLoaded;
+        enemyImages.DARK_MEDIUM.onload = checkAllImagesLoaded;
+        enemyImages.DARK_LARGE.onload = checkAllImagesLoaded;
+        enemyImages.DARK_BOSS.onload = checkAllImagesLoaded;
         charImages[0].onload = checkAllImagesLoaded;
         charImages[1].onload = checkAllImagesLoaded;
         charImages[2].onload = checkAllImagesLoaded;
@@ -977,6 +989,10 @@
         enemyImages.MEDIUM.onerror = () => console.error('❌ 005.pngが読み込めません');
         enemyImages.LARGE.onerror = () => console.error('❌ 006.pngが読み込めません');
         enemyImages.BOSS.onerror = () => console.error('❌ 007.pngが読み込めません');
+        enemyImages.DARK_SMALL.onerror = () => console.warn('⚠️ 010.png未配置');
+        enemyImages.DARK_MEDIUM.onerror = () => console.warn('⚠️ 011.png未配置');
+        enemyImages.DARK_LARGE.onerror = () => console.warn('⚠️ 012.png未配置');
+        enemyImages.DARK_BOSS.onerror = () => console.warn('⚠️ 013.png未配置');
         charImages[0].onerror = () => console.error('❌ 002.png(マイク)が読み込めません');
         charImages[1].onerror = () => console.error('❌ 008.png(ホッパー)が読み込めません');
         charImages[2].onerror = () => console.error('❌ 003.png(イレブン)が読み込めません');
@@ -1050,6 +1066,11 @@
             SMALL:  { name: '小', radius: 20, maxHp: 1, color: '#43a047', secondaryColor: '#66bb6a' },
             MEDIUM: { name: '中', radius: 25, maxHp: 3, color: '#fb8c00', secondaryColor: '#ffa726' },
             LARGE:  { name: '大', radius: 40, maxHp: 5, color: '#e53935', secondaryColor: '#ef5350' }
+        };
+        const DARK_ENEMY_SIZES = {
+            SMALL:  { name: '小', radius: 20, maxHp: 2,  color: '#4a0080', secondaryColor: '#9b00cc', isDark: true },
+            MEDIUM: { name: '中', radius: 25, maxHp: 5,  color: '#2a0050', secondaryColor: '#7700aa', isDark: true },
+            LARGE:  { name: '大', radius: 40, maxHp: 10, color: '#1a0040', secondaryColor: '#5500aa', isDark: true }
         };
         
         let playerMarbles = [];
@@ -1262,6 +1283,270 @@
                     ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth = 2; ctx.stroke();
                 }
 
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
+
+        // ★ 黒い炎弾（ナパーム弾・火炎放射器風）
+        class DarkFlameProjectile {
+            constructor(startX, startY, targetX, targetY) {
+                this.x = startX; this.y = startY;
+                const dist = Math.hypot(targetX - startX, targetY - startY) || 1;
+                const spd = 4;
+                this.vx = (targetX - startX) / dist * spd;
+                this.vy = (targetY - startY) / dist * spd;
+                this.frame = 0; this.maxFrames = 160;
+                this.trail = []; this.hit = false; this.hitFrame = 0;
+                this.radius = 20;
+                // 着弾後のナパーム滴
+                this.splats = [];
+                this.hitX = 0; this.hitY = 0;
+            }
+            draw() {
+                this.frame++;
+                ctx.save();
+
+                if (!this.hit) {
+                    this.x += this.vx; this.y += this.vy;
+                    this.trail.push({x: this.x, y: this.y, r: this.radius * (0.4 + Math.random() * 0.6)});
+                    if (this.trail.length > 20) this.trail.shift();
+
+                    // ねばっこい炎の軌跡（でかめの塊が連なる感じ）
+                    for (let i = 0; i < this.trail.length; i++) {
+                        const t = i / this.trail.length;
+                        const tr = this.trail[i];
+                        const flicker = Math.sin(this.frame * 0.6 + i * 0.8) * 0.3 + 0.7;
+                        // 外側：黒紫の重い炎（くっきり）
+                        const g1 = ctx.createRadialGradient(tr.x, tr.y, 0, tr.x, tr.y, tr.r * 1.2 * flicker);
+                        g1.addColorStop(0, `rgba(80,0,110,${t * 0.95})`);
+                        g1.addColorStop(0.75, `rgba(30,0,50,${t * 0.9})`);
+                        g1.addColorStop(1, `rgba(10,0,20,${t * 0.3})`);
+                        ctx.beginPath(); ctx.arc(tr.x, tr.y, tr.r * 1.2 * flicker, 0, Math.PI * 2);
+                        ctx.fillStyle = g1; ctx.fill();
+                    }
+
+                    // 本体：ぐにょぐにょした黒炎の塊
+                    for (let j = 0; j < 4; j++) {
+                        const ox = Math.sin(this.frame * 0.5 + j * 1.6) * 6;
+                        const oy = Math.cos(this.frame * 0.4 + j * 1.2) * 6;
+                        const g2 = ctx.createRadialGradient(
+                            this.x + ox * 0.3, this.y + oy * 0.3, 0,
+                            this.x + ox, this.y + oy, this.radius * 1.2
+                        );
+                        g2.addColorStop(0, 'rgba(220,0,255,1.0)');
+                        g2.addColorStop(0.6, 'rgba(80,0,120,0.95)');
+                        g2.addColorStop(1, 'rgba(20,0,30,0.6)');
+                        ctx.beginPath(); ctx.arc(this.x + ox, this.y + oy, this.radius * 1.2, 0, Math.PI * 2);
+                        ctx.fillStyle = g2; ctx.fill();
+                    }
+
+                } else {
+                    // 着弾後：ナパーム的べちょべちょ広がり
+                    this.hitFrame++;
+
+                    // 最初の数フレームでスプラット生成
+                    if (this.hitFrame < 8) {
+                        for (let k = 0; k < 3; k++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const spd2 = 2 + Math.random() * 5;
+                            this.splats.push({
+                                x: this.hitX, y: this.hitY,
+                                vx: Math.cos(angle) * spd2, vy: Math.sin(angle) * spd2,
+                                r: 8 + Math.random() * 14,
+                                life: 1.0, decay: 0.012 + Math.random() * 0.01,
+                                wobble: Math.random() * Math.PI * 2
+                            });
+                        }
+                    }
+
+                    // 中心の燃え広がり
+                    const spreadR = Math.min(this.hitFrame * 4, 55);
+                    const centerAlpha = Math.max(0, 1 - this.hitFrame / 60);
+                    for (let ring = 0; ring < 3; ring++) {
+                        const gr = ctx.createRadialGradient(this.hitX, this.hitY, 0, this.hitX, this.hitY, spreadR * (1 - ring * 0.2));
+                        gr.addColorStop(0, `rgba(230,0,255,${centerAlpha * (0.95 - ring * 0.15)})`);
+                        gr.addColorStop(0.7, `rgba(60,0,80,${centerAlpha * (0.9 - ring * 0.2)})`);
+                        gr.addColorStop(1, `rgba(10,0,15,${centerAlpha * 0.4})`);
+                        const flk = Math.sin(this.frame * 0.7 + ring * 2) * 0.15 + 0.85;
+                        ctx.beginPath(); ctx.arc(this.hitX, this.hitY, spreadR * flk * (1 - ring * 0.15), 0, Math.PI * 2);
+                        ctx.fillStyle = gr; ctx.fill();
+                    }
+
+                    // スプラット（べちょべちょ感）
+                    for (const sp of this.splats) {
+                        sp.x += sp.vx; sp.y += sp.vy;
+                        sp.vx *= 0.88; sp.vy *= 0.88;
+                        sp.life -= sp.decay;
+                        sp.wobble += 0.15;
+                        if (sp.life <= 0) continue;
+                        // ぐにょっとした形
+                        ctx.save();
+                        ctx.translate(sp.x, sp.y);
+                        ctx.scale(1 + Math.sin(sp.wobble) * 0.3, 1 + Math.cos(sp.wobble) * 0.3);
+                        const gs = ctx.createRadialGradient(0, 0, 0, 0, 0, sp.r);
+                        gs.addColorStop(0, `rgba(150,0,200,${sp.life * 0.9})`);
+                        gs.addColorStop(0.6, `rgba(20,0,40,${sp.life * 0.8})`);
+                        gs.addColorStop(1, 'rgba(0,0,0,0)');
+                        ctx.beginPath(); ctx.arc(0, 0, sp.r, 0, Math.PI * 2);
+                        ctx.fillStyle = gs; ctx.fill();
+                        ctx.restore();
+                    }
+                    // 死んだスプラットを除去
+                    this.splats = this.splats.filter(sp => sp.life > 0);
+                }
+                ctx.restore();
+            }
+            isComplete() {
+                return (this.hit && this.hitFrame > 70 && this.splats.length === 0) ||
+                    (!this.hit && (this.frame >= this.maxFrames ||
+                    this.x < -30 || this.x > 430 || this.y < -30 || this.y > 480));
+            }
+        }
+
+        // ★ イバラ（トゲが画面を這い回る）
+        class ThornsEffect {
+            constructor() {
+                this.frame = 0; this.maxFrames = 140;
+                // 20本、画面各所から発生
+                this.tendrils = Array.from({length: 20}, (_, i) => ({
+                    x: Math.random() * 400, y: Math.random() * 450,
+                    angle: Math.random() * Math.PI * 2,
+                    length: 0, maxLength: 120 + Math.random() * 180,
+                    segments: [], speed: 3 + Math.random() * 3
+                }));
+            }
+            draw() {
+                this.frame++;
+                const alpha = this.frame < 90 ? 1 : 1 - (this.frame - 90) / 50;
+                ctx.save();
+                // つる：全本まとめて1パスずつ描画（重さ軽減）
+                ctx.lineWidth = 4; ctx.lineCap = 'round';
+                ctx.strokeStyle = `rgba(5, 15, 0, ${alpha})`;
+                for (const t of this.tendrils) {
+                    if (t.length < t.maxLength) {
+                        t.angle += (Math.random() - 0.5) * 0.45;
+                        t.segments.push({x: t.x, y: t.y});
+                        t.x += Math.cos(t.angle) * t.speed;
+                        t.y += Math.sin(t.angle) * t.speed;
+                        t.length += t.speed;
+                    }
+                    if (t.segments.length > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(t.segments[0].x, t.segments[0].y);
+                        for (const s of t.segments) ctx.lineTo(s.x, s.y);
+                        ctx.stroke();
+                    }
+                }
+                // トゲ：間引きを広くして軽量化
+                ctx.lineWidth = 2; ctx.strokeStyle = `rgba(15, 40, 0, ${alpha})`;
+                for (const t of this.tendrils) {
+                    for (let i = 0; i < t.segments.length - 2; i += 12) {
+                        const s = t.segments[i];
+                        const s2 = t.segments[Math.min(i+2, t.segments.length-1)];
+                        const a = Math.atan2(s2.y - s.y, s2.x - s.x);
+                        ctx.beginPath();
+                        ctx.moveTo(s.x, s.y);
+                        ctx.lineTo(s.x + Math.cos(a + 1.2) * 11, s.y + Math.sin(a + 1.2) * 11);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(s.x, s.y);
+                        ctx.lineTo(s.x + Math.cos(a - 1.2) * 11, s.y + Math.sin(a - 1.2) * 11);
+                        ctx.stroke();
+                    }
+                }
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
+
+        // ★ 瞬殺レーザー（着弾で十字に分裂）
+        class InstakillLaser {
+            constructor(startX, startY, targetX, targetY) {
+                this.startX = startX; this.startY = startY;
+                this.targetX = targetX; this.targetY = targetY;
+                this.frame = 0; this.maxFrames = 50;
+                this.hit = false; this.crossed = false;
+                this.crossBeams = [];
+            }
+            draw() {
+                this.frame++;
+                const progress = Math.min(this.frame / 15, 1);
+                const curX = this.startX + (this.targetX - this.startX) * progress;
+                const curY = this.startY + (this.targetY - this.startY) * progress;
+                ctx.save();
+                const alpha = this.frame < 30 ? 1 : 1 - (this.frame - 30) / 20;
+                // 太い白レーザー
+                ctx.globalAlpha = alpha;
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 16; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+                ctx.strokeStyle = '#aaddff'; ctx.lineWidth = 8;
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+                // 着弾後、十字に展開
+                if (progress >= 1 && !this.crossed) {
+                    this.crossed = true;
+                    const angle = Math.atan2(this.targetY - this.startY, this.targetX - this.startX);
+                    this.crossBeams = [
+                        {a: angle + Math.PI / 2}, {a: angle - Math.PI / 2},
+                        {a: angle}, {a: angle + Math.PI}
+                    ];
+                }
+                if (this.crossed) {
+                    const ca = this.frame < 30 ? 1 : alpha;
+                    for (const b of this.crossBeams) {
+                        const len = 200;
+                        ctx.globalAlpha = ca * 0.8;
+                        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 10;
+                        ctx.beginPath();
+                        ctx.moveTo(this.targetX, this.targetY);
+                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
+                        ctx.stroke();
+                        ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(this.targetX, this.targetY);
+                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
+                        ctx.stroke();
+                    }
+                }
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
+
+        // ★ ポイズンドーム（周囲に黒いドーム）
+        class PoisonDome {
+            constructor(enemyRef) {
+                this.enemy = enemyRef;
+                this.frame = 0; this.maxFrames = 150;
+                this.radius = 0; this.maxRadius = 120;
+                this.pulseFrame = 0;
+            }
+            draw() {
+                this.frame++; this.pulseFrame++;
+                if (this.frame < 20) this.radius = this.maxRadius * (this.frame / 20);
+                else if (this.frame > 130) this.radius = this.maxRadius * (1 - (this.frame - 130) / 20);
+                else this.radius = this.maxRadius;
+                const x = this.enemy.x; const y = this.enemy.y;
+                const pulse = Math.sin(this.pulseFrame * 0.15) * 0.2 + 0.8;
+                ctx.save();
+                // ドーム外縁
+                const grad = ctx.createRadialGradient(x, y, this.radius * 0.5, x, y, this.radius);
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(0.7, `rgba(30, 0, 50, ${0.3 * pulse})`);
+                grad.addColorStop(1, `rgba(80, 0, 120, ${0.7 * pulse})`);
+                ctx.beginPath(); ctx.arc(x, y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = grad; ctx.fill();
+                // リング
+                ctx.beginPath(); ctx.arc(x, y, this.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(140, 0, 200, ${0.8 * pulse})`; ctx.lineWidth = 3; ctx.stroke();
+                // 内側の渦模様
+                for (let i = 0; i < 6; i++) {
+                    const a = (this.frame * 0.05 + i * Math.PI / 3);
+                    const r2 = this.radius * 0.6;
+                    ctx.beginPath();
+                    ctx.arc(x + Math.cos(a) * r2 * 0.3, y + Math.sin(a) * r2 * 0.3, r2 * 0.2, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(60, 0, 80, ${0.4 * pulse})`; ctx.fill();
+                }
                 ctx.restore();
             }
             isComplete() { return this.frame >= this.maxFrames; }
@@ -1892,11 +2177,17 @@
                 }
 
                 let img;
-                if (this.isBoss) { img = enemyImages.BOSS; }
+                if (this.isBoss) { img = this.size.isDark ? enemyImages.DARK_BOSS : enemyImages.BOSS; }
                 else {
-                    if (this.size.name === '小') img = enemyImages.SMALL;
-                    else if (this.size.name === '中') img = enemyImages.MEDIUM;
-                    else if (this.size.name === '大') img = enemyImages.LARGE;
+                    if (this.size.isDark) {
+                        if (this.size.name === '小') img = enemyImages.DARK_SMALL;
+                        else if (this.size.name === '中') img = enemyImages.DARK_MEDIUM;
+                        else img = enemyImages.DARK_LARGE;
+                    } else {
+                        if (this.size.name === '小') img = enemyImages.SMALL;
+                        else if (this.size.name === '中') img = enemyImages.MEDIUM;
+                        else if (this.size.name === '大') img = enemyImages.LARGE;
+                    }
                 }
                 if (img && img.complete && img.naturalWidth > 0) {
                     ctx.drawImage(img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
@@ -2057,9 +2348,15 @@
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false;
             
             const isBossStage = currentStage % 5 === 0;
+            const isDarkStage = currentStage >= 50; // 50ステージ以降
             if (isBossStage) {
-                const bossSize = { name: 'ボス', radius: 50, maxHp: 15 + currentStage * 1.5, color: '#8b0000', secondaryColor: '#ff0000' };
-                const boss = new Enemy(canvasSize.width / 2, 150, bossSize);
+                const isBossDark = isDarkStage && Math.random() < 0.4;
+                const normalBossHp = 15 + currentStage * 1.5;
+                const darkBossHp = Math.floor(normalBossHp * 1.5); // 通常の1.5倍
+                const bossSizeBase = isBossDark
+                    ? { name: 'ボス', radius: 55, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
+                    : { name: 'ボス', radius: 50, maxHp: normalBossHp, color: '#8b0000', secondaryColor: '#ff0000' };
+                const boss = new Enemy(canvasSize.width / 2, 150, bossSizeBase);
                 boss.isBoss = true; enemies.push(boss);
                 const minionCount = Math.min(2 + Math.floor(currentStage / 5), 3);
                 const sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM];
@@ -2080,10 +2377,20 @@
                 if (cycleNumber === 0) sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.LARGE];
                 else if (cycleNumber === 1) sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.LARGE, ENEMY_SIZES.LARGE];
                 else sizeOptions = [ENEMY_SIZES.MEDIUM, ENEMY_SIZES.MEDIUM, ENEMY_SIZES.LARGE, ENEMY_SIZES.LARGE, ENEMY_SIZES.LARGE];
+                // ダーク敵の混在率（テスト用：最初から。本番は50ステージ以降）
+                const darkRate = isDarkStage ? 0.4 : 0;
+                const darkSizePool = [DARK_ENEMY_SIZES.SMALL, DARK_ENEMY_SIZES.MEDIUM, DARK_ENEMY_SIZES.LARGE];
                 for (let i = 0; i < enemyCount; i++) {
                     let x, y, valid, attempts = 0;
-                    const size = { ...sizeOptions[i % sizeOptions.length] };
-                    size.maxHp = size.maxHp + Math.floor(currentStage / 2) + cycleNumber * 2;
+                    const useDark = isDarkStage && Math.random() < darkRate;
+                    const baseSize = useDark
+                        ? darkSizePool[Math.floor(Math.random() * darkSizePool.length)]
+                        : sizeOptions[i % sizeOptions.length];
+                    const size = { ...baseSize };
+                    // 通常敵HP: baseHp + stage/2 + cycle*2
+                    // ダーク敵HP: 同計算の1.5倍（ステージ1基準で計算）
+                    const normalHp = size.maxHp + Math.floor(currentStage / 2) + cycleNumber * 2;
+                    size.maxHp = useDark ? Math.floor(normalHp * 1.5) : normalHp;
                     do {
                         valid = true; x = 50 + Math.random() * (canvasSize.width - 100); y = 50 + Math.random() * (canvasSize.height * 0.4);
                         for (let enemy of enemies) { const dx = x-enemy.x, dy = y-enemy.y; if (Math.sqrt(dx*dx+dy*dy) < size.radius+enemy.radius+15) { valid = false; break; } }
@@ -2167,7 +2474,14 @@
                 }
                 attackCount = Math.min(wanted, enemies.length);
             }
-            function pickAttackType() {
+            function pickAttackType(attacker) {
+                if (attacker.size && attacker.size.isDark || (attacker.isBoss && attacker.size && attacker.size.isDark)) {
+                    const r = Math.random();
+                    if (r < 0.25) return 'dark_flame';
+                    else if (r < 0.50) return 'thorns';
+                    else if (r < 0.75) return 'instakill';
+                    else return 'poison_dome';
+                }
                 const r = Math.random();
                 if (currentStage < 5) return 'beam';
                 else if (currentStage < 10) return r < 0.80 ? 'beam' : 'bomb';
@@ -2185,8 +2499,94 @@
                         const attacker = candidates[Math.floor(Math.random() * candidates.length)];
                         usedAttackers.add(attacker);
                         const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
-                        const type = pickAttackType();
-                        if (type === 'beam') {
+                        const type = pickAttackType(attacker);
+                        if (type === 'dark_flame') {
+                            showMessage('🔥 黒い炎！', 'danger');
+                            const proj = new DarkFlameProjectile(attacker.x, attacker.y, target.x, target.y);
+                            enemyBeams.push(proj);
+                            // 衝突チェック
+                            const checkFlame = setInterval(() => {
+                                if (proj.isComplete()) { clearInterval(checkFlame); return; }
+                                for (const m of playerMarbles) {
+                                    const dx = m.x - proj.x, dy = m.y - proj.y;
+                                    if (Math.sqrt(dx*dx+dy*dy) < m.radius + proj.radius && !proj.hit) {
+                                        proj.hit = true;
+                                        proj.hitX = proj.x; proj.hitY = proj.y;
+                                        teamHP -= enemyDamage * 1.2; m.takeDamage();
+                                        updateHPBar(); triggerGameOver();
+                                        clearInterval(checkFlame);
+                                    }
+                                }
+                            }, 16);
+                            setTimeout(resolve, 1500);
+                        } else if (type === 'thorns') {
+                            showMessage('🌿 イバラが這い回る！', 'danger');
+                            const thorns = new ThornsEffect();
+                            enemyBeams.push(thorns);
+                            // 一定時間後に全員ダメージ
+                            setTimeout(() => {
+                                const thornDmg = enemyDamage * 0.5;
+                                for (const m of playerMarbles) {
+                                    teamHP -= thornDmg; m.takeDamage();
+                                    explosions.push(new Explosion(m.x, m.y, m.radius * 0.4, '#204000'));
+                                }
+                                updateHPBar(); triggerGameOver();
+                            }, 800);
+                            setTimeout(resolve, 2200);
+                        } else if (type === 'instakill') {
+                            showMessage('⚡ 瞬殺レーザー！', 'danger');
+                            const laser = new InstakillLaser(attacker.x, attacker.y, target.x, target.y);
+                            enemyBeams.push(laser);
+                            setTimeout(() => {
+                                // 着弾点ダメージ
+                                teamHP -= enemyDamage * 1.5; target.takeDamage();
+                                explosions.push(new Explosion(target.x, target.y, target.radius, '#aaddff'));
+                                // 十字ビームの当たり判定
+                                const angle = Math.atan2(target.y - attacker.y, target.x - attacker.x);
+                                const crossAngles = [angle, angle + Math.PI, angle + Math.PI/2, angle - Math.PI/2];
+                                for (const m of playerMarbles) {
+                                    if (m === target) continue;
+                                    for (const ca of crossAngles) {
+                                        const dx = m.x - target.x, dy = m.y - target.y;
+                                        const dist = Math.sqrt(dx*dx+dy*dy);
+                                        const dot = (dx * Math.cos(ca) + dy * Math.sin(ca)) / dist;
+                                        if (dot > 0.85 && dist < 200) {
+                                            teamHP -= enemyDamage * 0.8; m.takeDamage();
+                                            explosions.push(new Explosion(m.x, m.y, m.radius * 0.6, '#ffffff'));
+                                        }
+                                    }
+                                }
+                                updateHPBar(); triggerGameOver();
+                            }, 600);
+                            setTimeout(resolve, 1800);
+                        } else if (type === 'poison_dome') {
+                            showMessage('🔮 ポイズンドーム！', 'danger');
+                            const dome = new PoisonDome(attacker);
+                            enemyBeams.push(dome);
+                            // ドーム持続中ダメージ（複数回）
+                            let domeHits = 0;
+                            const domeInterval = setInterval(() => {
+                                domeHits++;
+                                const domeDmg = enemyDamage * 0.3;
+                                let absorbed = 0;
+                                for (const m of playerMarbles) {
+                                    const dx = m.x - attacker.x, dy = m.y - attacker.y;
+                                    if (Math.sqrt(dx*dx+dy*dy) < dome.maxRadius) {
+                                        teamHP -= domeDmg; m.takeDamage();
+                                        absorbed += domeDmg;
+                                        explosions.push(new Explosion(m.x, m.y, m.radius * 0.3, '#660088'));
+                                    }
+                                }
+                                // 吸収分でHP回復
+                                if (absorbed > 0 && enemies.includes(attacker)) {
+                                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + absorbed * 0.5);
+                                }
+                                updateHPBar(); triggerGameOver();
+                                if (domeHits >= 4) clearInterval(domeInterval);
+                            }, 400);
+                            setTimeout(() => clearInterval(domeInterval), 2000);
+                            setTimeout(resolve, 2200);
+                        } else if (type === 'beam') {
                             const beam = new EnemyBeam(attacker.x, attacker.y, target.x, target.y, attacker.color);
                             enemyBeams.push(beam);
                             playEnemyAttackSound('beam');
