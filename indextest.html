@@ -1288,47 +1288,120 @@
             isComplete() { return this.frame >= this.maxFrames; }
         }
 
-        // ★ 黒い炎弾
+        // ★ 黒い炎弾（ナパーム弾・火炎放射器風）
         class DarkFlameProjectile {
             constructor(startX, startY, targetX, targetY) {
                 this.x = startX; this.y = startY;
-                const dist = Math.hypot(targetX - startX, targetY - startY);
+                const dist = Math.hypot(targetX - startX, targetY - startY) || 1;
                 const spd = 4;
                 this.vx = (targetX - startX) / dist * spd;
                 this.vy = (targetY - startY) / dist * spd;
-                this.frame = 0; this.maxFrames = 120;
-                this.trail = []; this.hit = false;
+                this.frame = 0; this.maxFrames = 160;
+                this.trail = []; this.hit = false; this.hitFrame = 0;
                 this.radius = 20;
+                // 着弾後のナパーム滴
+                this.splats = [];
+                this.hitX = 0; this.hitY = 0;
             }
             draw() {
                 this.frame++;
-                this.x += this.vx; this.y += this.vy;
-                this.trail.push({x: this.x, y: this.y});
-                if (this.trail.length > 14) this.trail.shift();
                 ctx.save();
-                // 炎の軌跡
-                for (let i = 0; i < this.trail.length; i++) {
-                    const t = i / this.trail.length;
-                    ctx.beginPath();
-                    ctx.arc(this.trail[i].x, this.trail[i].y, this.radius * t * 0.8, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${20 + i*5}, 0, ${30 + i*3}, ${t * 0.7})`;
-                    ctx.fill();
+
+                if (!this.hit) {
+                    this.x += this.vx; this.y += this.vy;
+                    this.trail.push({x: this.x, y: this.y, r: this.radius * (0.4 + Math.random() * 0.6)});
+                    if (this.trail.length > 20) this.trail.shift();
+
+                    // ねばっこい炎の軌跡（でかめの塊が連なる感じ）
+                    for (let i = 0; i < this.trail.length; i++) {
+                        const t = i / this.trail.length;
+                        const tr = this.trail[i];
+                        const flicker = Math.sin(this.frame * 0.6 + i * 0.8) * 0.3 + 0.7;
+                        // 外側：黒紫の重い炎
+                        const g1 = ctx.createRadialGradient(tr.x, tr.y, 0, tr.x, tr.y, tr.r * 1.5 * flicker);
+                        g1.addColorStop(0, `rgba(60,0,80,${t * 0.9})`);
+                        g1.addColorStop(0.5, `rgba(20,0,40,${t * 0.7})`);
+                        g1.addColorStop(1, 'rgba(0,0,0,0)');
+                        ctx.beginPath(); ctx.arc(tr.x, tr.y, tr.r * 1.5 * flicker, 0, Math.PI * 2);
+                        ctx.fillStyle = g1; ctx.fill();
+                    }
+
+                    // 本体：ぐにょぐにょした黒炎の塊
+                    for (let j = 0; j < 4; j++) {
+                        const ox = Math.sin(this.frame * 0.5 + j * 1.6) * 6;
+                        const oy = Math.cos(this.frame * 0.4 + j * 1.2) * 6;
+                        const g2 = ctx.createRadialGradient(
+                            this.x + ox * 0.3, this.y + oy * 0.3, 0,
+                            this.x + ox, this.y + oy, this.radius * 1.2
+                        );
+                        g2.addColorStop(0, 'rgba(180,0,220,0.9)');
+                        g2.addColorStop(0.4, 'rgba(60,0,100,0.8)');
+                        g2.addColorStop(1, 'rgba(0,0,0,0)');
+                        ctx.beginPath(); ctx.arc(this.x + ox, this.y + oy, this.radius * 1.2, 0, Math.PI * 2);
+                        ctx.fillStyle = g2; ctx.fill();
+                    }
+
+                } else {
+                    // 着弾後：ナパーム的べちょべちょ広がり
+                    this.hitFrame++;
+
+                    // 最初の数フレームでスプラット生成
+                    if (this.hitFrame < 8) {
+                        for (let k = 0; k < 3; k++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const spd2 = 2 + Math.random() * 5;
+                            this.splats.push({
+                                x: this.hitX, y: this.hitY,
+                                vx: Math.cos(angle) * spd2, vy: Math.sin(angle) * spd2,
+                                r: 8 + Math.random() * 14,
+                                life: 1.0, decay: 0.012 + Math.random() * 0.01,
+                                wobble: Math.random() * Math.PI * 2
+                            });
+                        }
+                    }
+
+                    // 中心の燃え広がり
+                    const spreadR = Math.min(this.hitFrame * 4, 55);
+                    const centerAlpha = Math.max(0, 1 - this.hitFrame / 60);
+                    for (let ring = 0; ring < 3; ring++) {
+                        const gr = ctx.createRadialGradient(this.hitX, this.hitY, 0, this.hitX, this.hitY, spreadR * (1 - ring * 0.2));
+                        gr.addColorStop(0, `rgba(200,0,255,${centerAlpha * (0.8 - ring * 0.2)})`);
+                        gr.addColorStop(0.5, `rgba(40,0,60,${centerAlpha * (0.7 - ring * 0.2)})`);
+                        gr.addColorStop(1, 'rgba(0,0,0,0)');
+                        const flk = Math.sin(this.frame * 0.7 + ring * 2) * 0.15 + 0.85;
+                        ctx.beginPath(); ctx.arc(this.hitX, this.hitY, spreadR * flk * (1 - ring * 0.15), 0, Math.PI * 2);
+                        ctx.fillStyle = gr; ctx.fill();
+                    }
+
+                    // スプラット（べちょべちょ感）
+                    for (const sp of this.splats) {
+                        sp.x += sp.vx; sp.y += sp.vy;
+                        sp.vx *= 0.88; sp.vy *= 0.88;
+                        sp.life -= sp.decay;
+                        sp.wobble += 0.15;
+                        if (sp.life <= 0) continue;
+                        // ぐにょっとした形
+                        ctx.save();
+                        ctx.translate(sp.x, sp.y);
+                        ctx.scale(1 + Math.sin(sp.wobble) * 0.3, 1 + Math.cos(sp.wobble) * 0.3);
+                        const gs = ctx.createRadialGradient(0, 0, 0, 0, 0, sp.r);
+                        gs.addColorStop(0, `rgba(150,0,200,${sp.life * 0.9})`);
+                        gs.addColorStop(0.6, `rgba(20,0,40,${sp.life * 0.8})`);
+                        gs.addColorStop(1, 'rgba(0,0,0,0)');
+                        ctx.beginPath(); ctx.arc(0, 0, sp.r, 0, Math.PI * 2);
+                        ctx.fillStyle = gs; ctx.fill();
+                        ctx.restore();
+                    }
+                    // 死んだスプラットを除去
+                    this.splats = this.splats.filter(sp => sp.life > 0);
                 }
-                // 本体
-                const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                grad.addColorStop(0, '#cc00ff');
-                grad.addColorStop(0.5, '#440066');
-                grad.addColorStop(1, 'transparent');
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = grad; ctx.fill();
-                // 外炎チラつき
-                ctx.globalAlpha = 0.5 + Math.sin(this.frame * 0.4) * 0.3;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 1.4, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(80, 0, 100, 0.4)'; ctx.fill();
                 ctx.restore();
             }
-            isComplete() { return this.frame >= this.maxFrames || this.hit ||
-                this.x < -20 || this.x > 430 || this.y < -20 || this.y > 480; }
+            isComplete() {
+                return (this.hit && this.hitFrame > 70 && this.splats.length === 0) ||
+                    (!this.hit && (this.frame >= this.maxFrames ||
+                    this.x < -30 || this.x > 430 || this.y < -30 || this.y > 480));
+            }
         }
 
         // ★ イバラ（トゲが画面を這い回る）
@@ -2438,8 +2511,8 @@
                                     const dx = m.x - proj.x, dy = m.y - proj.y;
                                     if (Math.sqrt(dx*dx+dy*dy) < m.radius + proj.radius && !proj.hit) {
                                         proj.hit = true;
+                                        proj.hitX = proj.x; proj.hitY = proj.y;
                                         teamHP -= enemyDamage * 1.2; m.takeDamage();
-                                        explosions.push(new Explosion(m.x, m.y, m.radius, '#440066'));
                                         updateHPBar(); triggerGameOver();
                                         clearInterval(checkFlame);
                                     }
