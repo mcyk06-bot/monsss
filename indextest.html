@@ -1422,7 +1422,7 @@
                 ctx.save();
                 // つる：全本まとめて1パスずつ描画（重さ軽減）
                 ctx.lineWidth = 4; ctx.lineCap = 'round';
-                ctx.strokeStyle = `rgba(5, 15, 0, ${alpha})`;
+                ctx.strokeStyle = `rgba(50, 90, 20, ${alpha})`;
                 for (const t of this.tendrils) {
                     if (t.length < t.maxLength) {
                         t.angle += (Math.random() - 0.5) * 0.45;
@@ -1439,7 +1439,7 @@
                     }
                 }
                 // トゲ：間引きを広くして軽量化
-                ctx.lineWidth = 2; ctx.strokeStyle = `rgba(15, 40, 0, ${alpha})`;
+                ctx.lineWidth = 2; ctx.strokeStyle = `rgba(86, 130, 52, ${alpha})`;
                 for (const t of this.tendrils) {
                     for (let i = 0; i < t.segments.length - 2; i += 12) {
                         const s = t.segments[i];
@@ -1917,48 +1917,83 @@
         }
 
         // ★ 白い光：味方に触れたら広がるゾーン
+        // ★ 白い光：手番キャラが動いている間まとい、停止したら爆発
         class WhiteLightZone {
             constructor(marble) {
-                this.marble = marble; // 付着した味方
+                this.marble = marble;
                 this.x = marble.x; this.y = marble.y;
-                this.radius = marble.radius;
-                this.maxRadius = 130; this.power = 0;
-                this.frame = 0; this.maxFrames = 120;
-                this.expanding = true; this.damaged = false;
+                this.power = 0;
+                this.frame = 0;
+                this.phase = 'aura';   // 'aura' → 'explode' → 'fade'
+                this.explodeRadius = 0;
+                this.maxExplodeRadius = 130;
+                this.explodeFrame = 0;
+                this.damaged = false;
             }
             update() {
                 this.frame++;
-                this.x = this.marble.x; this.y = this.marble.y;
-                if (this.expanding && this.radius < this.maxRadius) {
-                    this.radius += 2.2;
-                } else if (this.radius >= this.maxRadius && !this.damaged) {
-                    this.expanding = false;
+                if (this.phase === 'aura') {
+                    this.x = this.marble.x; this.y = this.marble.y;
+                    // マーブルが停止したら爆発フェーズへ
+                    if (this.marble.isStopped || !this.marble.isMoving()) {
+                        this.phase = 'explode';
+                    }
+                } else if (this.phase === 'explode') {
+                    this.explodeFrame++;
+                    this.explodeRadius = Math.min(this.explodeRadius + 5, this.maxExplodeRadius);
+                    if (this.explodeRadius >= this.maxExplodeRadius) this.phase = 'fade';
                 }
             }
             draw() {
-                const alpha = this.frame > 90 ? 1 - (this.frame - 90) / 30 : 1;
                 ctx.save();
-                // ゾーン内側
-                const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
-                grad.addColorStop(0, `rgba(255,255,255,${alpha * 0.15})`);
-                grad.addColorStop(0.7, `rgba(200,230,255,${alpha * 0.25})`);
-                grad.addColorStop(1, `rgba(180,220,255,${alpha * 0.5})`);
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = grad; ctx.fill();
-                // リング縁
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.9})`; ctx.lineWidth = 2.5; ctx.stroke();
-                // 回転するスパーク
-                for (let i = 0; i < 6; i++) {
-                    const a = (this.frame * 0.06 + i * Math.PI / 3);
-                    const sx = this.x + Math.cos(a) * this.radius * 0.9;
-                    const sy = this.y + Math.sin(a) * this.radius * 0.9;
-                    ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fill();
+                if (this.phase === 'aura') {
+                    // オーラ：キャラの周りで白く輝く
+                    const pulse = Math.sin(this.frame * 0.18) * 0.3 + 0.7;
+                    const r = this.marble.radius * 1.8 * pulse;
+                    const g = ctx.createRadialGradient(this.x, this.y, this.marble.radius * 0.5, this.x, this.y, r);
+                    g.addColorStop(0, 'rgba(255,255,255,0.5)');
+                    g.addColorStop(0.5, 'rgba(200,230,255,0.3)');
+                    g.addColorStop(1, 'rgba(150,200,255,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = g; ctx.fill();
+                    // 周回スパーク
+                    for (let i = 0; i < 8; i++) {
+                        const a = this.frame * 0.1 + i * Math.PI / 4;
+                        const sr = this.marble.radius * 1.3;
+                        ctx.beginPath(); ctx.arc(this.x + Math.cos(a)*sr, this.y + Math.sin(a)*sr, 3, 0, Math.PI*2);
+                        ctx.fillStyle = `rgba(255,255,255,${0.5 + pulse * 0.5})`; ctx.fill();
+                    }
+                } else {
+                    // 爆発フェーズ
+                    const progress = this.explodeRadius / this.maxExplodeRadius;
+                    const alpha = this.phase === 'fade' ? Math.max(0, 1 - this.explodeFrame * 0.04) : 1;
+                    // 外側リング
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.explodeRadius, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.explodeRadius * 0.85, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(180,220,255,${alpha * 0.6})`; ctx.lineWidth = 2; ctx.stroke();
+                    // 内側グロー
+                    const gx = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.explodeRadius);
+                    gx.addColorStop(0, `rgba(255,255,255,${alpha * 0.4})`);
+                    gx.addColorStop(0.5, `rgba(200,230,255,${alpha * 0.2})`);
+                    gx.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.explodeRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = gx; ctx.fill();
+                    // 放射スパーク
+                    for (let i = 0; i < 12; i++) {
+                        const a = (i / 12) * Math.PI * 2;
+                        const sx = this.x + Math.cos(a) * this.explodeRadius;
+                        const sy = this.y + Math.sin(a) * this.explodeRadius;
+                        ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fill();
+                    }
                 }
                 ctx.restore();
             }
-            isAlive() { return this.frame < this.maxFrames; }
+            isAlive() {
+                if (this.phase === 'fade') return this.explodeFrame < 25;
+                return true;
+            }
         }
 
         // ★ 発光群：高速白色ホーミングビーム（かっこいい光の軌跡付き）
@@ -1969,7 +2004,7 @@
                 this.vx = Math.cos(angle) * 9; this.vy = Math.sin(angle) * 9;
                 this.power = power; this.target = null;
                 this.homingStrength = 0.6; this.maxSpeed = 12;
-                this.life = 180; this.frame = 0;
+                this.life = 180; this.frame = 0; this.radius = 10;
                 this.trail = [];
             }
             update() {
@@ -2020,6 +2055,7 @@
         }
 
         // ★ 光の糸：仲間へ飛んでいき十字に分裂するビーム
+        // ★ 光の糸：太い白いレーザーが仲間へ飛び、到達で十字派手爆発
         class LightThreadBeam {
             constructor(fromX, fromY, toMarble, power, splitOnHit = true) {
                 this.fromX = fromX; this.fromY = fromY;
@@ -2028,42 +2064,71 @@
                 this.power = power; this.splitOnHit = splitOnHit;
                 const dx = toMarble.x - fromX, dy = toMarble.y - fromY;
                 const dist = Math.hypot(dx, dy) || 1;
-                this.spd = 10;
+                this.spd = 12;
                 this.vx = dx / dist * this.spd; this.vy = dy / dist * this.spd;
-                this.frame = 0; this.hit = false; this.life = 120;
-                this.trail = [];
+                this.frame = 0; this.hit = false; this.life = 80;
+                this.path = [{x: fromX, y: fromY}]; // 軌跡を記録（レーザービーム描画用）
                 this.angle = Math.atan2(dy, dx);
+                // 十字爆発用
+                this.crossBeams = []; this.crossFrame = 0;
             }
             update() {
                 this.frame++; this.life--;
                 if (!this.hit) {
-                    this.trail.push({x: this.x, y: this.y});
-                    if (this.trail.length > 12) this.trail.shift();
                     this.x += this.vx; this.y += this.vy;
+                    this.path.push({x: this.x, y: this.y});
+                } else {
+                    this.crossFrame++;
                 }
             }
             draw() {
-                const alpha = this.hit ? Math.max(0, this.life / 30) : 1;
                 ctx.save();
-                // 糸の軌跡
-                if (this.trail.length > 1) {
-                    for (let i = 1; i < this.trail.length; i++) {
-                        const t = i / this.trail.length;
-                        ctx.beginPath();
-                        ctx.moveTo(this.trail[i-1].x, this.trail[i-1].y);
-                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
-                        ctx.strokeStyle = `rgba(255,255,255,${t * alpha * 0.8})`;
-                        ctx.lineWidth = t * 4; ctx.lineCap = 'round'; ctx.stroke();
-                    }
-                }
                 if (!this.hit) {
-                    // 本体の光点
-                    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 12);
-                    g.addColorStop(0, `rgba(255,255,255,${alpha})`);
-                    g.addColorStop(0.5, `rgba(200,230,255,${alpha * 0.7})`);
+                    // 太い白いレーザービーム（出発点〜現在位置まで）
+                    if (this.path.length > 1) {
+                        const first = this.path[0];
+                        const last = this.path[this.path.length - 1];
+                        // 外側グロー
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(180,220,255,0.4)'; ctx.lineWidth = 22; ctx.lineCap = 'round'; ctx.stroke();
+                        // 中間層
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(200,235,255,0.75)'; ctx.lineWidth = 12; ctx.stroke();
+                        // コア
+                        ctx.beginPath(); ctx.moveTo(first.x, first.y); ctx.lineTo(last.x, last.y);
+                        ctx.strokeStyle = 'rgba(255,255,255,1)'; ctx.lineWidth = 5; ctx.stroke();
+                    }
+                    // 先端グロー
+                    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 18);
+                    g.addColorStop(0, 'rgba(255,255,255,1)');
+                    g.addColorStop(0.5, 'rgba(180,220,255,0.7)');
                     g.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.beginPath(); ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 18, 0, Math.PI * 2);
                     ctx.fillStyle = g; ctx.fill();
+                } else {
+                    // 十字爆発：4方向にレーザー伸長
+                    const crossLen = Math.min(this.crossFrame * 8, 200);
+                    const alpha = Math.max(0, 1 - this.crossFrame * 0.045);
+                    const crossAngles = [this.angle, this.angle + Math.PI, this.angle + Math.PI/2, this.angle - Math.PI/2];
+                    for (const ca of crossAngles) {
+                        const ex = this.x + Math.cos(ca) * crossLen;
+                        const ey = this.y + Math.sin(ca) * crossLen;
+                        // グロー
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(180,220,255,${alpha * 0.5})`; ctx.lineWidth = 20; ctx.lineCap = 'round'; ctx.stroke();
+                        // 中間
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(220,240,255,${alpha * 0.8})`; ctx.lineWidth = 10; ctx.stroke();
+                        // コア
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ex, ey);
+                        ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 4; ctx.stroke();
+                    }
+                    // 中心フラッシュ
+                    const fc = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 30 + this.crossFrame * 2);
+                    fc.addColorStop(0, `rgba(255,255,255,${alpha})`);
+                    fc.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 30 + this.crossFrame * 2, 0, Math.PI * 2);
+                    ctx.fillStyle = fc; ctx.fill();
                 }
                 ctx.restore();
             }
@@ -2970,7 +3035,7 @@
         function update() {
             if (isPaused) { requestAnimationFrame(update); return; }
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-            ctx.fillStyle = currentStage >= 1 ? '#52517a' : '#2f662a'; // テスト用（本番は>=50）
+            ctx.fillStyle = currentStage >= 1 ? '#363554' : '#2f662a'; // テスト用（本番は>=50）
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
             
             for (let i = enemyBeams.length - 1; i >= 0; i--) { enemyBeams[i].draw(); if (enemyBeams[i].isComplete()) enemyBeams.splice(i, 1); }
@@ -2978,12 +3043,12 @@
                 const ef = explosions[i];
                 if (ef instanceof WhiteLightZone) {
                     ef.update(); ef.draw();
-                    // ゾーンが最大半径に達したら一度だけ敵にダメージ
-                    if (!ef.damaged && !ef.expanding && ef.radius >= ef.maxRadius) {
+                    // 爆発が最大半径に達したら一度だけ敵にダメージ
+                    if (!ef.damaged && ef.phase !== 'aura' && ef.explodeRadius >= ef.maxExplodeRadius) {
                         ef.damaged = true;
                         for (let j = enemies.length - 1; j >= 0; j--) {
                             const en = enemies[j];
-                            if (Math.hypot(en.x - ef.x, en.y - ef.y) < ef.radius + en.radius) {
+                            if (Math.hypot(en.x - ef.x, en.y - ef.y) < ef.maxExplodeRadius + en.radius) {
                                 if (en.takeDamage(ef.power)) {
                                     defeated++; totalDefeated++;
                                     explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
@@ -2993,6 +3058,7 @@
                                 }
                             }
                         }
+                        updateHPBar();
                     }
                     if (!ef.isAlive()) explosions.splice(i, 1);
                 } else {
@@ -3009,22 +3075,23 @@
                 b.update(); b.draw();
                 if (!b.isAlive()) { bullets.splice(i, 1); continue; }
 
-                // --- LightThreadBeam：仲間に当たったら十字分裂 ---
+                // --- LightThreadBeam：仲間に当たったら十字分裂爆発 ---
                 if (b instanceof LightThreadBeam && !b.hit) {
                     const tm = b.toMarble;
-                    if (Math.hypot(b.x - tm.x, b.y - tm.y) < tm.radius + 12) {
-                        b.hit = true; b.life = 30;
+                    if (Math.hypot(b.x - tm.x, b.y - tm.y) < tm.radius + 15) {
+                        b.hit = true; b.life = 25;
                         if (b.splitOnHit) {
                             const crossAngles = [b.angle, b.angle + Math.PI, b.angle + Math.PI/2, b.angle - Math.PI/2];
                             for (const ca of crossAngles) {
-                                for (const en of enemies) {
+                                for (let j = enemies.length - 1; j >= 0; j--) {
+                                    const en = enemies[j];
                                     const dist = Math.hypot(en.x - b.x, en.y - b.y);
                                     const dot = ((en.x - b.x) * Math.cos(ca) + (en.y - b.y) * Math.sin(ca)) / (dist || 1);
-                                    if (dot > 0.82 && dist < 250) {
-                                        if (en.takeDamage(b.power * 0.7)) {
+                                    if (dot > 0.80 && dist < 280) {
+                                        if (en.takeDamage(b.power * 0.9)) {
                                             defeated++; totalDefeated++;
                                             explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
-                                            enemies.splice(enemies.indexOf(en), 1);
+                                            enemies.splice(j, 1);
                                             updateUI();
                                             if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
                                         }
