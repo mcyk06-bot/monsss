@@ -982,6 +982,19 @@
         </div>
     </div>
 
+    <!-- 上書き確認モーダル -->
+    <div id="overwriteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:3500; justify-content:center; align-items:center;">
+        <div style="background:white; border-radius:16px; padding:20px 18px; max-width:320px; width:88%; text-align:center; animation: itemModalIn 0.2s ease-out;">
+            <div style="font-size:22px; margin-bottom:6px;">⚠️</div>
+            <div style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;">友情を上書きしますか？</div>
+            <div id="overwriteDetail" style="font-size:12px; color:#666; background:#f5f5f5; border-radius:8px; padding:10px; margin-bottom:14px; line-height:1.6;"></div>
+            <div style="display:flex; gap:10px;">
+                <button id="overwriteCancelBtn" style="flex:1; padding:10px; background:#e0e0e0; color:#555; border:none; border-radius:10px; font-size:13px; font-weight:bold; cursor:pointer;">やめる</button>
+                <button id="overwriteConfirmBtn" style="flex:1; padding:10px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:10px; font-size:13px; font-weight:bold; cursor:pointer;">上書きする</button>
+            </div>
+        </div>
+    </div>
+
     <script>
 
         // iOSのvh問題対策: 実際の表示高さをCSS変数にセット
@@ -3112,9 +3125,12 @@
 
         function endEnemyTurn() {
             isEnemyTurn = false; currentTurn++; totalTurns++;
-            stageEnemyTurnsCount++;
-            spawnItems();
-            if (currentStage <= 20 && Math.random() < 0.50) spawnItems();
+            // 敵が残っている時だけカウントとアイテムスポーン（クリア済みステージには発生させない）
+            if (enemies.length > 0) {
+                stageEnemyTurnsCount++;
+                spawnItems();
+                if (currentStage <= 20 && Math.random() < 0.50) spawnItems();
+            }
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
             }
@@ -3919,25 +3935,71 @@
             }
         });
         
-        document.getElementById('itemEquipBtn').addEventListener('click', () => {
-            if (currentItem && currentMarble) {
-                const result = applyFriendshipItem(currentItem, currentMarble, false);
-                if (result === 'banner') {
-                    // サブ友情解放バナーを表示してから閉じる
-                    const banner = document.getElementById('subUnlockBanner');
-                    if (banner) banner.style.display = 'block';
-                    isPaused = true;
-                    const savedItem = currentItem; const savedMarble = currentMarble;
-                    currentItem = null; currentMarble = null;
-                    setTimeout(() => {
-                        document.getElementById('itemModal').classList.remove('active');
-                        isPaused = false;
-                        updateFriendshipStatusBar();
-                    }, 2500);
-                } else {
+        // 装備確定処理（確認後に呼ばれる共通関数）
+        // モーダルを閉じてから少し待ってポーズ解除（ガチャガチャ防止）
+        const MODAL_CLOSE_DELAY = 400; // ms
+        function unpauseAfterDelay() {
+            setTimeout(() => { isPaused = false; }, MODAL_CLOSE_DELAY);
+        }
+
+        function doEquip(item, marble, equipToSub) {
+            const result = applyFriendshipItem(item, marble, equipToSub);
+            if (result === 'banner') {
+                const banner = document.getElementById('subUnlockBanner');
+                if (banner) banner.style.display = 'block';
+                isPaused = true;
+                currentItem = null; currentMarble = null;
+                setTimeout(() => {
                     document.getElementById('itemModal').classList.remove('active');
-                    currentItem = null; currentMarble = null; isPaused = false;
-                }
+                    updateFriendshipStatusBar();
+                    unpauseAfterDelay();
+                }, 2500);
+            } else {
+                document.getElementById('itemModal').classList.remove('active');
+                currentItem = null; currentMarble = null;
+                unpauseAfterDelay();
+            }
+        }
+
+        document.getElementById('itemEquipBtn').addEventListener('click', () => {
+            if (!currentItem || !currentMarble) return;
+            const marble = currentMarble;
+            const item = currentItem;
+
+            // 上書きになるか判定（既に別の友情を持っていて、かつ種類が違う）
+            let newItemType = '';
+            if (item.type === 'friendship_homing') newItemType = 'homing';
+            else if (item.type === 'friendship_laser') newItemType = 'laser';
+            else if (item.type === 'friendship_heal') newItemType = 'heal';
+            else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
+            else if (item.type === 'friendship_energy') newItemType = 'energy';
+            else if (item.type === 'friendship_normal') newItemType = 'normal_shot';
+            else if (item.type === 'friendship_sixteen_ring') newItemType = 'sixteen_ring';
+            else if (item.type === 'friendship_white_light') newItemType = 'white_light';
+            else if (item.type === 'friendship_glow_homing') newItemType = 'glow_homing';
+            else if (item.type === 'friendship_light_thread') newItemType = 'light_thread';
+
+            const isOverwrite = newItemType && marble.friendshipType !== 'normal' && marble.friendshipType !== newItemType;
+
+            if (isOverwrite) {
+                // 確認モーダルを出す
+                const oldName = FRIENDSHIP_NAMES[marble.friendshipType] || marble.friendshipType;
+                const newName = FRIENDSHIP_NAMES[newItemType] || newItemType;
+                document.getElementById('overwriteDetail').innerHTML =
+                    `現在：<strong>${oldName}</strong>（Lv${marble.friendshipLevel}）<br>↓ 上書き<br>新しく：<strong>${newName}</strong>（Lv1）`;
+                document.getElementById('overwriteModal').style.display = 'flex';
+                // 確認ボタンの処理をセット
+                document.getElementById('overwriteConfirmBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    doEquip(item, marble, false);
+                };
+                document.getElementById('overwriteCancelBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    // アイテムモーダルを再表示
+                    document.getElementById('itemModal').classList.add('active');
+                };
+            } else {
+                doEquip(item, marble, false);
             }
         });
 
@@ -3993,10 +4055,40 @@
         });
 
         document.getElementById('itemEquipSubBtn').addEventListener('click', () => {
-            if (currentItem && currentMarble) {
-                applyFriendshipItem(currentItem, currentMarble, true);
-                document.getElementById('itemModal').classList.remove('active');
-                currentItem = null; currentMarble = null; isPaused = false;
+            if (!currentItem || !currentMarble) return;
+            const marble = currentMarble;
+            const item = currentItem;
+
+            let newItemType = '';
+            if (item.type === 'friendship_homing') newItemType = 'homing';
+            else if (item.type === 'friendship_laser') newItemType = 'laser';
+            else if (item.type === 'friendship_heal') newItemType = 'heal';
+            else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
+            else if (item.type === 'friendship_energy') newItemType = 'energy';
+            else if (item.type === 'friendship_normal') newItemType = 'normal_shot';
+            else if (item.type === 'friendship_sixteen_ring') newItemType = 'sixteen_ring';
+            else if (item.type === 'friendship_white_light') newItemType = 'white_light';
+            else if (item.type === 'friendship_glow_homing') newItemType = 'glow_homing';
+            else if (item.type === 'friendship_light_thread') newItemType = 'light_thread';
+
+            const isSubOverwrite = newItemType && marble.subFriendshipType !== 'normal' && marble.subFriendshipType !== newItemType;
+
+            if (isSubOverwrite) {
+                const oldName = FRIENDSHIP_NAMES[marble.subFriendshipType] || marble.subFriendshipType;
+                const newName = FRIENDSHIP_NAMES[newItemType] || newItemType;
+                document.getElementById('overwriteDetail').innerHTML =
+                    `サブ現在：<strong>${oldName}</strong>（Lv${marble.subFriendshipLevel}）<br>↓ 上書き<br>新しく：<strong>${newName}</strong>（Lv1）`;
+                document.getElementById('overwriteModal').style.display = 'flex';
+                document.getElementById('overwriteConfirmBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    doEquip(item, marble, true);
+                };
+                document.getElementById('overwriteCancelBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    document.getElementById('itemModal').classList.add('active');
+                };
+            } else {
+                doEquip(item, marble, true);
             }
         });
         
@@ -4221,13 +4313,13 @@
             // OKボタン表示
             okBtn.style.display = 'block';
 
-            // 1.5秒後に自動クローズ（OKボタンでも閉じられる）
+            // 1秒後に自動クローズ（OKボタンでも閉じられる）
             let closed = false;
             const autoClose = setTimeout(() => {
-                if (!closed) { closed = true; closeLotteryAndModal(); currentItem = null; currentMarble = null; isPaused = false; }
+                if (!closed) { closed = true; closeLotteryAndModal(); currentItem = null; currentMarble = null; unpauseAfterDelay(); }
             }, 1000);
             okBtn.onclick = () => {
-                if (!closed) { closed = true; clearTimeout(autoClose); closeLotteryAndModal(); currentItem = null; currentMarble = null; isPaused = false; }
+                if (!closed) { closed = true; clearTimeout(autoClose); closeLotteryAndModal(); currentItem = null; currentMarble = null; unpauseAfterDelay(); }
             };
         }
 
