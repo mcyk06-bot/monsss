@@ -2851,6 +2851,7 @@
         let stageClearAnim = null; // { phase, y, vy, alpha, timer, text, subText }
 
         function showStageClear() {
+            if (isStageClear) return; // 既にクリア処理済みなら無視（多重呼び出し防止）
             isStageClear = true;
             playStageClearSound();
             const hpRecovery = Math.floor(MAX_TEAM_HP * 0.3);
@@ -2868,6 +2869,7 @@
 
             // モーダル類が閉じてから演出開始する関数
             function startClearAnimWhenReady() {
+                if (stageClearAnim) return; // 既に演出開始済みなら無視
                 const itemModalOpen = document.getElementById('itemModal').classList.contains('active');
                 const overwriteModalOpen = document.getElementById('overwriteModal').style.display === 'flex';
                 const lotteryVisible = document.getElementById('lotteryPanel').style.display === 'flex';
@@ -2889,7 +2891,9 @@
                 };
 
                 // 2.2秒後に次のステージへ自動遷移
+                const clearStage = currentStage; // クロージャでステージ番号を保持
                 setTimeout(() => {
+                    if (currentStage !== clearStage) return; // 既に別のステージに遷移済みなら無視
                     isStageClear = false; currentStage++;
                     stageClearAnim = null;
                     try { startStage(); } catch(e) { console.error(e); }
