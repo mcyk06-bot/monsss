@@ -5001,42 +5001,33 @@
                 osc.start(now); osc.stop(now + 0.08);
 
             } else {
-                // ── 上下: 金属的リムショット「カッ」
-                // 高Qバンドパスノイズ（金属のリング感）＋高音サイン波（カチンと響く）
-                // ① 金属ノイズ（バンドパス高Q → 特定周波数だけ鳴ってリンとした金属感）
-                const nLen = Math.ceil(audioCtx.sampleRate * 0.04);
-                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-                const nd = nBuf.getChannelData(0);
-                for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
-                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
-                // 高QバンドパスでメタリックなリングQ
-                const bpf1 = audioCtx.createBiquadFilter();
-                bpf1.type = 'bandpass'; bpf1.frequency.value = 4200; bpf1.Q.value = 12;
-                const bpf2 = audioCtx.createBiquadFilter();
-                bpf2.type = 'bandpass'; bpf2.frequency.value = 6800; bpf2.Q.value = 8;
-                const nGain = audioCtx.createGain();
-                nGain.gain.setValueAtTime(0.28, now);
-                nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
-                nSrc.connect(bpf1); bpf1.connect(nGain); nGain.connect(masterGain);
-                // 2本目（並列で倍音感）
-                const nSrc2 = audioCtx.createBufferSource(); nSrc2.buffer = nBuf;
-                const nGain2 = audioCtx.createGain();
-                nGain2.gain.setValueAtTime(0.16, now);
-                nGain2.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
-                nSrc2.connect(bpf2); bpf2.connect(nGain2); nGain2.connect(masterGain);
-                nSrc.start(now); nSrc.stop(now + 0.04);
-                nSrc2.start(now); nSrc2.stop(now + 0.04);
-
-                // ② 高音サイン波（カチンとした音程感、超速減衰で「カッ」の輪郭）
-                const osc = audioCtx.createOscillator();
-                const og = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(1800, now);       // 高め → 金属感
-                osc.frequency.exponentialRampToValueAtTime(900, now + 0.02);
-                og.gain.setValueAtTime(0.13, now);
-                og.gain.exponentialRampToValueAtTime(0.001, now + 0.025); // 超速減衰
-                osc.connect(og); og.connect(masterGain);
-                osc.start(now); osc.stop(now + 0.03);
+                // ── 上下: スネア3連「タタタ」（中→小→極小）
+                const volumes = [0.75, 0.2, 0.04];
+                const interval = 0.07;
+                volumes.forEach((vol, i) => {
+                    const t = now + i * interval;
+                    const bufLen = Math.ceil(audioCtx.sampleRate * 0.15);
+                    const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+                    const dat = buf.getChannelData(0);
+                    for (let j = 0; j < bufLen; j++) dat[j] = Math.random() * 2 - 1;
+                    const src = audioCtx.createBufferSource(); src.buffer = buf;
+                    const hpf = audioCtx.createBiquadFilter();
+                    hpf.type = 'highpass'; hpf.frequency.value = 1200;
+                    const nGain = audioCtx.createGain();
+                    nGain.gain.setValueAtTime(vol, t);
+                    nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                    src.connect(hpf); hpf.connect(nGain); nGain.connect(masterGain);
+                    src.start(t); src.stop(t + 0.15);
+                    const osc = audioCtx.createOscillator();
+                    const og = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(180, t);
+                    osc.frequency.exponentialRampToValueAtTime(80, t + 0.08);
+                    og.gain.setValueAtTime(vol * 0.6, t);
+                    og.gain.exponentialRampToValueAtTime(0.001, t + 0.10);
+                    osc.connect(og); og.connect(masterGain);
+                    osc.start(t); osc.stop(t + 0.15);
+                });
             }
         }
 
