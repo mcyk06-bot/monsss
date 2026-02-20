@@ -817,7 +817,7 @@
                     <div class="monsst-stat-value" id="attackBonus">+0</div>
                 </div>
                 <div class="monsst-stat">
-                    <div class="monsst-stat-label">🛼速度</div>
+                    <div class="monsst-stat-label">🏃速度</div>
                     <div class="monsst-stat-value" id="speedBonus">+0</div>
                 </div>
             </div>
@@ -897,16 +897,16 @@
             <div class="enemy-info">
                 ❤️ <strong>HPアップ</strong>　最大HP+4<br>
                 💪 <strong>攻撃力アップ</strong>　全員の攻撃力+0.5<br>
-                🛼 <strong>スピードアップ</strong>　全員の速度+0.1（最大+2.0）<br>
+                🏃 <strong>スピードアップ</strong>　全員の速度+0.1（最大+2.0）<br>
                 ⏳ <strong>砂時計</strong>　大号令カウント+4<br>
                 💀 <strong>デス</strong>　超激レア！敵を全滅させる<br>
                 💊 <strong>友情強化薬</strong>　レア！自分の友情(メイン/サブ)Lv+1<br>
                 💉 <strong>全体友情強化注射</strong>　激レア！全員の友情Lv+1<br>
                 🚀 <strong>ホーミングミサイル</strong>　友情攻撃が敵を自動追尾<br>
                 ⚡ <strong>レーザービーム</strong>　友情攻撃が貫通レーザーに<br>
-                ❤️‍🩹 <strong>友情・回復</strong>　友情攻撃でHP回復<br>
+                💝 <strong>友情・回復</strong>　友情攻撃でHP回復<br>
                 🔫 <strong>友情・マシンガン</strong>　弱った敵に連射<br>
-                🧿 <strong>エナジーサークル</strong>　全敵にダメージ<br>
+                ⭕ <strong>エナジーサークル</strong>　全敵にダメージ<br>
                 <small>※友情アイテムは同じ種類を重ねるとLv5まで強化！</small>
             </div>
 
@@ -1933,7 +1933,7 @@
                 if (type === 'hp') { this.emoji = '❤️'; this.color = '#ff1744'; this.name = 'HP上限アップ'; this.description = 'HP上限が4増加します'; }
                 else if (type === 'hourglass') { this.emoji = '⏳'; this.color = '#ff9800'; this.name = '砂時計'; this.description = '大号令カウントを4短縮します！'; }
                 else if (type === 'attack') { this.emoji = '💪'; this.color = '#ffd600'; this.name = '攻撃力アップ'; this.description = '攻撃力が0.5増加します'; }
-                else if (type === 'speedup') { this.emoji = '🛼'; this.color = '#00bcd4'; this.name = 'スピードアップ'; this.description = '全キャラの移動速度が上がります！'; }
+                else if (type === 'speedup') { this.emoji = '🏃'; this.color = '#00bcd4'; this.name = 'スピードアップ'; this.description = '全キャラの移動速度が上がります！'; }
                 else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
                 else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '友情強化薬'; this.description = '自分の友情コンボ（メイン・サブ）のレベルが1上がる！レア'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体友情強化注射'; this.description = '仲間全員の友情コンボのレベルが1上がる！激レア！'; }
@@ -1944,9 +1944,9 @@
                 else if (type === 'friendship_light_thread') { this.emoji = '✚'; this.color = '#ffffff'; this.name = '光の糸'; this.description = '仲間3人に光のビームが飛び十字に分裂攻撃！'; }
                 else if (type === 'friendship_homing') { this.emoji = '🚀'; this.color = '#00bcd4'; this.name = 'ホーミングミサイル'; this.description = '友情攻撃がホーミングミサイルになります。敵を自動追尾！'; }
                 else if (type === 'friendship_laser') { this.emoji = '⚡'; this.color = '#9c27b0'; this.name = 'レーザービーム'; this.description = '友情攻撃が貫通レーザーになります。敵を一直線に貫く！'; }
-                else if (type === 'friendship_heal') { this.emoji = '❤️‍🩹'; this.color = '#ff69b4'; this.name = '友情・回復'; this.description = '友情攻撃発動時、攻撃の代わりにHPを回復します。'; }
+                else if (type === 'friendship_heal') { this.emoji = '💝'; this.color = '#ff69b4'; this.name = '友情・回復'; this.description = '友情攻撃発動時、攻撃の代わりにHPを回復します。'; }
                 else if (type === 'friendship_machinegun') { this.emoji = '🔫'; this.color = '#607d8b'; this.name = '友情・マシンガン'; this.description = '弱った敵にめがけて高速弾を16発連射します！'; }
-                else if (type === 'friendship_energy') { this.emoji = '🧿'; this.color = '#00bcd4'; this.name = 'エナジーサークル'; this.description = '自身を中心にエネルギー衝撃波が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
+                else if (type === 'friendship_energy') { this.emoji = '⭕'; this.color = '#00bcd4'; this.name = 'エナジーサークル'; this.description = '自身を中心にエネルギー衝撃波が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
             }
             update() { this.frame++; }
             draw() {
@@ -2435,7 +2435,7 @@
                     else if (this.friendshipType === 'laser') icon = '⚡';
                     else if (this.friendshipType === 'heal') icon = '❤️';
                     else if (this.friendshipType === 'machinegun') icon = '🔫';
-                    else if (this.friendshipType === 'energy') icon = '🧿';
+                    else if (this.friendshipType === 'energy') icon = '⭕';
                     else if (this.friendshipType === 'normal_shot') icon = '🐿️';
                     else if (this.friendshipType === 'sixteen_ring') icon = '◎';
                     else if (this.friendshipType === 'white_light') icon = '◉';
@@ -3432,7 +3432,7 @@
                                 updateSpecialShotUI();
                             } else if (item.type === 'speedup') {
                                 playerSpeedBonus = Math.min(playerSpeedBonus + 0.1, 2.0); explosions.push(new CriticalEffect(item.x, item.y));
-                                showMessage(`🛼 スピード+0.1！ (ボーナス:+${playerSpeedBonus.toFixed(1)})`, 'success');
+                                showMessage(`🏃 スピード+0.1！ (ボーナス:+${playerSpeedBonus.toFixed(1)})`, 'success');
                                 updateUI();
                             } else if (item.type === 'attack') {
                                 playerAttackBonus += 0.5; explosions.push(new CriticalEffect(item.x, item.y));
@@ -3778,7 +3778,7 @@
             setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
         }
         
-        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'🐿️', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
+        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'⭕', normal_shot:'🐿️', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
         const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal_shot:'豆粒友情', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
 
         function iconBar(type, level) {
