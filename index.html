@@ -3116,12 +3116,12 @@
                             }, 550);
                             setTimeout(resolve, 1300);
                         } else if (type === 'meteor') {
-                            playEnemyAttackSound('meteor');
                             showMessage('☄️ メテオ攻撃！', 'danger');
                             const count = 2 + Math.min(Math.floor(currentStage / 8), 3);
                             for (let mi = 0; mi < count; mi++) {
                                 setTimeout(() => {
                                     if (enemies.length === 0) return;
+                                    playEnemyAttackSound('meteor', mi);
                                     const mt = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                                     const meteor = new EnemyMeteorEffect(mt.x, mt.y);
                                     enemyBeams.push(meteor);
@@ -5059,28 +5059,53 @@
         }
 
         // 敵攻撃音（type: 'beam'=ビーム / 'bomb'=爆弾 / 'meteor'=メテオ）
-        function playEnemyAttackSound(type) {
+        function playEnemyAttackSound(type, idx = 0) {
             if (!seEnabled) return;
             resumeAudio();
             const t = audioCtx.currentTime;
 
             if (type === 'beam') {
-                // ブゥゥン（低めのチャージ→放射）
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(masterGain);
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(60, t);
-                osc.frequency.linearRampToValueAtTime(180, t + 0.08);
-                osc.frequency.linearRampToValueAtTime(90, t + 0.3);
-                gain.gain.setValueAtTime(0.0, t);
-                gain.gain.linearRampToValueAtTime(0.22, t + 0.05);
-                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-                osc.start(t); osc.stop(t + 0.36);
+                // アナログシンセビーム 2パターン（ランダム）
+                // パターン0: 低めダーク   パターン1: 中音アグレッシブ
+                const pattern = Math.random() < 0.5 ? 0 : 1;
+                const baseFreq   = pattern === 0 ? 55  : 87;
+                const peakFreq   = pattern === 0 ? 140 : 220;
+                const filterStart = pattern === 0 ? 180 : 300;
+                const filterPeak  = pattern === 0 ? 1800: 2800;
+
+                // デチューンドソウ×2
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const lpf  = audioCtx.createBiquadFilter();
+                const env  = audioCtx.createGain();
+                lpf.type = 'lowpass'; lpf.Q.value = 6;
+                lpf.frequency.setValueAtTime(filterStart, t);
+                lpf.frequency.exponentialRampToValueAtTime(filterPeak, t + 0.12);
+                lpf.frequency.exponentialRampToValueAtTime(filterStart * 0.5, t + 0.55);
+                osc1.type = osc2.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(baseFreq, t);
+                osc1.frequency.exponentialRampToValueAtTime(peakFreq, t + 0.10);
+                osc1.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, t + 0.50);
+                osc2.frequency.setValueAtTime(baseFreq * 1.012, t);
+                osc2.frequency.exponentialRampToValueAtTime(peakFreq * 1.012, t + 0.10);
+                osc2.frequency.exponentialRampToValueAtTime(baseFreq * 0.7 * 1.012, t + 0.50);
+                env.gain.setValueAtTime(0, t);
+                env.gain.linearRampToValueAtTime(0.18, t + 0.03);
+                env.gain.exponentialRampToValueAtTime(0.001, t + 0.58);
+                osc1.connect(lpf); osc2.connect(lpf); lpf.connect(env); env.connect(masterGain);
+                osc1.start(t); osc1.stop(t + 0.60);
+                osc2.start(t); osc2.stop(t + 0.60);
+                // サブシン
+                const sub = audioCtx.createOscillator(); const subG = audioCtx.createGain();
+                sub.type = 'sine';
+                sub.frequency.setValueAtTime(baseFreq * 0.5, t);
+                sub.frequency.exponentialRampToValueAtTime(baseFreq * 0.35, t + 0.40);
+                subG.gain.setValueAtTime(0.22, t); subG.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+                sub.connect(subG); subG.connect(masterGain);
+                sub.start(t); sub.stop(t + 0.47);
 
             } else if (type === 'bomb') {
                 // ヒュッ→ドカン（投擲→爆発）
-                // 飛ぶ音
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
                 osc1.connect(gain1); gain1.connect(masterGain);
@@ -5090,7 +5115,6 @@
                 gain1.gain.setValueAtTime(0.15, t);
                 gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
                 osc1.start(t); osc1.stop(t + 0.3);
-                // 爆発音（0.4秒後）
                 const osc2 = audioCtx.createOscillator();
                 const gain2 = audioCtx.createGain();
                 const filter = audioCtx.createBiquadFilter();
@@ -5105,27 +5129,82 @@
                 osc2.start(t + 0.4); osc2.stop(t + 0.82);
 
             } else if (type === 'meteor') {
-                // ゴォォォ→ドスン（落下→着弾）
-                const osc1 = audioCtx.createOscillator();
-                const gain1 = audioCtx.createGain();
-                osc1.connect(gain1); gain1.connect(masterGain);
-                osc1.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(300, t);
-                osc1.frequency.exponentialRampToValueAtTime(80, t + 0.45);
-                gain1.gain.setValueAtTime(0.0, t);
-                gain1.gain.linearRampToValueAtTime(0.2, t + 0.05);
-                gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-                osc1.start(t); osc1.stop(t + 0.52);
-                // 着弾ドスン
-                const osc2 = audioCtx.createOscillator();
-                const gain2 = audioCtx.createGain();
-                osc2.connect(gain2); gain2.connect(masterGain);
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(55, t + 0.42);
-                osc2.frequency.exponentialRampToValueAtTime(25, t + 0.65);
-                gain2.gain.setValueAtTime(0.4, t + 0.42);
-                gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
-                osc2.start(t + 0.42); osc2.stop(t + 0.72);
+                // ── メテオ：山形エンベロープ・音程なし
+                // ローノイズ（LPF成形）+ 固定サブサイン で音程感を消したドスン系
+                const dur = 0.90;
+
+                // ローノイズ本体（LPFで低域だけ残す）
+                const nLen = Math.ceil(audioCtx.sampleRate * dur);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const lpf  = audioCtx.createBiquadFilter();
+                lpf.type = 'lowpass'; lpf.Q.value = 2;
+                lpf.frequency.setValueAtTime(280, t);
+                lpf.frequency.exponentialRampToValueAtTime(120, t + dur);
+                const env  = audioCtx.createGain();
+                // 山形：小→大→小
+                env.gain.setValueAtTime(0.001, t);
+                env.gain.exponentialRampToValueAtTime(0.05,  t + 0.05);
+                env.gain.exponentialRampToValueAtTime(0.30,  t + 0.26); // 頂点
+                env.gain.exponentialRampToValueAtTime(0.05,  t + 0.62);
+                env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                nSrc.connect(lpf); lpf.connect(env); env.connect(masterGain);
+                nSrc.start(t); nSrc.stop(t + dur + 0.02);
+
+                // サブサイン（固定・音程感なし）
+                const sub  = audioCtx.createOscillator();
+                const subG = audioCtx.createGain();
+                sub.type = 'sine';
+                sub.frequency.setValueAtTime(52, t);
+                sub.frequency.exponentialRampToValueAtTime(38, t + dur);
+                subG.gain.setValueAtTime(0.001, t);
+                subG.gain.exponentialRampToValueAtTime(0.06,  t + 0.05);
+                subG.gain.exponentialRampToValueAtTime(0.38,  t + 0.24); // 頂点
+                subG.gain.exponentialRampToValueAtTime(0.07,  t + 0.65);
+                subG.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                sub.connect(subG); subG.connect(masterGain);
+                sub.start(t); sub.stop(t + dur + 0.02);
+
+            } else if (type === 'instakill') {
+                // 瞬殺レーザー 2パターン（ランダム）
+                const pattern = Math.random() < 0.5 ? 0 : 1;
+                if (pattern === 0) {
+                    // ── ズバン（重い下降スライド：sawtooth + LPF）
+                    const lpf1 = audioCtx.createBiquadFilter(); lpf1.type = 'lowpass'; lpf1.Q.value = 4;
+                    lpf1.frequency.setValueAtTime(3000, t); lpf1.frequency.exponentialRampToValueAtTime(300, t + 0.28);
+                    const s1 = audioCtx.createOscillator(); const sg1 = audioCtx.createGain();
+                    const s3 = audioCtx.createOscillator(); const sg3 = audioCtx.createGain();
+                    s1.type = 'sawtooth';
+                    s1.frequency.setValueAtTime(1200, t); s1.frequency.exponentialRampToValueAtTime(55, t + 0.28);
+                    sg1.gain.setValueAtTime(0, t); sg1.gain.linearRampToValueAtTime(0.26, t + 0.01); sg1.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+                    s3.type = 'sawtooth';
+                    s3.frequency.setValueAtTime(1212, t); s3.frequency.exponentialRampToValueAtTime(56, t + 0.28);
+                    sg3.gain.setValueAtTime(0, t); sg3.gain.linearRampToValueAtTime(0.10, t + 0.01); sg3.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+                    s1.connect(lpf1); s3.connect(lpf1); lpf1.connect(sg1); sg1.connect(masterGain);
+                    lpf1.connect(sg3); sg3.connect(masterGain);
+                    s1.start(t); s1.stop(t + 0.34); s3.start(t); s3.stop(t + 0.32);
+                    // 着弾ドスン
+                    const s2 = audioCtx.createOscillator(); const sg2 = audioCtx.createGain();
+                    s2.type = 'sine'; s2.frequency.setValueAtTime(60, t + 0.25); s2.frequency.exponentialRampToValueAtTime(22, t + 0.65);
+                    sg2.gain.setValueAtTime(0, t + 0.25); sg2.gain.linearRampToValueAtTime(0.38, t + 0.27); sg2.gain.exponentialRampToValueAtTime(0.001, t + 0.68);
+                    s2.connect(sg2); sg2.connect(masterGain); s2.start(t + 0.25); s2.stop(t + 0.70);
+                } else {
+                    // ── キュイーン（高音上昇→ドン：square + bandpass）
+                    const bpf1 = audioCtx.createBiquadFilter(); bpf1.type = 'bandpass'; bpf1.Q.value = 3; bpf1.frequency.value = 1500;
+                    const s1 = audioCtx.createOscillator(); const sg1 = audioCtx.createGain();
+                    s1.type = 'square';
+                    s1.frequency.setValueAtTime(400, t); s1.frequency.exponentialRampToValueAtTime(3200, t + 0.08); s1.frequency.exponentialRampToValueAtTime(200, t + 0.24);
+                    sg1.gain.setValueAtTime(0, t); sg1.gain.linearRampToValueAtTime(0.22, t + 0.02); sg1.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+                    s1.connect(bpf1); bpf1.connect(sg1); sg1.connect(masterGain);
+                    s1.start(t); s1.stop(t + 0.30);
+                    // 着弾
+                    const s2 = audioCtx.createOscillator(); const sg2 = audioCtx.createGain();
+                    s2.type = 'sine'; s2.frequency.setValueAtTime(80, t + 0.22); s2.frequency.exponentialRampToValueAtTime(28, t + 0.60);
+                    sg2.gain.setValueAtTime(0, t + 0.22); sg2.gain.linearRampToValueAtTime(0.35, t + 0.24); sg2.gain.exponentialRampToValueAtTime(0.001, t + 0.64);
+                    s2.connect(sg2); sg2.connect(masterGain); s2.start(t + 0.22); s2.stop(t + 0.66);
+                }
 
             } else if (type === 'dark_flame') {
                 // 黒い炎：ドロドロ低音＋歪んだ唸り＋ダークノイズ
@@ -5161,24 +5240,6 @@
                     gain.gain.setValueAtTime(0.08,t+d); gain.gain.exponentialRampToValueAtTime(0.001,t+d+0.14);
                     osc.start(t+d); osc.stop(t+d+0.15);
                 });
-
-            } else if (type === 'instakill') {
-                // 瞬殺レーザー：真空を切る鋭い高音→着弾ドンッ
-                const il1 = audioCtx.createOscillator(); const ilg1 = audioCtx.createGain();
-                il1.connect(ilg1); ilg1.connect(masterGain); il1.type = 'square';
-                il1.frequency.setValueAtTime(2400,t); il1.frequency.exponentialRampToValueAtTime(180,t+0.22);
-                ilg1.gain.setValueAtTime(0,t); ilg1.gain.linearRampToValueAtTime(0.24,t+0.01); ilg1.gain.exponentialRampToValueAtTime(0.001,t+0.25);
-                il1.start(t); il1.stop(t+0.26);
-                const il2 = audioCtx.createOscillator(); const ilg2 = audioCtx.createGain();
-                il2.connect(ilg2); ilg2.connect(masterGain); il2.type = 'sine';
-                il2.frequency.setValueAtTime(70,t+0.2); il2.frequency.exponentialRampToValueAtTime(20,t+0.55);
-                ilg2.gain.setValueAtTime(0,t+0.2); ilg2.gain.linearRampToValueAtTime(0.35,t+0.22); ilg2.gain.exponentialRampToValueAtTime(0.001,t+0.6);
-                il2.start(t+0.2); il2.stop(t+0.62);
-                const il3 = audioCtx.createOscillator(); const ilg3 = audioCtx.createGain();
-                il3.connect(ilg3); ilg3.connect(masterGain); il3.type = 'sawtooth';
-                il3.frequency.setValueAtTime(140,t+0.2); il3.frequency.exponentialRampToValueAtTime(50,t+0.5);
-                ilg3.gain.setValueAtTime(0,t+0.2); ilg3.gain.linearRampToValueAtTime(0.16,t+0.23); ilg3.gain.exponentialRampToValueAtTime(0.001,t+0.55);
-                il3.start(t+0.2); il3.stop(t+0.56);
 
             } else if (type === 'poison_dome') {
                 // ポイズンドーム：不気味なコード＋泡立ちノイズ
@@ -5581,59 +5642,64 @@
             }
 
             if (isCritical) {
-                // ── ドゥーーーーン（低め・長い）
-                // サブベース核：高めからスタートして深く長く落とす
-                // 開始を高くするほど「ドゥ」の音程感が強く残る
+                // ── ドゥーーーーーーン（低め・約2.5秒・サブベース）
+                // 重いベースシンセのような長い余韻
                 const osc = audioCtx.createOscillator();
                 const og = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(160, t);          // 160Hzスタート（音程感）
+                osc.frequency.setValueAtTime(160, t);           // 160Hzスタート（アタック感）
                 osc.frequency.exponentialRampToValueAtTime(32, t + 0.08);  // 素早く32Hzへ
-                osc.frequency.exponentialRampToValueAtTime(28, t + 0.70);  // さらにゆっくり沈む
+                osc.frequency.exponentialRampToValueAtTime(24, t + 1.20);  // ゆっくりさらに沈む
+                osc.frequency.exponentialRampToValueAtTime(20, t + 2.50);  // 最深部まで引きずる
                 og.gain.setValueAtTime(0.0, t);
-                og.gain.linearRampToValueAtTime(0.80, t + 0.004); // 瞬時に最大音量
-                og.gain.exponentialRampToValueAtTime(0.001, t + 0.70);    // 長い余韻
+                og.gain.linearRampToValueAtTime(0.85, t + 0.004);
+                og.gain.setValueAtTime(0.85, t + 0.05);
+                og.gain.exponentialRampToValueAtTime(0.30, t + 0.80);      // ゆったり減衰
+                og.gain.exponentialRampToValueAtTime(0.001, t + 2.50);     // 2.5秒で消える
                 osc.connect(og); og.connect(masterGain);
-                osc.start(t); osc.stop(t + 0.71);
+                osc.start(t); osc.stop(t + 2.52);
 
-                // 倍音レイヤー（太さと迫力を足す）
+                // 倍音レイヤー（太さと迫力。少し長めに）
                 const osc2 = audioCtx.createOscillator();
                 const og2 = audioCtx.createGain();
                 osc2.type = 'triangle';
                 osc2.frequency.setValueAtTime(80, t);
-                osc2.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+                osc2.frequency.exponentialRampToValueAtTime(40, t + 0.60);
+                osc2.frequency.exponentialRampToValueAtTime(30, t + 1.50);
                 og2.gain.setValueAtTime(0.35, t);
-                og2.gain.exponentialRampToValueAtTime(0.001, t + 0.40);
+                og2.gain.exponentialRampToValueAtTime(0.10, t + 0.50);
+                og2.gain.exponentialRampToValueAtTime(0.001, t + 1.50);
                 osc2.connect(og2); og2.connect(masterGain);
-                osc2.start(t); osc2.stop(t + 0.41);
+                osc2.start(t); osc2.stop(t + 1.52);
 
                 kickNoise(0.07, 3500, 0.55); // アタックノイズ
 
             } else if (Math.random() < 0.5) {
-                // ── ドゥーーン（高め）
-                // 開始音程を高くして音程感を際立たせる、でも着地は中低音
+                // ── ドゥーーーン（中間・やや長め・音程少し高め）
                 const osc = audioCtx.createOscillator();
                 const og = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(200, t);          // 200Hzスタート
-                osc.frequency.exponentialRampToValueAtTime(75, t + 0.05);  // 素早く75Hzへ
-                osc.frequency.exponentialRampToValueAtTime(55, t + 0.28);  // ゆっくり沈む
+                osc.frequency.setValueAtTime(240, t);           // 240Hzスタート（少し高め）
+                osc.frequency.exponentialRampToValueAtTime(90, t + 0.05);  // 素早く90Hzへ
+                osc.frequency.exponentialRampToValueAtTime(65, t + 0.55);  // ゆっくり沈む
+                osc.frequency.exponentialRampToValueAtTime(50, t + 0.90);  // さらに引っ張る
                 og.gain.setValueAtTime(0.0, t);
-                og.gain.linearRampToValueAtTime(0.65, t + 0.004);
-                og.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+                og.gain.linearRampToValueAtTime(0.68, t + 0.004);
+                og.gain.exponentialRampToValueAtTime(0.20, t + 0.40);
+                og.gain.exponentialRampToValueAtTime(0.001, t + 0.90);     // 0.9秒に延長
                 osc.connect(og); og.connect(masterGain);
-                osc.start(t); osc.stop(t + 0.31);
+                osc.start(t); osc.stop(t + 0.92);
 
                 // 少し太さを足す
                 const osc2 = audioCtx.createOscillator();
                 const og2 = audioCtx.createGain();
                 osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(100, t);
-                osc2.frequency.exponentialRampToValueAtTime(60, t + 0.15);
-                og2.gain.setValueAtTime(0.25, t);
-                og2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                osc2.frequency.setValueAtTime(120, t);          // 少し高め
+                osc2.frequency.exponentialRampToValueAtTime(70, t + 0.25);
+                og2.gain.setValueAtTime(0.28, t);
+                og2.gain.exponentialRampToValueAtTime(0.001, t + 0.40);
                 osc2.connect(og2); og2.connect(masterGain);
-                osc2.start(t); osc2.stop(t + 0.19);
+                osc2.start(t); osc2.stop(t + 0.42);
 
                 kickNoise(0.04, 2800, 0.35);
 
