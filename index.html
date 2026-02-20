@@ -4720,14 +4720,14 @@
                 nSrc.start(when); nSrc.stop(when + 0.04);
             }
 
-            const d = 0.13; // 1打ごとの間隔(s)
-            const base = t + 1.20; // フィルイン開始タイミング
-            lotteryKick(base,           130, 0.15, 0.58); // ド
-            closedHat  (base + d);                         // チ
-            lotterySnare(base + d * 2);                    // タ
-            closedHat  (base + d * 3);                     // チ
-            lotteryKick(base + d * 4,   140, 0.18, 0.65); // ド（強め）
-            // ※ シャーン（コードクラッシュ）は showLotteryResult のタイミングで鳴る
+            // アニメーション全体(約1.98s)に均等に散らす
+            // 開始と同時にスタート → スロットが回り始めてすぐ最初のドが聞こえる
+            lotteryKick(t + 0.00, 130, 0.16, 0.55); // ド   ← 表示と同時
+            closedHat  (t + 0.50);                   // チ   ← 高速フェーズ後半
+            lotterySnare(t + 1.00);                  // タ   ← 中速フェーズ
+            closedHat  (t + 1.50);                   // チ   ← 低速フェーズ入り
+            lotteryKick(t + 1.80, 140, 0.18, 0.65); // ド   ← 結果直前（強め）
+            // ※ シャーン（コードスタブ）は showLotteryResult のタイミングで鳴る
         }
 
         // 結果表示時のコードスタブ ── ディープハウス風（ステージクリアと違うコード、短め）
@@ -4973,30 +4973,42 @@
                 osc.start(now); osc.stop(now + 0.08);
 
             } else {
-                // ── 上下: リムショットのみ（コン！ 音量やや小さめ）
-                // リムは高めの音程でカチッとした質感
-                const osc = audioCtx.createOscillator();
-                const og = audioCtx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(480, now);        // リムは高め
-                osc.frequency.exponentialRampToValueAtTime(260, now + 0.04);
-                og.gain.setValueAtTime(0.16, now);
-                og.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-                osc.connect(og); og.connect(masterGain);
-                osc.start(now); osc.stop(now + 0.06);
-                // ごく短いノイズトランジェント（リムのコツッ感）
-                const nLen = Math.ceil(audioCtx.sampleRate * 0.025);
+                // ── 上下: 金属的リムショット「カッ」
+                // 高Qバンドパスノイズ（金属のリング感）＋高音サイン波（カチンと響く）
+                // ① 金属ノイズ（バンドパス高Q → 特定周波数だけ鳴ってリンとした金属感）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.04);
                 const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
                 const nd = nBuf.getChannelData(0);
                 for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
                 const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
-                const bpf = audioCtx.createBiquadFilter();
-                bpf.type = 'bandpass'; bpf.frequency.value = 3500; bpf.Q.value = 2;
+                // 高QバンドパスでメタリックなリングQ
+                const bpf1 = audioCtx.createBiquadFilter();
+                bpf1.type = 'bandpass'; bpf1.frequency.value = 4200; bpf1.Q.value = 12;
+                const bpf2 = audioCtx.createBiquadFilter();
+                bpf2.type = 'bandpass'; bpf2.frequency.value = 6800; bpf2.Q.value = 8;
                 const nGain = audioCtx.createGain();
-                nGain.gain.setValueAtTime(0.14, now);
-                nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
-                nSrc.connect(bpf); bpf.connect(nGain); nGain.connect(masterGain);
-                nSrc.start(now); nSrc.stop(now + 0.025);
+                nGain.gain.setValueAtTime(0.28, now);
+                nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+                nSrc.connect(bpf1); bpf1.connect(nGain); nGain.connect(masterGain);
+                // 2本目（並列で倍音感）
+                const nSrc2 = audioCtx.createBufferSource(); nSrc2.buffer = nBuf;
+                const nGain2 = audioCtx.createGain();
+                nGain2.gain.setValueAtTime(0.16, now);
+                nGain2.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+                nSrc2.connect(bpf2); bpf2.connect(nGain2); nGain2.connect(masterGain);
+                nSrc.start(now); nSrc.stop(now + 0.04);
+                nSrc2.start(now); nSrc2.stop(now + 0.04);
+
+                // ② 高音サイン波（カチンとした音程感、超速減衰で「カッ」の輪郭）
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1800, now);       // 高め → 金属感
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.02);
+                og.gain.setValueAtTime(0.13, now);
+                og.gain.exponentialRampToValueAtTime(0.001, now + 0.025); // 超速減衰
+                osc.connect(og); og.connect(masterGain);
+                osc.start(now); osc.stop(now + 0.03);
             }
         }
 
@@ -5249,52 +5261,64 @@
                 osc2.start(t); osc2.stop(t + 0.36);
 
             } else if (type === 'energy') {
-                // ── シャワーーーーーン＋ドゥーーーー（神々しく丸みのある広がり）
-                // ① シャワーーーーーン：高音サイン波の和音がゆっくり広がる
-                // サイン波のみ（尖った波形を使わない）→ まろやかな輝き
-                const showerNotes = [523, 784, 1047, 1568, 2093]; // C5,G5,C6,G6,C7
-                showerNotes.forEach((freq, i) => {
+                // ── スパーン＋ドゥーーーー（シャープでDnBらしい衝撃波）
+                // ① 衝撃波の「スパーン」：瞬間アタック＋高域の鋭い広がり
+                // ポワーン感を消すため：スロウアタックなし・ローパスなし・倍音を足す
+                const strikeNotes = [1047, 1568, 2093, 3136]; // C6,G6,C7,G7 ─ 高めに設定
+                strikeNotes.forEach((freq, i) => {
                     const so = audioCtx.createOscillator();
                     const sg = audioCtx.createGain();
-                    const sflt = audioCtx.createBiquadFilter();
-                    so.type = 'sine';
+                    // triangle波（サインより倍音が多く金属的な輝き）
+                    so.type = 'triangle';
                     so.frequency.setValueAtTime(freq, t);
-                    so.frequency.linearRampToValueAtTime(freq * 1.012, t + 0.9); // わずかに上昇→広がり感
-                    sflt.type = 'lowpass'; sflt.frequency.value = 3500; // 高域を丸める
-                    const delay = i * 0.055; // 順番に開いていく
+                    so.frequency.exponentialRampToValueAtTime(freq * 0.88, t + 0.35); // わずかに下降してピッチ感
+                    const delay = i * 0.018; // 速めにずらして「スパッ」と開く
                     sg.gain.setValueAtTime(0, t + delay);
-                    sg.gain.linearRampToValueAtTime(0.09 - i * 0.012, t + delay + 0.12); // 高音ほど小さく
-                    sg.gain.setValueAtTime(0.07 - i * 0.01, t + delay + 0.5);
-                    sg.gain.exponentialRampToValueAtTime(0.001, t + delay + 1.1);
-                    so.connect(sflt); sflt.connect(sg); sg.connect(masterGain);
-                    so.start(t + delay); so.stop(t + delay + 1.15);
+                    sg.gain.linearRampToValueAtTime(0.10 - i * 0.018, t + delay + 0.01); // 瞬時アタック
+                    sg.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.55); // 速めに減衰
+                    so.connect(sg); sg.connect(masterGain);
+                    so.start(t + delay); so.stop(t + delay + 0.60);
                 });
 
-                // ② ドゥーーーー：ピッチドサブベース（DnBスタイルの低音）
-                // 高めからスタートして深く沈む→音程感のある低音
+                // ② ノイズのシャーっと感（衝撃波の空気感）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.4);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nd = nBuf.getChannelData(0);
+                for (let j = 0; j < nLen; j++) nd[j] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const nhpf = audioCtx.createBiquadFilter();
+                nhpf.type = 'highpass'; nhpf.frequency.value = 4000;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.22, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+                nSrc.connect(nhpf); nhpf.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(t); nSrc.stop(t + 0.4);
+
+                // ③ ドゥーーーー：ピッチドサブベース（DnBスタイル）
+                // より速い下降でグッとしたパンチ感を強調
                 const bd = audioCtx.createOscillator();
                 const bdg = audioCtx.createGain();
                 bd.type = 'sine';
-                bd.frequency.setValueAtTime(150, t);           // 高めスタート
-                bd.frequency.exponentialRampToValueAtTime(40, t + 0.10);  // 素早く落下
-                bd.frequency.exponentialRampToValueAtTime(30, t + 0.80);  // ゆっくり沈む
+                bd.frequency.setValueAtTime(200, t);           // 高めスタート（音程感UP）
+                bd.frequency.exponentialRampToValueAtTime(42, t + 0.07);  // 超速で落下
+                bd.frequency.exponentialRampToValueAtTime(32, t + 0.75);  // ゆっくり沈む
                 bdg.gain.setValueAtTime(0, t);
-                bdg.gain.linearRampToValueAtTime(0.62, t + 0.005);        // 瞬時に最大
-                bdg.gain.setValueAtTime(0.50, t + 0.15);
-                bdg.gain.exponentialRampToValueAtTime(0.001, t + 0.85);   // 長い余韻
+                bdg.gain.linearRampToValueAtTime(0.70, t + 0.004); // 瞬時に最大
+                bdg.gain.setValueAtTime(0.55, t + 0.12);
+                bdg.gain.exponentialRampToValueAtTime(0.001, t + 0.80);
                 bd.connect(bdg); bdg.connect(masterGain);
-                bd.start(t); bd.stop(t + 0.90);
+                bd.start(t); bd.stop(t + 0.85);
 
-                // ③ 倍音で厚みを足す（ドゥーーの太さ）
+                // ④ 倍音で締まりを追加
                 const bd2 = audioCtx.createOscillator();
                 const bdg2 = audioCtx.createGain();
-                bd2.type = 'sine';
-                bd2.frequency.setValueAtTime(75, t);
-                bd2.frequency.exponentialRampToValueAtTime(38, t + 0.50);
-                bdg2.gain.setValueAtTime(0.28, t);
-                bdg2.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                bd2.type = 'triangle';
+                bd2.frequency.setValueAtTime(100, t);
+                bd2.frequency.exponentialRampToValueAtTime(50, t + 0.10);
+                bdg2.gain.setValueAtTime(0.30, t);
+                bdg2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
                 bd2.connect(bdg2); bdg2.connect(masterGain);
-                bd2.start(t); bd2.stop(t + 0.60);
+                bd2.start(t); bd2.stop(t + 0.30);
 
             } else if (type === 'heal') {
                 // ポロロン（優しい3音）
