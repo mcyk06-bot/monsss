@@ -5347,79 +5347,108 @@
             src.start(t); src.stop(t + decay + 0.01);
         }
 
-        // 敵ヒット音 ── バスドラム2種
-        // 通常ヒット = ドゥン（短くパンチ）  クリティカル = ドゥゥゥン（太く長い）
+        // 敵ヒット音 ── ピッチドサブベース 3パターン（DnBスタイル）
+        //   クリティカル  → ドゥーーーーン（低め・長い・サブベース、30〜50Hz）
+        //   通常 50%確率  → ドゥーーン  （高め・中程度、80〜100Hz）
+        //   通常 50%確率  → ドム        （超短い・パンチ力重視、100〜120Hz）
+        //
+        // DnBの「ピッチドベース」の核心：
+        //   サイン波を高い音程からスタートして素早く下降させると
+        //   音程感が残ったまま低音の「ドゥーーン」感が生まれる
         function playHitSound(isCritical = false) {
             if (!seEnabled) return;
             resumeAudio();
             const t = audioCtx.currentTime;
 
-            if (isCritical) {
-                // ── ドゥゥゥン（重いバスドラ：長い音程下降 + ノイズトランジェント）
-                // ① 音程成分：高め→深く落とす
-                const osc = audioCtx.createOscillator();
-                const oscGain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(180, t);
-                osc.frequency.exponentialRampToValueAtTime(38, t + 0.35);
-                oscGain.gain.setValueAtTime(0.0, t);
-                oscGain.gain.linearRampToValueAtTime(0.7, t + 0.005);
-                oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-                osc.connect(oscGain); oscGain.connect(masterGain);
-                osc.start(t); osc.stop(t + 0.56);
-
-                // ② アタックノイズ（バスドラの「ポン」頭）
-                const nLen = Math.ceil(audioCtx.sampleRate * 0.06);
+            // アタックノイズ共通（バスドラの頭のスキン感）
+            function kickNoise(dur, cutoff, vol) {
+                const nLen = Math.ceil(audioCtx.sampleRate * dur);
                 const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-                const nDat = nBuf.getChannelData(0);
-                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nd = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
                 const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
                 const nFlt = audioCtx.createBiquadFilter();
-                nFlt.type = 'lowpass'; nFlt.frequency.value = 3000;
+                nFlt.type = 'lowpass'; nFlt.frequency.value = cutoff;
                 const nGain = audioCtx.createGain();
-                nGain.gain.setValueAtTime(0.5, t);
-                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                nGain.gain.setValueAtTime(vol, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
                 nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
-                nSrc.start(t); nSrc.stop(t + 0.06);
+                nSrc.start(t); nSrc.stop(t + dur + 0.005);
+            }
 
-                // ③ 倍音で太さを追加
+            if (isCritical) {
+                // ── ドゥーーーーン（低め・長い）
+                // サブベース核：高めからスタートして深く長く落とす
+                // 開始を高くするほど「ドゥ」の音程感が強く残る
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(160, t);          // 160Hzスタート（音程感）
+                osc.frequency.exponentialRampToValueAtTime(32, t + 0.08);  // 素早く32Hzへ
+                osc.frequency.exponentialRampToValueAtTime(28, t + 0.70);  // さらにゆっくり沈む
+                og.gain.setValueAtTime(0.0, t);
+                og.gain.linearRampToValueAtTime(0.80, t + 0.004); // 瞬時に最大音量
+                og.gain.exponentialRampToValueAtTime(0.001, t + 0.70);    // 長い余韻
+                osc.connect(og); og.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.71);
+
+                // 倍音レイヤー（太さと迫力を足す）
                 const osc2 = audioCtx.createOscillator();
-                const osc2Gain = audioCtx.createGain();
+                const og2 = audioCtx.createGain();
                 osc2.type = 'triangle';
-                osc2.frequency.setValueAtTime(90, t);
-                osc2.frequency.exponentialRampToValueAtTime(45, t + 0.2);
-                osc2Gain.gain.setValueAtTime(0.3, t);
-                osc2Gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-                osc2.connect(osc2Gain); osc2Gain.connect(masterGain);
-                osc2.start(t); osc2.stop(t + 0.31);
+                osc2.frequency.setValueAtTime(80, t);
+                osc2.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+                og2.gain.setValueAtTime(0.35, t);
+                og2.gain.exponentialRampToValueAtTime(0.001, t + 0.40);
+                osc2.connect(og2); og2.connect(masterGain);
+                osc2.start(t); osc2.stop(t + 0.41);
+
+                kickNoise(0.07, 3500, 0.55); // アタックノイズ
+
+            } else if (Math.random() < 0.5) {
+                // ── ドゥーーン（高め）
+                // 開始音程を高くして音程感を際立たせる、でも着地は中低音
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, t);          // 200Hzスタート
+                osc.frequency.exponentialRampToValueAtTime(75, t + 0.05);  // 素早く75Hzへ
+                osc.frequency.exponentialRampToValueAtTime(55, t + 0.28);  // ゆっくり沈む
+                og.gain.setValueAtTime(0.0, t);
+                og.gain.linearRampToValueAtTime(0.65, t + 0.004);
+                og.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+                osc.connect(og); og.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.31);
+
+                // 少し太さを足す
+                const osc2 = audioCtx.createOscillator();
+                const og2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(100, t);
+                osc2.frequency.exponentialRampToValueAtTime(60, t + 0.15);
+                og2.gain.setValueAtTime(0.25, t);
+                og2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                osc2.connect(og2); og2.connect(masterGain);
+                osc2.start(t); osc2.stop(t + 0.19);
+
+                kickNoise(0.04, 2800, 0.35);
 
             } else {
-                // ── ドゥン（コンパクトなバスドラ：素早い下降）
-                // ① 音程成分
+                // ── ドム（超短い・パンチ）
+                // 開始を高くして瞬間的に落とす→「ドム」のパーカッシブ感
                 const osc = audioCtx.createOscillator();
-                const oscGain = audioCtx.createGain();
+                const og = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(130, t);
-                osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-                oscGain.gain.setValueAtTime(0.0, t);
-                oscGain.gain.linearRampToValueAtTime(0.55, t + 0.004);
-                oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-                osc.connect(oscGain); oscGain.connect(masterGain);
-                osc.start(t); osc.stop(t + 0.19);
+                osc.frequency.setValueAtTime(240, t);          // 240Hzスタート（ドの音程感）
+                osc.frequency.exponentialRampToValueAtTime(60, t + 0.025); // 超速で落下
+                osc.frequency.exponentialRampToValueAtTime(48, t + 0.09);
+                og.gain.setValueAtTime(0.0, t);
+                og.gain.linearRampToValueAtTime(0.60, t + 0.003);
+                og.gain.exponentialRampToValueAtTime(0.001, t + 0.10);    // 短く切る
+                osc.connect(og); og.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.11);
 
-                // ② アタックノイズ（短め）
-                const nLen = Math.ceil(audioCtx.sampleRate * 0.035);
-                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-                const nDat = nBuf.getChannelData(0);
-                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
-                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
-                const nFlt = audioCtx.createBiquadFilter();
-                nFlt.type = 'lowpass'; nFlt.frequency.value = 2500;
-                const nGain = audioCtx.createGain();
-                nGain.gain.setValueAtTime(0.3, t);
-                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-                nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
-                nSrc.start(t); nSrc.stop(t + 0.035);
+                kickNoise(0.025, 2000, 0.40); // タイトなアタック
             }
         }
 
