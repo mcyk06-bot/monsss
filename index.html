@@ -1203,6 +1203,7 @@
         let isStageClear = false;
         let pendingStageClear = false; // 全滅確認済み、キャラ停止待ち
         let energyChordIndex = 0; // エナジーサークルのコード進行カウンター
+        let lastEnergySoundTime = 0; // エナジーサークル音の間引き用
         
         let teamHP = 10;
         let MAX_TEAM_HP = 10;
@@ -5281,8 +5282,9 @@
                 osc2.start(t); osc2.stop(t + 0.36);
 
             } else if (type === 'energy') {
-                // ── エナジーサークル ── 神々しいシャワーーーン＋ドゥーーー
-                // 3コード進行: Cmaj7 → Fmaj7 → G7 をループ
+                // ── エナジーサークル ── 100ms以内の連続発音は無視
+                if (t - lastEnergySoundTime < 0.1) return;
+                lastEnergySoundTime = t;
                 const ENERGY_CHORDS = [
                     { notes: [523, 659, 784, 988],  sub: 65,  harm: 130 }, // Cmaj7: C-E-G-B
                     { notes: [349, 440, 523, 659],  sub: 87,  harm: 175 }, // Fmaj7: F-A-C-E
@@ -5603,41 +5605,30 @@
         }
 
         // ─────────────────────────────────────────────
-        // 六角形背景アニメーション（背景専用Canvas）
-        // 最適化① 別Canvas  ② 3フレーム間引き  ③ 大きめサイズで数を削減
+        // 六角形背景（固定・1回だけ描画、ステージ変更時に再描画）
         // ─────────────────────────────────────────────
         (function() {
             const bgCanvas = document.getElementById('bgCanvas');
             const bgCtx = bgCanvas.getContext('2d');
-            const HEX_SIZE = 30; // 大きめにして描画数削減
+            const HEX_SIZE = 30;
             const HW = HEX_SIZE * 2;
             const HH = Math.sqrt(3) * HEX_SIZE;
-            let tick = 0;
-            let frameCount = 0;
-            let lastPattern = -1;
 
-            // 6パターン定義（10ステージごとにループ）
             const PATTERNS = [
-                { bg: '#06090f', speed: 0.4, distScale: 0.015, centerWave: false,
-                  stroke: a => `rgba(100,180,255,${a*0.22+0.04})`, fill: a => `rgba(100,180,255,${(a-0.72)*0.4})` },
-                { bg: '#0d0a18', speed: 1.2, distScale: 0.018, centerWave: false,
-                  stroke: a => `rgba(180,100,255,${a*0.25+0.04})`, fill: a => `rgba(200,80,255,${(a-0.72)*0.5})` },
-                { bg: '#100505', speed: 2.5, distScale: 0.025, centerWave: false,
-                  stroke: a => `rgba(255,80,60,${a*0.28+0.04})`, fill: a => `rgba(255,60,40,${(a-0.72)*0.6})` },
-                { bg: '#0f0b00', speed: 0.7, distScale: 0.022, centerWave: false,
-                  stroke: a => `rgba(255,200,60,${a*0.22+0.03})`, fill: a => `rgba(255,180,30,${(a-0.72)*0.45})` },
-                { bg: '#030f07', speed: 0.8, distScale: 0.02, centerWave: true,
-                  stroke: a => `rgba(60,220,120,${a*0.25+0.04})`, fill: a => `rgba(50,220,100,${(a-0.72)*0.45})` },
-                { bg: null, rainbow: true, speed: 0.6, distScale: 0.015, centerWave: false },
+                { bg: '#06090f', stroke: 'rgba(100,180,255,0.18)', fill: 'rgba(100,180,255,0.07)' },
+                { bg: '#0d0a18', stroke: 'rgba(180,100,255,0.20)', fill: 'rgba(200,80,255,0.08)'  },
+                { bg: '#100505', stroke: 'rgba(255,80,60,0.22)',   fill: 'rgba(255,60,40,0.09)'   },
+                { bg: '#0f0b00', stroke: 'rgba(255,200,60,0.18)', fill: 'rgba(255,180,30,0.07)'  },
+                { bg: '#030f07', stroke: 'rgba(60,220,120,0.20)', fill: 'rgba(50,220,100,0.08)'  },
+                { bg: '#080808', stroke: 'rgba(200,150,255,0.18)', fill: 'rgba(180,100,255,0.07)' },
             ];
 
             function resizeBg() {
                 const rect = bgCanvas.parentElement.getBoundingClientRect();
                 bgCanvas.width = rect.width;
                 bgCanvas.height = rect.height;
+                drawBg();
             }
-            resizeBg();
-            window.addEventListener('resize', resizeBg);
 
             function hexPath(cx, cy, r) {
                 bgCtx.beginPath();
@@ -5649,54 +5640,39 @@
             }
 
             function drawBg() {
-                requestAnimationFrame(drawBg);
-                frameCount++;
-                if (frameCount % 3 !== 0) return; // ③ 3フレームに1回だけ描画
-
                 const w = bgCanvas.width, h = bgCanvas.height;
-                const patternIdx = Math.floor((currentStage - 1) / 10) % 6;
-
-                // パターン切替時はtickリセット（ブツ切り感をなくす）
-                if (patternIdx !== lastPattern) { tick = 0; lastPattern = patternIdx; }
-
-                const p = PATTERNS[patternIdx];
+                const p = PATTERNS[Math.floor((currentStage - 1) / 10) % 6];
                 bgCtx.clearRect(0, 0, w, h);
-                bgCtx.fillStyle = p.bg || '#080808';
+                bgCtx.fillStyle = p.bg;
                 bgCtx.fillRect(0, 0, w, h);
 
-                const cx0 = p.centerWave ? w / 2 : 0;
-                const cy0 = p.centerWave ? h / 2 : 0;
                 const cols = Math.ceil(w / (HW * 0.75)) + 2;
                 const rows = Math.ceil(h / HH) + 2;
-
                 for (let row = -1; row < rows; row++) {
                     for (let col = -1; col < cols; col++) {
                         const cx = col * HW * 0.75;
                         const cy = row * HH + (col % 2 === 0 ? 0 : HH / 2);
-                        const dx = cx - cx0, dy = cy - cy0;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        const phase = (dist * p.distScale - tick * p.speed) % (Math.PI * 2);
-                        const a = Math.sin(phase) * 0.5 + 0.5;
-
                         hexPath(cx, cy, HEX_SIZE - 2);
-
-                        if (p.rainbow) {
-                            const hue = (dist * 0.5 + tick * 30) % 360;
-                            bgCtx.strokeStyle = `hsla(${hue},90%,65%,${a*0.3+0.03})`;
-                            bgCtx.lineWidth = 1;
-                            bgCtx.stroke();
-                            if (a > 0.7) { bgCtx.fillStyle = `hsla(${hue},90%,65%,${(a-0.7)*0.3})`; bgCtx.fill(); }
-                        } else {
-                            bgCtx.strokeStyle = p.stroke(a);
-                            bgCtx.lineWidth = 1;
-                            bgCtx.stroke();
-                            if (a > 0.72) { bgCtx.fillStyle = p.fill(a); bgCtx.fill(); }
-                        }
+                        bgCtx.strokeStyle = p.stroke;
+                        bgCtx.lineWidth = 1;
+                        bgCtx.stroke();
+                        bgCtx.fillStyle = p.fill;
+                        bgCtx.fill();
                     }
                 }
-                tick += 0.016 * 3; // 間引き分だけ速度補正
             }
-            drawBg();
+
+            resizeBg();
+            window.addEventListener('resize', resizeBg);
+
+            // ステージ変更を監視して背景を再描画
+            let _lastStage = currentStage;
+            setInterval(() => {
+                if (currentStage !== _lastStage) {
+                    _lastStage = currentStage;
+                    drawBg();
+                }
+            }, 1000);
         })();
 
         loadSettings(); // 保存済み設定を復元（SE/BGM ON-OFF・音量・抽選演出）
