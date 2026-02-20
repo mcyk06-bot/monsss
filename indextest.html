@@ -3404,10 +3404,10 @@
                     marble.y += (marble.vy * VELOCITY_SCALE) / SUBSTEPS;
 
                     // 壁判定 (サブステップ毎にチェック)
-                    if (marble.x - marble.radius < 0) { marble.x = marble.radius; marble.vx *= -BOUNCE; playBounceSound(); }
-                    else if (marble.x + marble.radius > canvasSize.width) { marble.x = canvasSize.width - marble.radius; marble.vx *= -BOUNCE; playBounceSound(); }
-                    if (marble.y - marble.radius < 0) { marble.y = marble.radius; marble.vy *= -BOUNCE; playBounceSound(); }
-                    else if (marble.y + marble.radius > canvasSize.height) { marble.y = canvasSize.height - marble.radius; marble.vy *= -BOUNCE; playBounceSound(); }
+                    if (marble.x - marble.radius < 0) { marble.x = marble.radius; marble.vx *= -BOUNCE; playBounceSound('side'); }
+                    else if (marble.x + marble.radius > canvasSize.width) { marble.x = canvasSize.width - marble.radius; marble.vx *= -BOUNCE; playBounceSound('side'); }
+                    if (marble.y - marble.radius < 0) { marble.y = marble.radius; marble.vy *= -BOUNCE; playBounceSound('top'); }
+                    else if (marble.y + marble.radius > canvasSize.height) { marble.y = canvasSize.height - marble.radius; marble.vy *= -BOUNCE; playBounceSound('top'); }
 
                     // アイテム判定 (サブステップ毎にチェック)
                     for (let i = items.length - 1; i >= 0; i--) {
@@ -4003,8 +4003,10 @@
         // （iOSはユーザー操作がないと音声を再生できないため）
         function resumeOnUserGesture() {
             if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-            if (bgmEnabled && bgmAudio && bgmAudio.paused) {
-                bgmAudio.play().catch(() => {});
+            if (bgmEnabled && !bgmScheduled) {
+                bgmNextTime = audioCtx.currentTime + 0.1;
+                bgmScheduled = true;
+                scheduleBGM();
             }
         }
         document.addEventListener('touchstart', resumeOnUserGesture, { once: false });
@@ -4049,12 +4051,12 @@
             const btn = document.getElementById('bgmBtn');
             btn.textContent = bgmEnabled ? '▶️ BGM' : '🎵 BGM';
             btn.classList.toggle('active-btn', bgmEnabled);
-            if (bgmEnabled) { startBGM(); } else { stopBGM(); }
+            if (bgmEnabled) { resumeAudio(); startBGM(); } else { stopBGM(); }
             saveSettings();
         });
         document.getElementById('bgmVolSlider').addEventListener('input', (e) => {
             bgmVolume = e.target.value / 100;
-            if (bgmAudio) bgmAudio.volume = bgmVolume;
+            if (bgmGainNode) bgmGainNode.gain.setValueAtTime(bgmVolume, audioCtx.currentTime);
             saveSettings();
         });
 
@@ -4435,9 +4437,13 @@
                 setTimeout(() => tick(stepIdx + 1), intervals[stepIdx]);
             }
             tick(0);
+            // 抽選ドラムフィル（ド→ド→タン→ジャーン）を Web Audio でスケジュール
+            if (seEnabled) playLotteryDrumFill();
         }
 
         function showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn) {
+            // 結果表示時のクラッシュシンバル（ジャーン）
+            if (seEnabled) playLotteryCrash();
             // スロットを結果表示に切り替え
             slot.style.display = 'none';
             resultDiv.style.display = 'flex';
@@ -4507,7 +4513,7 @@
         let seEnabled = false; // デフォルトOFF
         let bgmEnabled = false;
         let lotteryAnimEnabled = true; // 抽選演出 デフォルトON
-        let bgmAudio = null; // オンにした時だけ生成
+        // bgmAudio: 旧zzz.mp3方式は廃止、手続き型BGMに変更
 
         // ============================================================
         // ⚙️ 設定の永続化（localStorage）
@@ -4537,6 +4543,8 @@
 
                 // masterGain に音量を反映
                 masterGain.gain.value = seVolume;
+                // BGMゲインも反映（存在すれば）
+                if (bgmGainNode) bgmGainNode.gain.value = bgmVolume;
 
                 // UI ボタンを設定値に同期
                 const seBtn = document.getElementById('seBtn');
@@ -4571,77 +4579,514 @@
         // ============================================================
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                // AudioContext（SE用）を再開
+                // AudioContext（SE/BGM用）を再開
                 if (audioCtx.state === 'suspended') {
                     audioCtx.resume().catch(() => {});
                 }
-                // BGMが有効で止まっていたら再開
-                if (bgmEnabled && bgmAudio && bgmAudio.paused) {
-                    bgmAudio.play().catch(() => {});
+                // 手続き型BGMが有効なら再スケジュール
+                if (bgmEnabled && !bgmScheduled) {
+                    bgmNextTime = audioCtx.currentTime + 0.1;
+                    bgmScheduled = true;
+                    scheduleBGM();
                 }
             } else {
-                // バックグラウンドに入ったらBGMを一時停止（省電力・他アプリ音楽と干渉軽減）
-                if (bgmAudio && !bgmAudio.paused) {
-                    bgmAudio.pause();
+                // バックグラウンドではBGMスケジューリングを停止
+                if (bgmScheduled) {
+                    bgmScheduled = false;
                 }
             }
         });
 
         function startBGM() {
-            if (!bgmAudio) {
-                bgmAudio = new Audio('zzz.mp3');
-                bgmAudio.loop = true;
-                bgmAudio.volume = bgmVolume;
+            // 手続き型BGM（エレクトロジャズドラムンベース）を使用
+            if (!bgmGainNode) {
+                bgmGainNode = audioCtx.createGain();
+                bgmGainNode.gain.value = bgmVolume;
+                bgmGainNode.connect(audioCtx.destination);
             }
-            bgmAudio.play().catch(() => {});
+            if (!bgmScheduled) {
+                bgmScheduled = true;
+                bgmNextTime = audioCtx.currentTime + 0.1;
+                scheduleBGM();
+            }
         }
 
         function stopBGM() {
-            if (bgmAudio) {
-                bgmAudio.pause();
-                bgmAudio.currentTime = 0;
+            bgmScheduled = false;
+            bgmLoopNodes.forEach(n => { try { n.stop(); } catch(e) {} });
+            bgmLoopNodes = [];
+        }
+
+        // ============================================================
+        // 🎵 手続き型 BGM ── エレクトロジャズドラムンベース
+        // BPM 174 / 2小節ループ
+        // ============================================================
+        let bgmGainNode = null;
+        let bgmScheduled = false;
+        let bgmNextTime = 0;
+        let bgmLoopNodes = [];
+        const BGM_BPM = 174;
+        const BGM_BEAT = 60 / BGM_BPM;          // 1拍の長さ (秒)
+        const BGM_16TH = BGM_BEAT / 4;           // 16分音符
+        const BGM_BAR = BGM_BEAT * 4;            // 1小節 (4拍)
+        const BGM_LOOP = BGM_BAR * 2;            // ループ=2小節
+
+        // 2小節分をスケジュール、少し前倒しで繰り返しキュー
+        function scheduleBGM() {
+            if (!bgmScheduled) return;
+            const ahead = 0.12; // 何秒先までスケジュールするか
+            while (bgmNextTime < audioCtx.currentTime + ahead + BGM_LOOP) {
+                scheduleBGMBar(bgmNextTime);
+                bgmNextTime += BGM_LOOP;
             }
+            setTimeout(scheduleBGM, (BGM_LOOP * 0.5) * 1000);
+        }
+
+        function bgmNode(fn) {
+            const n = fn();
+            bgmLoopNodes.push(n);
+            // バッファが溜まりすぎないよう古いノードをクリーンアップ
+            if (bgmLoopNodes.length > 200) bgmLoopNodes.splice(0, 100);
+            return n;
+        }
+
+        function scheduleBGMBar(t0) {
+            if (!bgmGainNode) return;
+            const g = bgmGainNode;
+
+            // ─── ドラムパターン（DnBシグネチャー）───
+            // 16分音符の配列でキック・スネア・ハイハットをスケジュール
+            // 0=小節頭, 4=2拍目, 8=3拍目, 12=4拍目 (0〜15の16分音符インデックス)
+            const STEPS = 16;
+
+            // キックパターン（DnBらしい）: 0,2.5,10,14番目あたり
+            const kickSteps  = [0, 2, 10, 14];   // 16分音符インデックス（整数）
+            const snareSteps = [4, 12];             // 2拍・4拍（バックビート）
+            // ハイハット：全16分、3小節目は8分
+            const hatSteps   = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+            // ゴーストスネア（弱打）
+            const ghostSteps = [2, 6, 9, 13];
+
+            kickSteps.forEach(s => {
+                // 2小節目のキックパターンをわずかに変化
+                const isBar2 = s >= 16;
+                const step = s % 16;
+                const when = t0 + step * BGM_16TH;
+                bgmDnBKick(when, g);
+            });
+            // 2小節目追加キック
+            [18, 26, 30].forEach(s => {
+                bgmDnBKick(t0 + (s - 16) * BGM_16TH + BGM_BAR, g);
+            });
+
+            snareSteps.forEach(s => {
+                bgmSnare(t0 + s * BGM_16TH, g, 0.22);
+                bgmSnare(t0 + s * BGM_16TH + BGM_BAR, g, 0.22);
+            });
+
+            ghostSteps.forEach(s => {
+                bgmSnare(t0 + s * BGM_16TH, g, 0.06);
+                bgmSnare(t0 + s * BGM_16TH + BGM_BAR, g, 0.06);
+            });
+
+            // クローズドハットは偶数step、オープンは6,14
+            hatSteps.forEach(s => {
+                const isOpen = (s === 6 || s === 14);
+                const vol = (s % 2 === 0) ? 0.13 : 0.07;
+                bgmHat(t0 + s * BGM_16TH, g, vol, isOpen);
+                bgmHat(t0 + s * BGM_16TH + BGM_BAR, g, vol * 0.9, isOpen);
+            });
+
+            // ─── ベースライン（ジャジーなサブベース）───
+            // Dm7 → G7 → Cmaj7 → Am7 の2小節進行
+            const bassNotes = [
+                // bar1: Dm7ルート→G7ルート
+                {s:0,  f:73.4}, {s:2,  f:82.4}, {s:4,  f:73.4}, {s:6,  f:69.3},
+                {s:8,  f:98.0}, {s:10, f:92.5}, {s:12, f:98.0}, {s:14, f:110.0},
+            ];
+            const bassNotes2 = [
+                // bar2: Cmaj7→Am7
+                {s:0,  f:65.4}, {s:2,  f:73.4}, {s:4,  f:65.4}, {s:6,  f:61.7},
+                {s:8,  f:55.0}, {s:10, f:61.7}, {s:12, f:55.0}, {s:14, f:58.3},
+            ];
+            bassNotes.forEach(({s, f}) => bgmBass(t0 + s * BGM_16TH, f, BGM_16TH * 1.8, g));
+            bassNotes2.forEach(({s, f}) => bgmBass(t0 + BGM_BAR + s * BGM_16TH, f, BGM_16TH * 1.8, g));
+
+            // ─── パッドコード（ジャジーなテクスチャー）───
+            bgmPad(t0,          [146.8, 174.6, 220.0, 261.6], BGM_BAR * 0.9, g, 0.05); // Dm7
+            bgmPad(t0 + BGM_BAR, [130.8, 164.8, 196.0, 246.9], BGM_BAR * 0.9, g, 0.05); // Cmaj7
+
+            // ─── リードシンセ（控えめなジャズフレーズ）───
+            const leadNotes = [
+                {s:0, f:523, d:3}, {s:4, f:587, d:2}, {s:7, f:659, d:3},
+                {s:10, f:622, d:2}, {s:13, f:587, d:3}
+            ];
+            leadNotes.forEach(({s, f, d}) => bgmLead(t0 + s * BGM_16TH, f, BGM_16TH * d, g));
+            // bar2 lead
+            const leadNotes2 = [
+                {s:1, f:523, d:2}, {s:4, f:494, d:3}, {s:8, f:440, d:2},
+                {s:11, f:494, d:2}, {s:14, f:523, d:2}
+            ];
+            leadNotes2.forEach(({s, f, d}) => bgmLead(t0 + BGM_BAR + s * BGM_16TH, f, BGM_16TH * d, g));
+        }
+
+        function bgmDnBKick(t, g) {
+            const osc = audioCtx.createOscillator();
+            const og = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(170, t);
+            osc.frequency.exponentialRampToValueAtTime(38, t + 0.06);
+            osc.frequency.exponentialRampToValueAtTime(30, t + 0.25);
+            og.gain.setValueAtTime(0, t);
+            og.gain.linearRampToValueAtTime(0.60, t + 0.004);
+            og.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+            osc.connect(og); og.connect(g);
+            osc.start(t); osc.stop(t + 0.30);
+            bgmLoopNodes.push(osc);
+        }
+
+        function bgmSnare(t, g, vol) {
+            const nLen = Math.ceil(audioCtx.sampleRate * 0.15);
+            const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+            const nd = nBuf.getChannelData(0);
+            for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
+            const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = 'highpass'; hpf.frequency.value = 1200;
+            const ng = audioCtx.createGain();
+            ng.gain.setValueAtTime(vol, t);
+            ng.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+            nSrc.connect(hpf); hpf.connect(ng); ng.connect(g);
+            nSrc.start(t); nSrc.stop(t + 0.15);
+            bgmLoopNodes.push(nSrc);
+            // 音程
+            const osc = audioCtx.createOscillator();
+            const og = audioCtx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(180, t); osc.frequency.exponentialRampToValueAtTime(90, t + 0.06);
+            og.gain.setValueAtTime(vol * 0.8, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+            osc.connect(og); og.connect(g); osc.start(t); osc.stop(t + 0.08);
+            bgmLoopNodes.push(osc);
+        }
+
+        function bgmHat(t, g, vol, isOpen) {
+            const dur = isOpen ? 0.18 : 0.04;
+            const nLen = Math.ceil(audioCtx.sampleRate * dur);
+            const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+            const nd = nBuf.getChannelData(0);
+            for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
+            const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = 'highpass'; hpf.frequency.value = 8000;
+            const ng = audioCtx.createGain();
+            ng.gain.setValueAtTime(vol, t);
+            ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            nSrc.connect(hpf); hpf.connect(ng); ng.connect(g);
+            nSrc.start(t); nSrc.stop(t + dur + 0.005);
+            bgmLoopNodes.push(nSrc);
+        }
+
+        function bgmBass(t, freq, dur, g) {
+            const osc = audioCtx.createOscillator();
+            const flt = audioCtx.createBiquadFilter();
+            const og = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(freq, t);
+            flt.type = 'lowpass'; flt.frequency.value = 300;
+            og.gain.setValueAtTime(0, t);
+            og.gain.linearRampToValueAtTime(0.32, t + 0.012);
+            og.gain.setValueAtTime(0.28, t + dur * 0.6);
+            og.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            osc.connect(flt); flt.connect(og); og.connect(g);
+            osc.start(t); osc.stop(t + dur + 0.01);
+            bgmLoopNodes.push(osc);
+        }
+
+        function bgmPad(t, freqs, dur, g, vol) {
+            freqs.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const flt = audioCtx.createBiquadFilter();
+                const og = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(freq, t);
+                osc.frequency.linearRampToValueAtTime(freq * 1.003, t + dur);
+                flt.type = 'lowpass'; flt.frequency.value = 1000;
+                og.gain.setValueAtTime(0, t + i * 0.02);
+                og.gain.linearRampToValueAtTime(vol, t + i * 0.02 + 0.08);
+                og.gain.setValueAtTime(vol, t + dur - 0.1);
+                og.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                osc.connect(flt); flt.connect(og); og.connect(g);
+                osc.start(t + i * 0.02); osc.stop(t + dur + 0.01);
+                bgmLoopNodes.push(osc);
+            });
+        }
+
+        function bgmLead(t, freq, dur, g) {
+            const osc = audioCtx.createOscillator();
+            const flt = audioCtx.createBiquadFilter();
+            const og = audioCtx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, t);
+            flt.type = 'lowpass'; flt.frequency.value = 1400;
+            og.gain.setValueAtTime(0, t);
+            og.gain.linearRampToValueAtTime(0.04, t + 0.01);
+            og.gain.setValueAtTime(0.035, t + dur * 0.7);
+            og.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            osc.connect(flt); flt.connect(og); og.connect(g);
+            osc.start(t); osc.stop(t + dur + 0.01);
+            bgmLoopNodes.push(osc);
         }
 
         function resumeAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); }
 
-        // アイテム取得音（コイン）
+        // ============================================================
+        // 🎰 抽選ドラムシーケンス
+        // ドチタチド・シャーン のパターン（丸みのあるサウンド）
+        //   t+0.00s : バスドラ（ド）
+        //   t+0.30s : クローズハイハット（チ）
+        //   t+0.60s : スネア（タ）
+        //   t+0.90s : クローズハイハット（チ）
+        //   t+1.20s : バスドラ2（ド、少し強め）
+        //   result時: シャーン（丸みのあるコード＋ノイズ）
+        // ============================================================
+        function playLotteryDrumFill() {
+            if (!seEnabled) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+
+            // バスドラ共通生成（ウォームなサイン波キック）
+            function lotteryKick(when, startFreq, decay, vol) {
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(startFreq, when);
+                osc.frequency.exponentialRampToValueAtTime(startFreq * 0.28, when + decay);
+                oscGain.gain.setValueAtTime(0, when);
+                oscGain.gain.linearRampToValueAtTime(vol, when + 0.005);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, when + decay);
+                osc.connect(oscGain); oscGain.connect(masterGain);
+                osc.start(when); osc.stop(when + decay + 0.01);
+                // アタックノイズ（ローパスで丸く）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.04);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nd = nBuf.getChannelData(0);
+                for (let j = 0; j < nLen; j++) nd[j] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const nFlt = audioCtx.createBiquadFilter();
+                nFlt.type = 'lowpass'; nFlt.frequency.value = 1800; // 低め→丸み
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(vol * 0.35, when);
+                nGain.gain.exponentialRampToValueAtTime(0.001, when + 0.03);
+                nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(when); nSrc.stop(when + 0.04);
+            }
+
+            // クローズドハイハット（チ・短くタイト、ローパスで丸め気味）
+            function lotteryHat(when) {
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.045);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nd = nBuf.getChannelData(0);
+                for (let j = 0; j < nLen; j++) nd[j] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const hpf = audioCtx.createBiquadFilter();
+                hpf.type = 'highpass'; hpf.frequency.value = 6000;
+                const lpf = audioCtx.createBiquadFilter();
+                lpf.type = 'lowpass'; lpf.frequency.value = 12000;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.18, when);
+                nGain.gain.exponentialRampToValueAtTime(0.001, when + 0.04);
+                nSrc.connect(hpf); hpf.connect(lpf); lpf.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(when); nSrc.stop(when + 0.045);
+            }
+
+            // スネア（ウォームなスネア、ローカットを控えめに）
+            function lotterySnare(when) {
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.15);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nd = nBuf.getChannelData(0);
+                for (let j = 0; j < nLen; j++) nd[j] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const hpf = audioCtx.createBiquadFilter();
+                hpf.type = 'highpass'; hpf.frequency.value = 1400; // 少し低め→丸み
+                const lpf = audioCtx.createBiquadFilter();
+                lpf.type = 'lowpass'; lpf.frequency.value = 7000;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.28, when);
+                nGain.gain.exponentialRampToValueAtTime(0.001, when + 0.13);
+                nSrc.connect(hpf); hpf.connect(lpf); lpf.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(when); nSrc.stop(when + 0.15);
+                // 音程リム
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, when);
+                osc.frequency.exponentialRampToValueAtTime(120, when + 0.07);
+                og.gain.setValueAtTime(0.18, when);
+                og.gain.exponentialRampToValueAtTime(0.001, when + 0.08);
+                osc.connect(og); og.connect(masterGain);
+                osc.start(when); osc.stop(when + 0.09);
+            }
+
+            // ド（バスドラ1）
+            lotteryKick(t + 0.00, 130, 0.20, 0.55);
+            // チ（クローズハイハット）
+            lotteryHat(t + 0.30);
+            // タ（スネア）
+            lotterySnare(t + 0.60);
+            // チ（クローズハイハット）
+            lotteryHat(t + 0.90);
+            // ド（バスドラ2、少し強め）
+            lotteryKick(t + 1.20, 140, 0.24, 0.62);
+            // ※ シャーン（ウォームコードクラッシュ）は showLotteryResult が呼んだタイミングで鳴る
+        }
+
+        // 結果表示時のシャーン（ウォームなFmaj7コード＋ノイズ）
+        // ステージクリアと同じ丸みある系統だが短めにまとめる
+        function playLotteryCrash() {
+            if (!seEnabled) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+
+            // ① ウォームパッドコード（Fmaj7、ローパスで丸く、短め）
+            const padNotes = [175, 220, 262, 330];
+            padNotes.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                const flt = audioCtx.createBiquadFilter();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                flt.type = 'lowpass'; flt.frequency.value = 1200; flt.Q.value = 0.8;
+                const delay = i * 0.035; // 少し速めに広がる
+                og.gain.setValueAtTime(0, t + delay);
+                og.gain.linearRampToValueAtTime(0.16, t + delay + 0.07);
+                og.gain.setValueAtTime(0.16, t + delay + 0.25);
+                og.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.65); // ステージクリアより短め
+                osc.connect(flt); flt.connect(og); og.connect(masterGain);
+                osc.start(t + delay); osc.stop(t + delay + 0.70);
+            });
+
+            // ② サブベース（F2=87Hz、短め）
+            const bass = audioCtx.createOscillator();
+            const bg = audioCtx.createGain();
+            bass.type = 'sine';
+            bass.frequency.setValueAtTime(87, t);
+            bg.gain.setValueAtTime(0, t);
+            bg.gain.linearRampToValueAtTime(0.28, t + 0.05);
+            bg.gain.setValueAtTime(0.25, t + 0.25);
+            bg.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+            bass.connect(bg); bg.connect(masterGain);
+            bass.start(t); bass.stop(t + 0.60);
+
+            // ③ 薄いノイズシンバル成分（ジャーンのシャリ感、ローパスで丸め）
+            const nLen = Math.ceil(audioCtx.sampleRate * 0.7);
+            const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+            const nd = nBuf.getChannelData(0);
+            for (let j = 0; j < nLen; j++) nd[j] = Math.random() * 2 - 1;
+            const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = 'highpass'; hpf.frequency.value = 2500; // 低め→柔らかい
+            const lpf = audioCtx.createBiquadFilter();
+            lpf.type = 'lowpass'; lpf.frequency.value = 6000; // 高域カット→丸み
+            const cGain = audioCtx.createGain();
+            cGain.gain.setValueAtTime(0, t);
+            cGain.gain.linearRampToValueAtTime(0.18, t + 0.02);
+            cGain.gain.setValueAtTime(0.15, t + 0.12);
+            cGain.gain.exponentialRampToValueAtTime(0.001, t + 0.70);
+            nSrc.connect(hpf); hpf.connect(lpf); lpf.connect(cGain); cGain.connect(masterGain);
+            nSrc.start(t); nSrc.stop(t + 0.75);
+        }
+
+        // アイテム取得音 ── オープンハイハット（発射音より短くタイト、チキッな質感）（発射音より短くタイト、チキッな質感）
+        // 発射: 高め長め余韻 / アイテム: やや低め短め＋チリンとした音程ニュアンス
         function playCoinSound() {
             if (!seEnabled) return;
             resumeAudio();
-            // 短い上昇2音でコインっぽく
-            const frequencies = [988, 1319]; // B5→E6
-            frequencies.forEach((freq, i) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(masterGain);
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.07);
-                gain.gain.setValueAtTime(0, audioCtx.currentTime + i * 0.07);
-                gain.gain.linearRampToValueAtTime(0.22, audioCtx.currentTime + i * 0.07 + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.07 + 0.12);
-                osc.start(audioCtx.currentTime + i * 0.07);
-                osc.stop(audioCtx.currentTime + i * 0.07 + 0.13);
-            });
+            const t = audioCtx.currentTime;
+
+            // ① ホワイトノイズ（タイトなハイハット）
+            const bufLen = Math.ceil(audioCtx.sampleRate * 0.12);
+            const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+            const dat = buf.getChannelData(0);
+            for (let i = 0; i < bufLen; i++) dat[i] = Math.random() * 2 - 1;
+            const src = audioCtx.createBufferSource();
+            src.buffer = buf;
+
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = 'highpass'; hpf.frequency.value = 6000; // 発射より少し低め→柔らかめのシャリ
+
+            const bpf = audioCtx.createBiquadFilter();
+            bpf.type = 'bandpass'; bpf.frequency.value = 9000; bpf.Q.value = 1.5; // チリン感
+
+            const nGain = audioCtx.createGain();
+            nGain.gain.setValueAtTime(0.22, t);
+            nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.10); // 発射より早めに閉じる
+            src.connect(hpf); hpf.connect(bpf); bpf.connect(nGain); nGain.connect(masterGain);
+            src.start(t); src.stop(t + 0.12);
+
+            // ② 高音ピコン（コインらしいチリンアクセント、音量は控えめ）
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1400, t);
+            osc.frequency.exponentialRampToValueAtTime(1100, t + 0.06);
+            oscGain.gain.setValueAtTime(0.09, t);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+            osc.connect(oscGain); oscGain.connect(masterGain);
+            osc.start(t); osc.stop(t + 0.09);
         }
 
-        // ステージクリア音（ファンファーレ）
+        // ステージクリア音 ── ディープハウス風コードスタブ
+        // あっさりしつつ余韻のある和音でクリア感を表現
         function playStageClearSound() {
             if (!seEnabled) return;
             resumeAudio();
             const t = audioCtx.currentTime;
-            // ジャジャーン！ファンファーレ
-            const notes = [523, 659, 784, 1047];
-            notes.forEach((freq, i) => {
+
+            // ── ① ウォームパッド（メインコード、サイン波ベース）
+            // Fmaj7: F3(175), A3(220), C4(262), E4(330)
+            // ディープハウスらしい温かみのある音程
+            const padNotes = [175, 220, 262, 330];
+            padNotes.forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(masterGain);
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(freq, t + i * 0.1);
-                gain.gain.setValueAtTime(0.18, t + i * 0.1);
-                gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.25);
-                osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.26);
+                const og = audioCtx.createGain();
+                const flt = audioCtx.createBiquadFilter();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                flt.type = 'lowpass';
+                flt.frequency.value = 1200; // 高域カット → 丸くウォームな音色
+                flt.Q.value = 0.8;
+                // 少しずつずらして入ってくる（コードがふわっと開く感じ）
+                const delay = i * 0.04;
+                og.gain.setValueAtTime(0, t + delay);
+                og.gain.linearRampToValueAtTime(0.14, t + delay + 0.08); // スロウアタック
+                og.gain.setValueAtTime(0.14, t + delay + 0.45);
+                og.gain.exponentialRampToValueAtTime(0.001, t + delay + 1.1);
+                osc.connect(flt); flt.connect(og); og.connect(masterGain);
+                osc.start(t + delay); osc.stop(t + delay + 1.2);
             });
+
+            // ── ② サブベースのルート音（F2=87Hz、ズンとした低音）
+            // ディープハウスのローエンドをさりげなく足す
+            const bass = audioCtx.createOscillator();
+            const bg = audioCtx.createGain();
+            bass.type = 'sine';
+            bass.frequency.setValueAtTime(87, t);
+            bass.frequency.linearRampToValueAtTime(82, t + 0.8); // わずかにピッチ下げてアナログ感
+            bg.gain.setValueAtTime(0, t);
+            bg.gain.linearRampToValueAtTime(0.32, t + 0.06);
+            bg.gain.setValueAtTime(0.28, t + 0.5);
+            bg.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+            bass.connect(bg); bg.connect(masterGain);
+            bass.start(t); bass.stop(t + 1.05);
+
+            // ── ③ 高音のきらめき（E5=659Hz、そっと添える）
+            // クリアになった瞬間の輝きを一音だけ
+            const sparkOsc = audioCtx.createOscillator();
+            const sparkGain = audioCtx.createGain();
+            sparkOsc.type = 'sine';
+            sparkOsc.frequency.setValueAtTime(659, t + 0.05);
+            sparkOsc.frequency.linearRampToValueAtTime(698, t + 0.30); // 少し上がってキラっと
+            sparkGain.gain.setValueAtTime(0, t + 0.05);
+            sparkGain.gain.linearRampToValueAtTime(0.08, t + 0.12);
+            sparkGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+            sparkOsc.connect(sparkGain); sparkGain.connect(masterGain);
+            sparkOsc.start(t + 0.05); sparkOsc.stop(t + 0.56);
         }
 
         // 大号令発動音
@@ -4713,42 +5158,69 @@
         }
 
         // 壁バウンド音（コツッ・連続鳴り間引きあり）
+        // direction: 'side'=左右壁（フルスネア）/ 'top'=上下壁（リムショットのみ）
         let lastBounceTime = 0;
-        // 壁バウンド音 ── スネアドラム
-        // ホワイトノイズ（スネアの胴鳴り）+ 短い音程オシレータ（リムっぽさ）
-        function playBounceSound() {
+        function playBounceSound(direction = 'side') {
             if (!seEnabled) return;
             const now = audioCtx.currentTime;
             if (now - lastBounceTime < 0.06) return; // 60ms 間引き
             lastBounceTime = now;
             resumeAudio();
 
-            // ① ノイズ（スネアの「シャッ」）
-            const nLen = Math.ceil(audioCtx.sampleRate * 0.12);
-            const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-            const nDat = nBuf.getChannelData(0);
-            for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
-            const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+            if (direction === 'side') {
+                // ── 左右壁 ── フルスネア（ノイズ胴鳴り＋リム音程）
+                // ① ノイズ（スネアの「シャッ」）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.14);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const hpf = audioCtx.createBiquadFilter();
+                hpf.type = 'highpass'; hpf.frequency.value = 1600;
+                const lpf = audioCtx.createBiquadFilter();
+                lpf.type = 'lowpass'; lpf.frequency.value = 8000;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.30, now);
+                nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                nSrc.connect(hpf); hpf.connect(lpf); lpf.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(now); nSrc.stop(now + 0.14);
+                // ② 音程（スネアの張り感）
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.07);
+                oscGain.gain.setValueAtTime(0.20, now);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.connect(oscGain); oscGain.connect(masterGain);
+                osc.start(now); osc.stop(now + 0.09);
 
-            const hpf = audioCtx.createBiquadFilter();
-            hpf.type = 'highpass'; hpf.frequency.value = 1800;
-
-            const nGain = audioCtx.createGain();
-            nGain.gain.setValueAtTime(0.28, now);
-            nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
-            nSrc.connect(hpf); hpf.connect(nGain); nGain.connect(masterGain);
-            nSrc.start(now); nSrc.stop(now + 0.12);
-
-            // ② 音程成分（リムショットのコン！）
-            const osc = audioCtx.createOscillator();
-            const oscGain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(220, now);
-            osc.frequency.exponentialRampToValueAtTime(120, now + 0.06);
-            oscGain.gain.setValueAtTime(0.18, now);
-            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-            osc.connect(oscGain); oscGain.connect(masterGain);
-            osc.start(now); osc.stop(now + 0.08);
+            } else {
+                // ── 上下壁 ── リムショット（コンッ！高めの木製感）
+                // ① 高めの音程成分（リムのコン！）
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(480, now);
+                osc.frequency.exponentialRampToValueAtTime(260, now + 0.04);
+                oscGain.gain.setValueAtTime(0.22, now);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.connect(oscGain); oscGain.connect(masterGain);
+                osc.start(now); osc.stop(now + 0.06);
+                // ② 薄いノイズ（軽いスキン感）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.06);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const bpf = audioCtx.createBiquadFilter();
+                bpf.type = 'bandpass'; bpf.frequency.value = 3500; bpf.Q.value = 1.5;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.10, now);
+                nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                nSrc.connect(bpf); bpf.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(now); nSrc.stop(now + 0.06);
+            }
         }
 
         // デスアイテム発動音（ブワーン＋ハッハッハッハ）
@@ -5000,25 +5472,72 @@
                 osc2.start(t); osc2.stop(t + 0.36);
 
             } else if (type === 'energy') {
-                // ドォォォン（重い爆発音）
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                const osc2 = audioCtx.createOscillator();
-                const gain2 = audioCtx.createGain();
-                osc.connect(gain); gain.connect(masterGain);
-                osc2.connect(gain2); gain2.connect(masterGain);
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(80, t);
-                osc.frequency.exponentialRampToValueAtTime(30, t + 0.5);
-                gain.gain.setValueAtTime(0.35, t);
-                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-                osc.start(t); osc.stop(t + 0.56);
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(160, t);
-                osc2.frequency.exponentialRampToValueAtTime(60, t + 0.3);
-                gain2.gain.setValueAtTime(0.2, t);
-                gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-                osc2.start(t); osc2.stop(t + 0.36);
+                // ── エナジーサークル ── 神々しいシャワーーーン＋ドゥーーー
+                // ① シャワーーーーーン（フィルタードノイズ、広がりのある輝き）
+                const shLen = Math.ceil(audioCtx.sampleRate * 2.0);
+                const shBuf = audioCtx.createBuffer(1, shLen, audioCtx.sampleRate);
+                const shDat = shBuf.getChannelData(0);
+                for (let i = 0; i < shLen; i++) shDat[i] = Math.random() * 2 - 1;
+                const shSrc = audioCtx.createBufferSource(); shSrc.buffer = shBuf;
+                // バンドパスフィルタを高い周波数から広げる（シャワー感）
+                const shBpf = audioCtx.createBiquadFilter();
+                shBpf.type = 'bandpass'; shBpf.Q.value = 0.6;
+                shBpf.frequency.setValueAtTime(800, t);
+                shBpf.frequency.linearRampToValueAtTime(3500, t + 0.3);
+                shBpf.frequency.linearRampToValueAtTime(1200, t + 1.8);
+                const shLpf = audioCtx.createBiquadFilter();
+                shLpf.type = 'lowpass'; shLpf.frequency.value = 5000;
+                const shGain = audioCtx.createGain();
+                shGain.gain.setValueAtTime(0, t);
+                shGain.gain.linearRampToValueAtTime(0.18, t + 0.12);
+                shGain.gain.setValueAtTime(0.18, t + 0.5);
+                shGain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+                shSrc.connect(shBpf); shBpf.connect(shLpf); shLpf.connect(shGain); shGain.connect(masterGain);
+                shSrc.start(t); shSrc.stop(t + 2.05);
+
+                // ② 神々しい高音コード（Cmaj7コード、ふわっと開く）
+                [523, 659, 784, 988].forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const og = audioCtx.createGain();
+                    const flt = audioCtx.createBiquadFilter();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t + i * 0.06);
+                    osc.frequency.linearRampToValueAtTime(freq * 1.005, t + 1.5);
+                    flt.type = 'lowpass'; flt.frequency.value = 1800; flt.Q.value = 0.7;
+                    const delay = i * 0.06;
+                    og.gain.setValueAtTime(0, t + delay);
+                    og.gain.linearRampToValueAtTime(0.09, t + delay + 0.1);
+                    og.gain.setValueAtTime(0.09, t + 0.6);
+                    og.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+                    osc.connect(flt); flt.connect(og); og.connect(masterGain);
+                    osc.start(t + delay); osc.stop(t + 1.85);
+                });
+
+                // ③ ドゥーーーー（低音サブベース、どっしり）
+                const subOsc = audioCtx.createOscillator();
+                const subGain = audioCtx.createGain();
+                subOsc.type = 'sine';
+                subOsc.frequency.setValueAtTime(65, t);
+                subOsc.frequency.linearRampToValueAtTime(55, t + 1.5);
+                subGain.gain.setValueAtTime(0, t);
+                subGain.gain.linearRampToValueAtTime(0.40, t + 0.08);
+                subGain.gain.setValueAtTime(0.38, t + 0.8);
+                subGain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+                subOsc.connect(subGain); subGain.connect(masterGain);
+                subOsc.start(t); subOsc.stop(t + 2.05);
+
+                // ④ うねり倍音（深みと神々しさを足す）
+                const harmOsc = audioCtx.createOscillator();
+                const harmGain = audioCtx.createGain();
+                harmOsc.type = 'sine';
+                harmOsc.frequency.setValueAtTime(130, t);
+                harmOsc.frequency.linearRampToValueAtTime(110, t + 1.5);
+                harmGain.gain.setValueAtTime(0, t);
+                harmGain.gain.linearRampToValueAtTime(0.18, t + 0.12);
+                harmGain.gain.setValueAtTime(0.16, t + 0.8);
+                harmGain.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+                harmOsc.connect(harmGain); harmGain.connect(masterGain);
+                harmOsc.start(t); harmOsc.stop(t + 1.85);
 
             } else if (type === 'heal') {
                 // ポロロン（優しい3音）
@@ -5161,79 +5680,108 @@
             src.start(t); src.stop(t + decay + 0.01);
         }
 
-        // 敵ヒット音 ── バスドラム2種
-        // 通常ヒット = ドゥン（短くパンチ）  クリティカル = ドゥゥゥン（太く長い）
+        // 敵ヒット音 ── ピッチドサブベース 3パターン（DnBスタイル）
+        //   クリティカル  → ドゥーーーーン（低め・長い・サブベース、30〜50Hz）
+        //   通常 50%確率  → ドゥーーン  （高め・中程度、80〜100Hz）
+        //   通常 50%確率  → ドム        （超短い・パンチ力重視、100〜120Hz）
+        //
+        // DnBの「ピッチドベース」の核心：
+        //   サイン波を高い音程からスタートして素早く下降させると
+        //   音程感が残ったまま低音の「ドゥーーン」感が生まれる
         function playHitSound(isCritical = false) {
             if (!seEnabled) return;
             resumeAudio();
             const t = audioCtx.currentTime;
 
-            if (isCritical) {
-                // ── ドゥゥゥン（重いバスドラ：長い音程下降 + ノイズトランジェント）
-                // ① 音程成分：高め→深く落とす
-                const osc = audioCtx.createOscillator();
-                const oscGain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(180, t);
-                osc.frequency.exponentialRampToValueAtTime(38, t + 0.35);
-                oscGain.gain.setValueAtTime(0.0, t);
-                oscGain.gain.linearRampToValueAtTime(0.7, t + 0.005);
-                oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-                osc.connect(oscGain); oscGain.connect(masterGain);
-                osc.start(t); osc.stop(t + 0.56);
-
-                // ② アタックノイズ（バスドラの「ポン」頭）
-                const nLen = Math.ceil(audioCtx.sampleRate * 0.06);
+            // アタックノイズ共通（バスドラの頭のスキン感）
+            function kickNoise(dur, cutoff, vol) {
+                const nLen = Math.ceil(audioCtx.sampleRate * dur);
                 const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-                const nDat = nBuf.getChannelData(0);
-                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nd = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
                 const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
                 const nFlt = audioCtx.createBiquadFilter();
-                nFlt.type = 'lowpass'; nFlt.frequency.value = 3000;
+                nFlt.type = 'lowpass'; nFlt.frequency.value = cutoff;
                 const nGain = audioCtx.createGain();
-                nGain.gain.setValueAtTime(0.5, t);
-                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                nGain.gain.setValueAtTime(vol, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
                 nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
-                nSrc.start(t); nSrc.stop(t + 0.06);
+                nSrc.start(t); nSrc.stop(t + dur + 0.005);
+            }
 
-                // ③ 倍音で太さを追加
+            if (isCritical) {
+                // ── ドゥーーーーン（低め・長い）
+                // サブベース核：高めからスタートして深く長く落とす
+                // 開始を高くするほど「ドゥ」の音程感が強く残る
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(160, t);          // 160Hzスタート（音程感）
+                osc.frequency.exponentialRampToValueAtTime(32, t + 0.08);  // 素早く32Hzへ
+                osc.frequency.exponentialRampToValueAtTime(28, t + 0.70);  // さらにゆっくり沈む
+                og.gain.setValueAtTime(0.0, t);
+                og.gain.linearRampToValueAtTime(0.80, t + 0.004); // 瞬時に最大音量
+                og.gain.exponentialRampToValueAtTime(0.001, t + 0.70);    // 長い余韻
+                osc.connect(og); og.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.71);
+
+                // 倍音レイヤー（太さと迫力を足す）
                 const osc2 = audioCtx.createOscillator();
-                const osc2Gain = audioCtx.createGain();
+                const og2 = audioCtx.createGain();
                 osc2.type = 'triangle';
-                osc2.frequency.setValueAtTime(90, t);
-                osc2.frequency.exponentialRampToValueAtTime(45, t + 0.2);
-                osc2Gain.gain.setValueAtTime(0.3, t);
-                osc2Gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-                osc2.connect(osc2Gain); osc2Gain.connect(masterGain);
-                osc2.start(t); osc2.stop(t + 0.31);
+                osc2.frequency.setValueAtTime(80, t);
+                osc2.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+                og2.gain.setValueAtTime(0.35, t);
+                og2.gain.exponentialRampToValueAtTime(0.001, t + 0.40);
+                osc2.connect(og2); og2.connect(masterGain);
+                osc2.start(t); osc2.stop(t + 0.41);
+
+                kickNoise(0.07, 3500, 0.55); // アタックノイズ
+
+            } else if (Math.random() < 0.5) {
+                // ── ドゥーーン（高め）
+                // 開始音程を高くして音程感を際立たせる、でも着地は中低音
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, t);          // 200Hzスタート
+                osc.frequency.exponentialRampToValueAtTime(75, t + 0.05);  // 素早く75Hzへ
+                osc.frequency.exponentialRampToValueAtTime(55, t + 0.28);  // ゆっくり沈む
+                og.gain.setValueAtTime(0.0, t);
+                og.gain.linearRampToValueAtTime(0.65, t + 0.004);
+                og.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+                osc.connect(og); og.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.31);
+
+                // 少し太さを足す
+                const osc2 = audioCtx.createOscillator();
+                const og2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(100, t);
+                osc2.frequency.exponentialRampToValueAtTime(60, t + 0.15);
+                og2.gain.setValueAtTime(0.25, t);
+                og2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                osc2.connect(og2); og2.connect(masterGain);
+                osc2.start(t); osc2.stop(t + 0.19);
+
+                kickNoise(0.04, 2800, 0.35);
 
             } else {
-                // ── ドゥン（コンパクトなバスドラ：素早い下降）
-                // ① 音程成分
+                // ── ドム（超短い・パンチ）
+                // 開始を高くして瞬間的に落とす→「ドム」のパーカッシブ感
                 const osc = audioCtx.createOscillator();
-                const oscGain = audioCtx.createGain();
+                const og = audioCtx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(130, t);
-                osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-                oscGain.gain.setValueAtTime(0.0, t);
-                oscGain.gain.linearRampToValueAtTime(0.55, t + 0.004);
-                oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-                osc.connect(oscGain); oscGain.connect(masterGain);
-                osc.start(t); osc.stop(t + 0.19);
+                osc.frequency.setValueAtTime(240, t);          // 240Hzスタート（ドの音程感）
+                osc.frequency.exponentialRampToValueAtTime(60, t + 0.025); // 超速で落下
+                osc.frequency.exponentialRampToValueAtTime(48, t + 0.09);
+                og.gain.setValueAtTime(0.0, t);
+                og.gain.linearRampToValueAtTime(0.60, t + 0.003);
+                og.gain.exponentialRampToValueAtTime(0.001, t + 0.10);    // 短く切る
+                osc.connect(og); og.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.11);
 
-                // ② アタックノイズ（短め）
-                const nLen = Math.ceil(audioCtx.sampleRate * 0.035);
-                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-                const nDat = nBuf.getChannelData(0);
-                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
-                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
-                const nFlt = audioCtx.createBiquadFilter();
-                nFlt.type = 'lowpass'; nFlt.frequency.value = 2500;
-                const nGain = audioCtx.createGain();
-                nGain.gain.setValueAtTime(0.3, t);
-                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-                nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
-                nSrc.start(t); nSrc.stop(t + 0.035);
+                kickNoise(0.025, 2000, 0.40); // タイトなアタック
             }
         }
 
