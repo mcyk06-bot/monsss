@@ -2476,7 +2476,9 @@
                 if (this.friendshipType === 'homing') {
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
-                        newBullets.push(new HomingBullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0));
+                        const b = new HomingBullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0);
+                        b.useHiHat = true;
+                        newBullets.push(b);
                     }
                 } else if (this.friendshipType === 'laser') {
                     for (let i = 0; i < bulletCount; i++) {
@@ -2493,12 +2495,16 @@
                         for(let i=0; i<numShots; i++) {
                             const angle = baseAngle + (Math.random() - 0.5) * spread;
                             const speed = bulletSpeed * 1.5 + Math.random() * 2;
-                            newBullets.push(new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed, '#607d8b', power * 0.4, i * 3));
+                            const b = new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed, '#607d8b', power * 0.4, i * 3);
+                            b.useHiHat = true;
+                            newBullets.push(b);
                         }
                     } else {
                         for(let i=0; i<numShots; i++) {
                             const angle = Math.random() * Math.PI * 2;
-                            newBullets.push(new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed * 1.5, Math.sin(angle) * bulletSpeed * 1.5, '#607d8b', power * 0.4, i * 3));
+                            const b = new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed * 1.5, Math.sin(angle) * bulletSpeed * 1.5, '#607d8b', power * 0.4, i * 3);
+                            b.useHiHat = true;
+                            newBullets.push(b);
                         }
                     }
                 } else if (this.friendshipType === 'energy') {
@@ -2523,7 +2529,9 @@
                     // 豆粒友情：8発放射
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
-                        newBullets.push(new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0));
+                        const b = new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0);
+                        b.useHiHat = true;
+                        newBullets.push(b);
                     }
                 } else if (this.friendshipType === 'normal') {
                     return [];
@@ -3216,7 +3224,7 @@
             if (friendshipAttackHistory.has(collisionKey)) return null;
             friendshipAttackHistory.add(collisionKey);
             if (hitMarble.friendshipType === 'normal') return null; // 未装備のみスキップ
-            playFriendshipSound(hitMarble.friendshipType === 'normal_shot' ? null : hitMarble.friendshipType);
+            playFriendshipSound(hitMarble.friendshipType === 'normal_shot' ? 'normal_shot' : hitMarble.friendshipType);
             if (hitMarble.subFriendshipUnlocked && hitMarble.subFriendshipType !== 'normal') {
                 setTimeout(() => playFriendshipSound(hitMarble.subFriendshipType), 150);
             }
@@ -3349,6 +3357,7 @@
                     const enemy = enemies[j];
                     if (!b.hitEnemies.has(enemy) && checkBulletCollision(b, enemy)) {
                         b.hitEnemies.add(enemy);
+                        if (b.useHiHat) playHiHat(); // 豆粒・ホーミング・マシンガン着弾音
                         const isBulletCritical = Math.random() < 0.15;
                         const bonusCoeff = b instanceof LaserBeam ? 0.09 : 0.07;
                         const bulletDamage = (0.3 + playerAttackBonus * bonusCoeff) * b.power;
@@ -5194,9 +5203,15 @@
 
         // 友情攻撃音（type: 'homing'=ホーミング / 'laser'=レーザー / 'machinegun'=マシンガン / 'energy'=エナジーサークル / 'heal'=回復）
         function playFriendshipSound(type) {
-            if (!seEnabled || !type || type === 'normal_shot') return;
+            if (!seEnabled || !type) return;
             resumeAudio();
             const t = audioCtx.currentTime;
+
+            // 豆粒友情 ── ハイハット（8:2でクローズ多め）
+            if (type === 'normal_shot') {
+                playHiHat();
+                return;
+            }
 
             // ── クローズドハイハット1発（多段系共通パーツ）
             function closedHat(when, vol = 0.18) {
@@ -5215,13 +5230,13 @@
             }
 
             if (type === 'homing') {
-                // ホーミング ── クローズドハイハット×2（ピュンピュンのリズム感）
-                closedHat(t,       0.20);
-                closedHat(t + 0.08, 0.16);
+                // ホーミング ── ハイハット×2（8:2でクローズ多め）
+                playHiHat();
+                setTimeout(() => playHiHat(), 80);
 
             } else if (type === 'machinegun') {
-                // マシンガン ── クローズドハイハット×4 連打
-                for (let i = 0; i < 4; i++) closedHat(t + i * 0.055, 0.18);
+                // マシンガン ── ハイハット×4 連打（8:2でクローズ多め）
+                for (let i = 0; i < 4; i++) setTimeout(() => playHiHat(), i * 55);
 
             } else if (type === 'laser') {
                 // SFレーザー：高音チャージ→ズバッと下降
@@ -5434,6 +5449,70 @@
                 gain.gain.setValueAtTime(0.2, t);
                 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
                 osc.start(t); osc.stop(t + 0.13);
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // ハイハット共通システム（豆粒・ホーミング・マシンガン 発射&着弾共用）
+        //   8割 : クローズドハイハット（短くタイト）
+        //   2割 : オープンハイハット（長め）
+        //   オープン再生中にクローズが来たらオープンをチョーク（止める）
+        // ─────────────────────────────────────────────
+        let _openHatGain = null; // 現在鳴っているオープンハットのGainNode
+
+        function playHiHat() {
+            if (!seEnabled) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+            const isOpen = Math.random() < 0.2; // 20% オープン、80% クローズ
+
+            // オープンが鳴っていたらチョーク（本物のハイハット挙動）
+            if (_openHatGain) {
+                try {
+                    _openHatGain.gain.cancelScheduledValues(t);
+                    _openHatGain.gain.setValueAtTime(
+                        Math.max(_openHatGain.gain.value || 0.001, 0.001), t);
+                    _openHatGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
+                } catch(e) {}
+                _openHatGain = null;
+            }
+
+            if (isOpen) {
+                // ── オープンハイハット（余韻長め 0.45〜0.75s）
+                const decay = 0.45 + Math.random() * 0.30;
+                const bufLen = Math.ceil(audioCtx.sampleRate * (decay + 0.06));
+                const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+                const dat = buf.getChannelData(0);
+                for (let i = 0; i < bufLen; i++) dat[i] = Math.random() * 2 - 1;
+                const src = audioCtx.createBufferSource();
+                src.buffer = buf;
+                const hpf = audioCtx.createBiquadFilter();
+                hpf.type = 'highpass'; hpf.frequency.value = 7000;
+                const shelf = audioCtx.createBiquadFilter();
+                shelf.type = 'highshelf'; shelf.frequency.value = 10000; shelf.gain.value = 5;
+                const gain = audioCtx.createGain();
+                src.connect(hpf); hpf.connect(shelf); shelf.connect(gain); gain.connect(masterGain);
+                gain.gain.setValueAtTime(0.22, t);
+                gain.gain.setValueAtTime(0.16, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+                src.start(t); src.stop(t + decay + 0.01);
+                _openHatGain = gain; // チョーク用に参照を保持
+                // 再生完了後に参照を解放
+                src.onended = () => { if (_openHatGain === gain) _openHatGain = null; };
+            } else {
+                // ── クローズドハイハット（短くタイト 0.04s）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.048);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const hpf = audioCtx.createBiquadFilter();
+                hpf.type = 'highpass'; hpf.frequency.value = 8000;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.21, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.042);
+                nSrc.connect(hpf); hpf.connect(gain); gain.connect(masterGain);
+                nSrc.start(t); nSrc.stop(t + 0.048);
             }
         }
 
