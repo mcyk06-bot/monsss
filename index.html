@@ -5471,35 +5471,38 @@
                 for (let i = 0; i < 4; i++) setTimeout(() => playHiHat(), i * 55);
 
             } else if (type === 'laser') {
-                // SFレーザー：高音チャージ→ズバッと下降
-                const osc1 = audioCtx.createOscillator();
-                const osc2 = audioCtx.createOscillator();
-                const gain1 = audioCtx.createGain();
-                const gain2 = audioCtx.createGain();
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'bandpass';
-                filter.frequency.setValueAtTime(1200, t);
-                filter.frequency.exponentialRampToValueAtTime(300, t + 0.4);
-                filter.Q.value = 8;
-                osc1.connect(filter); filter.connect(gain1); gain1.connect(masterGain);
-                osc2.connect(gain2); gain2.connect(masterGain);
-                // メイン：ズバッと下降
-                osc1.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(1800, t);
-                osc1.frequency.exponentialRampToValueAtTime(200, t + 0.35);
-                gain1.gain.setValueAtTime(0.0, t);
-                gain1.gain.linearRampToValueAtTime(0.3, t + 0.02);
-                gain1.gain.setValueAtTime(0.3, t + 0.05);
-                gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-                osc1.start(t); osc1.stop(t + 0.42);
-                // サブ：低音ズン
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(120, t + 0.02);
-                osc2.frequency.exponentialRampToValueAtTime(50, t + 0.3);
-                gain2.gain.setValueAtTime(0.0, t);
-                gain2.gain.linearRampToValueAtTime(0.25, t + 0.04);
-                gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-                osc2.start(t); osc2.stop(t + 0.36);
+                // レーザービーム（カスタムシンセ）
+                const p = {"mix":0.18,"type":"sawtooth","freq":480,"slide":-1500,"atk":0,"dec":0.2,"sus":0.3,"rel":0.5,"lfoRate":0,"lfoDepth":0,"dist":0,"filter":15000,"type2":"triangle","freq2":902,"slide2":14,"atk2":0.01,"dec2":0.2,"sus2":0.3,"rel2":0.5,"lfoRate2":0,"lfoDepth2":10,"dist2":27,"filter2":5226};
+                // OSC1
+                if (p.mix < 1) {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); const filter = audioCtx.createBiquadFilter();
+                    osc.type = p.type;
+                    osc.frequency.setValueAtTime(p.freq, t);
+                    osc.frequency.exponentialRampToValueAtTime(Math.max(1, p.freq + p.slide), t + p.atk + p.rel);
+                    filter.frequency.setValueAtTime(p.filter, t);
+                    const vol = (1 - p.mix) * 0.5;
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(vol, t + p.atk + 0.001);
+                    gain.gain.linearRampToValueAtTime(p.sus * vol, t + p.atk + p.dec);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + p.atk + p.dec + p.rel);
+                    osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+                    osc.start(t); osc.stop(t + p.atk + p.dec + p.rel + 0.1);
+                }
+                // OSC2
+                if (p.mix > 0) {
+                    const osc2 = audioCtx.createOscillator(); const gain2 = audioCtx.createGain(); const filter2 = audioCtx.createBiquadFilter();
+                    osc2.type = p.type2;
+                    osc2.frequency.setValueAtTime(p.freq2, t);
+                    osc2.frequency.exponentialRampToValueAtTime(Math.max(1, p.freq2 + p.slide2), t + p.atk2 + p.rel2);
+                    filter2.frequency.setValueAtTime(p.filter2, t);
+                    const vol2 = p.mix * 0.5;
+                    gain2.gain.setValueAtTime(0, t);
+                    gain2.gain.linearRampToValueAtTime(vol2, t + p.atk2 + 0.001);
+                    gain2.gain.linearRampToValueAtTime(p.sus2 * vol2, t + p.atk2 + p.dec2);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, t + p.atk2 + p.dec2 + p.rel2);
+                    osc2.connect(filter2); filter2.connect(gain2); gain2.connect(masterGain);
+                    osc2.start(t); osc2.stop(t + p.atk2 + p.dec2 + p.rel2 + 0.1);
+                }
 
             } else if (type === 'energy') {
                 // ── エナジーサークル ── 100ms以内の連続発音は無視
