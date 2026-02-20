@@ -2379,7 +2379,7 @@
                 this.friendshipType = 'normal'; this.friendshipPower = 1.0; this.friendshipCount = 8;
                 this.friendshipItems = []; this.friendshipLevel = 1;
                 this.subFriendshipType = 'normal'; this.subFriendshipUnlocked = false;
-                this.subFriendshipLevel = 1;
+                this.subFriendshipLevel = 1; this.everSubLv5 = false;
             }
             draw() {
                 this.animationFrame++;
@@ -3338,13 +3338,14 @@
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         const enemy = enemies[j];
                         if (Math.hypot(b.x - enemy.x, b.y - enemy.y) < b.radius + enemy.radius) {
+                            playTriangle(); // 十六輪ヒット音
                             const dmg = (0.3 + playerAttackBonus * 0.07) * b.power;
                             if (enemy.takeDamage(dmg)) {
                                 defeated++; totalDefeated++;
                                 explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                                 enemies.splice(j, 1);
                                 updateUI();
-                                if (enemies.length === 0) pendingStageClear = true;
+                                if (enemies.length === 0) { pendingStageClear = true; bullets.forEach(b => { if (b instanceof SixteenRingBullet || b instanceof GlowHomingBullet) b.life = Math.min(b.life, 8); }); }
                             }
                             bullets.splice(i, 1); break;
                         }
@@ -3377,6 +3378,7 @@
                             updateUI();
                             if (enemies.length === 0) pendingStageClear = true;
                         }
+                        if (enemies.length === 0) { bullets.forEach(b => { if (b instanceof SixteenRingBullet || b instanceof GlowHomingBullet) b.life = Math.min(b.life, 8); }); }
                         bullets.splice(i, 1); break;
                     }
                 }
@@ -3464,7 +3466,15 @@
                                 }
                                 if (marble.subFriendshipUnlocked && marble.subFriendshipType !== 'normal' && marble.subFriendshipLevel < 5) {
                                     marble.subFriendshipLevel++;
+                                    if (marble.subFriendshipLevel === 5) marble.everSubLv5 = true;
                                     leveled = true;
+                                }
+                                // friendship_up_self でサブが解放された場合はバナーを表示
+                                if (marble.subFriendshipUnlocked) {
+                                    setTimeout(() => {
+                                        const banner = document.getElementById('subUnlockBanner');
+                                        if (banner) { banner.style.display = 'block'; setTimeout(() => banner.style.display = 'none', 2500); }
+                                    }, 200);
                                 }
                                 if (leveled) {
                                     playLevelUpSound();
@@ -3486,6 +3496,7 @@
                                     }
                                     if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
                                         m.subFriendshipLevel++;
+                                        if (m.subFriendshipLevel === 5) m.everSubLv5 = true;
                                         count++;
                                     }
                                 }
@@ -3836,15 +3847,21 @@
             // メイン友情ボックス
             const mainInfo = document.getElementById('mainFriendshipInfo');
             if (isFriendship) {
-                const mainLv = isSameAsMain ? Math.min(marble.friendshipLevel + 1, 5) : marble.friendshipLevel;
+                const canMainLvUp = isSameAsMain && marble.friendshipLevel < 5;
+                const mainLv = canMainLvUp ? Math.min(marble.friendshipLevel + 1, 5) : marble.friendshipLevel;
                 const mainType = marble.friendshipType;
+                // メインもレベルアップできる時は赤枠で目立たせる
+                mainInfo.style.background = canMainLvUp ? '#fff3e0' : '#f8f9fa';
+                mainInfo.style.border    = canMainLvUp ? '1.5px solid #e74c3c' : '1px solid #ddd';
                 mainInfo.innerHTML = `
-                    <div style="font-size:11px;color:#888;font-weight:bold;margin-bottom:2px;">【メイン友情】</div>
+                    <div style="font-size:11px;color:${canMainLvUp ? '#c0392b' : '#888'};font-weight:bold;margin-bottom:2px;">【メイン友情】</div>
                     <div style="font-size:12px;color:#444;margin-bottom:2px;">${FRIENDSHIP_NAMES[mainType] || '未装備'}</div>
                     <div>${iconBar(mainType, marble.friendshipLevel)}</div>
-                    ${isSameAsMain && marble.friendshipLevel < 5 ? `<div style="font-size:11px;color:#c0392b;margin-top:2px;">装備後 → ${iconBar(newItemType, mainLv)}</div>` : ''}
+                    ${canMainLvUp ? `<div style="font-size:11px;color:#c0392b;margin-top:2px;">装備後 → ${iconBar(newItemType, mainLv)}</div>` : ''}
                 `;
             } else {
+                mainInfo.style.background = '#f8f9fa';
+                mainInfo.style.border = '1px solid #ddd';
                 mainInfo.innerHTML = '';
             }
 
@@ -3877,7 +3894,7 @@
 
             // 仲間に渡すボタン（自分のサブ友情がLv5 かつ 友情アイテム）
             const giveBtn = document.getElementById('itemGiveBtn');
-            giveBtn.style.display = (isFriendship && marble.subFriendshipUnlocked && marble.subFriendshipLevel >= 5) ? 'block' : 'none';
+            giveBtn.style.display = (isFriendship && marble.everSubLv5) ? 'block' : 'none';
 
             document.getElementById('itemModal').classList.add('active');
         }
@@ -3901,6 +3918,7 @@
                 if (marble.subFriendshipType === newItemType) {
                     if (marble.subFriendshipLevel < 5) {
                         marble.subFriendshipLevel++;
+                        if (marble.subFriendshipLevel === 5) marble.everSubLv5 = true;
                         playLevelUpSound();
                         showMessage(`🆙 サブ${itemName}がLv.${marble.subFriendshipLevel}に強化！`, 'combo-effect');
                     } else {
@@ -5286,6 +5304,28 @@
                 dnGain.gain.setValueAtTime(0,t); dnGain.gain.linearRampToValueAtTime(0.12,t+0.08); dnGain.gain.exponentialRampToValueAtTime(0.001,t+0.55);
                 dnSrc.start(t); dnSrc.stop(t+0.56);
 
+
+            } else if (type === 'dark_flame') {
+                // 黒い炎：低いアナログシンセ（メテオ/瞬殺と同シリーズ）
+                const durDF = 0.75; const baseNoteDF = 46;
+                const sawDF1 = audioCtx.createOscillator(); const sawDF2 = audioCtx.createOscillator();
+                const lpfDF = audioCtx.createBiquadFilter(); const envDF = audioCtx.createGain();
+                lpfDF.type = 'lowpass'; lpfDF.Q.value = 6;
+                lpfDF.frequency.setValueAtTime(baseNoteDF*3,t); lpfDF.frequency.exponentialRampToValueAtTime(baseNoteDF*6,t+0.05); lpfDF.frequency.exponentialRampToValueAtTime(baseNoteDF*1.5,t+durDF);
+                sawDF1.type = sawDF2.type = 'sawtooth';
+                sawDF1.frequency.setValueAtTime(baseNoteDF,t); sawDF1.frequency.linearRampToValueAtTime(baseNoteDF*0.90,t+durDF);
+                sawDF2.frequency.setValueAtTime(baseNoteDF*1.016,t); sawDF2.frequency.linearRampToValueAtTime(baseNoteDF*0.90*1.016,t+durDF);
+                envDF.gain.setValueAtTime(0,t); envDF.gain.linearRampToValueAtTime(0.20,t+0.04);
+                envDF.gain.exponentialRampToValueAtTime(0.12,t+0.35); envDF.gain.exponentialRampToValueAtTime(0.001,t+durDF);
+                sawDF1.connect(lpfDF); sawDF2.connect(lpfDF); lpfDF.connect(envDF); envDF.connect(masterGain);
+                sawDF1.start(t); sawDF1.stop(t+durDF+0.02); sawDF2.start(t); sawDF2.stop(t+durDF+0.02);
+                const lfoDF = audioCtx.createOscillator(); const lfoGDF = audioCtx.createGain();
+                lfoDF.type = 'sine'; lfoDF.frequency.value = 4.5; lfoGDF.gain.value = 0.08;
+                lfoDF.connect(lfoGDF); lfoGDF.connect(envDF.gain); lfoDF.start(t); lfoDF.stop(t+durDF+0.02);
+                const subDF = audioCtx.createOscillator(); const subGDF = audioCtx.createGain();
+                subDF.type = 'sine'; subDF.frequency.setValueAtTime(baseNoteDF*0.5,t); subDF.frequency.linearRampToValueAtTime(baseNoteDF*0.42,t+durDF);
+                subGDF.gain.setValueAtTime(0,t); subGDF.gain.linearRampToValueAtTime(0.30,t+0.03); subGDF.gain.exponentialRampToValueAtTime(0.001,t+durDF);
+                subDF.connect(subGDF); subGDF.connect(masterGain); subDF.start(t); subDF.stop(t+durDF+0.02);
             } else if (type === 'poison_dome') {
                 // ポイズンドーム：不気味なコード＋泡立ちノイズ
                 [65,77,92].forEach(freq => {
@@ -5619,6 +5659,56 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.042);
                 nSrc.connect(hpf); hpf.connect(gain); gain.connect(masterGain);
                 nSrc.start(t); nSrc.stop(t + 0.048);
+            }
+        }
+
+        // 十六輪ヒット音 ── トライアングル（ミュート/解放をランダムで）
+        // ハイハットと同じチョーク仕組みで実装
+        let _openTriGain = null; // 現在鳴っているオープントライアングルのGainNode
+
+        function playTriangle() {
+            if (!seEnabled) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+            const isOpen = Math.random() < 0.45; // 45% オープン（余韻あり）
+
+            // オープンが鳴っていたらチョーク（ミュートと同じ）
+            if (_openTriGain) {
+                try {
+                    _openTriGain.gain.cancelScheduledValues(t);
+                    _openTriGain.gain.setValueAtTime(Math.max(_openTriGain.gain.value || 0.001, 0.001), t);
+                    _openTriGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.010);
+                } catch(e) {}
+                _openTriGain = null;
+            }
+
+            // トライアングルの基音（サインで金属的な倍音を足す）
+            const freq = 2800 + Math.random() * 400; // 2800〜3200Hz（トライアングルらしい高域）
+            const osc1 = audioCtx.createOscillator(); // 基音
+            const osc2 = audioCtx.createOscillator(); // 3倍音
+            const gain = audioCtx.createGain();
+            osc1.type = 'sine'; osc1.frequency.value = freq;
+            osc2.type = 'sine'; osc2.frequency.value = freq * 3.0;
+            const g2 = audioCtx.createGain(); g2.gain.value = 0.25; // 3倍音は控えめ
+            osc2.connect(g2); g2.connect(gain);
+            osc1.connect(gain); gain.connect(masterGain);
+
+            if (isOpen) {
+                // オープン：ゆっくり減衰（0.6〜1.0s）
+                const decay = 0.6 + Math.random() * 0.4;
+                gain.gain.setValueAtTime(0.18, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+                osc1.start(t); osc1.stop(t + decay + 0.01);
+                osc2.start(t); osc2.stop(t + decay + 0.01);
+                _openTriGain = gain;
+                osc1.onended = () => { if (_openTriGain === gain) _openTriGain = null; };
+            } else {
+                // ミュート：素早く消える（0.04〜0.08s）
+                const decay = 0.04 + Math.random() * 0.04;
+                gain.gain.setValueAtTime(0.15, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+                osc1.start(t); osc1.stop(t + decay + 0.01);
+                osc2.start(t); osc2.stop(t + decay + 0.01);
             }
         }
 
