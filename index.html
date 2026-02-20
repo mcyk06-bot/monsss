@@ -1572,45 +1572,59 @@
                 this.crossBeams = [];
             }
             draw() {
-                this.frame++;
-                const progress = Math.min(this.frame / 15, 1);
-                const curX = this.startX + (this.targetX - this.startX) * progress;
-                const curY = this.startY + (this.targetY - this.startY) * progress;
-                ctx.save();
-                const alpha = this.frame < 30 ? 1 : 1 - (this.frame - 30) / 20;
-                // 太い白レーザー
-                ctx.globalAlpha = alpha;
-                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 16; ctx.lineCap = 'round';
-                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
-                ctx.strokeStyle = '#aaddff'; ctx.lineWidth = 8;
-                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
-                // 着弾後、十字に展開
-                if (progress >= 1 && !this.crossed) {
-                    this.crossed = true;
-                    const angle = Math.atan2(this.targetY - this.startY, this.targetX - this.startX);
-                    this.crossBeams = [
-                        {a: angle + Math.PI / 2}, {a: angle - Math.PI / 2},
-                        {a: angle}, {a: angle + Math.PI}
-                    ];
+            this.frame++;
+            const progress = Math.min(this.frame / 15, 1);
+            const curX = this.startX + (this.targetX - this.startX) * progress;
+            const curY = this.startY + (this.targetY - this.startY) * progress;
+            ctx.save();
+            const alpha = this.frame < 30 ? 1 : 1 - (this.frame - 30) / 20;
+
+            // 太い赤黒レーザー
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = '#1a0000'; ctx.lineWidth = 20; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+
+            ctx.strokeStyle = '#cc0000'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+
+            ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+
+            // 着弾後、十字に展開
+            if (progress >= 1 && !this.crossed) {
+                this.crossed = true;
+                const angle = Math.atan2(this.targetY - this.startY, this.targetX - this.startX);
+                this.crossBeams = [
+                {a: angle + Math.PI / 2}, {a: angle - Math.PI / 2},
+                {a: angle}, {a: angle + Math.PI}
+                ];
+            }
+            if (this.crossed) {
+                const ca = this.frame < 30 ? 1 : alpha;
+                for (const b of this.crossBeams) {
+                const len = 200;
+                ctx.globalAlpha = ca * 0.8;
+
+                ctx.strokeStyle = '#1a0000'; ctx.lineWidth = 14;
+                ctx.beginPath();
+                ctx.moveTo(this.targetX, this.targetY);
+                ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#aa0000'; ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(this.targetX, this.targetY);
+                ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.targetX, this.targetY);
+                ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
+                ctx.stroke();
                 }
-                if (this.crossed) {
-                    const ca = this.frame < 30 ? 1 : alpha;
-                    for (const b of this.crossBeams) {
-                        const len = 200;
-                        ctx.globalAlpha = ca * 0.8;
-                        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 10;
-                        ctx.beginPath();
-                        ctx.moveTo(this.targetX, this.targetY);
-                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
-                        ctx.stroke();
-                        ctx.strokeStyle = '#88ccff'; ctx.lineWidth = 4;
-                        ctx.beginPath();
-                        ctx.moveTo(this.targetX, this.targetY);
-                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
-                        ctx.stroke();
-                    }
-                }
-                ctx.restore();
+            }
+            ctx.restore();
             }
             isComplete() { return this.frame >= this.maxFrames; }
         }
