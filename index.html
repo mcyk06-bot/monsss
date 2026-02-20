@@ -1936,6 +1936,8 @@
                 else if (type === 'speedup') { this.emoji = '🏃'; this.color = '#00bcd4'; this.name = 'スピードアップ'; this.description = '全キャラの移動速度が上がります！'; }
                 else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
                 else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '友情強化薬'; this.description = '自分の友情コンボ（メイン・サブ）のレベルが1上がる！レア'; }
+                else if (type === 'barrier') { this.emoji = '🛡'; this.color = '#ff69b4'; this.name = 'バリア'; this.description = '仲間キャラにバリアが貼られ、敵の攻撃を1回だけ無効にする！'; }
+                else if (type === 'friendship_boost') { this.emoji = '⚡'; this.color = '#7b1fa2'; this.name = '友情アップ'; this.description = '仲間の友情攻撃力が4行動分1.25倍になる！'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体友情強化注射'; this.description = '仲間全員の友情コンボのレベルが1上がる！激レア！'; }
                 else if (type === 'friendship_normal') { this.emoji = '🐿️'; this.color = '#607d8b'; this.name = '豆粒友情'; this.description = '小さな弾を8発放つ基本の友情コンボ！'; }
                 else if (type === 'friendship_sixteen_ring') { this.emoji = '◎'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
@@ -2380,6 +2382,8 @@
                 this.friendshipItems = []; this.friendshipLevel = 1;
                 this.subFriendshipType = 'normal'; this.subFriendshipUnlocked = false;
                 this.subFriendshipLevel = 1; this.everSubLv5 = false;
+                this.barrier = false; // バリア（1回防御）
+                this.friendshipBoost = 0; // 友情アップ残り行動数
             }
             draw() {
                 this.animationFrame++;
@@ -2416,6 +2420,28 @@
                 ctx.strokeStyle = isCurrentTurn ? 'rgba(255, 215, 0, 0.8)' : 'rgba(0,0,0,0.3)';
                 ctx.lineWidth = isCurrentTurn ? 3 : 2;
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.stroke();
+                // バリア：薄いピンクの光る輪
+                if (this.barrier) {
+                    const pulse = Math.sin(Date.now() / 200) * 0.2 + 0.8;
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(255,105,180,${0.7 * pulse})`;
+                    ctx.lineWidth = 4;
+                    ctx.shadowColor = '#ff69b4'; ctx.shadowBlur = 10;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                }
+                // 友情ブースト：紫の輝き
+                if (this.friendshipBoost > 0) {
+                    const t2 = Date.now() / 300;
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(180,64,255,${0.5 + Math.sin(t2)*0.3})`;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([4, 4]);
+                    ctx.lineDashOffset = -t2 * 8;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 9, 0, Math.PI * 2); ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.restore();
+                }
                 if (this.isActive && this.isMoving()) {
                     const speed = Math.sqrt(this.vx ** 2 + this.vy ** 2);
                     if (speed > 2) {
@@ -2472,7 +2498,7 @@
                 const bulletSpeed = 6;
                 const newBullets = [];
                 const bulletCount = this.friendshipCount;
-                const power = this.friendshipPower;
+                const power = this.friendshipPower * (this.friendshipBoost > 0 ? 1.25 : 1.0);
                 if (this.friendshipType === 'homing') {
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
@@ -2743,9 +2769,13 @@
                     itemType = 'attack';               // 12%
                 } else if (rand < 0.55) {
                     itemType = 'death';                // 1%
-                } else if (rand < 0.57) {
+                } else if (rand < 0.562) {
+                    itemType = 'barrier';              // 1.2% 🛡
+                } else if (rand < 0.574) {
+                    itemType = 'friendship_boost';     // 1.2% ⚡
+                } else if (rand < 0.594) {
                     itemType = 'friendship_up_self';   // 2% 💊
-                } else if (rand < 0.58) {
+                } else if (rand < 0.604) {
                     itemType = 'friendship_up_all';    // 1% 💉
                 } else if (rand < 0.64) {
                     itemType = 'friendship_normal';    // 6% 豆粒
@@ -2808,7 +2838,9 @@
             const isDarkStage = currentStage >= 50; // 50ステージ以降
             if (isBossStage) {
                 const isBossDark = isDarkStage && Math.random() < 0.4;
-                const normalBossHp = 15 + currentStage * 1.5;
+                const normalBossHp = currentStage < 30
+                    ? 15 + currentStage * 1.5
+                    : 15 + 30 * 1.5 + (currentStage - 30) * 4.0; // 30以降は急増
                 const darkBossHp = Math.floor(normalBossHp * 1.5); // 通常の1.5倍
                 const bossSizeBase = isBossDark
                     ? { name: 'ボス', radius: 83, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
@@ -2846,7 +2878,9 @@
                     const size = { ...baseSize };
                     // 通常敵HP: baseHp + stage/2 + cycle*2
                     // ダーク敵HP: 同計算の1.5倍（ステージ1基準で計算）
-                    const normalHp = size.maxHp + Math.floor(currentStage / 2) + cycleNumber * 2;
+                    // ステージ30以降はHP上昇率を急峻にする
+                    const stageMult = currentStage < 30 ? currentStage : 30 + (currentStage - 30) * 2.2;
+                    const normalHp = size.maxHp + Math.floor(stageMult / 2) + cycleNumber * 3;
                     size.maxHp = useDark ? Math.floor(normalHp * 1.5) : normalHp;
                     do {
                         valid = true; x = 50 + Math.random() * (canvasSize.width - 100); y = 50 + Math.random() * (canvasSize.height * 0.4);
@@ -3011,7 +3045,8 @@
                                     if (Math.sqrt(dx*dx+dy*dy) < m.radius + proj.radius && !proj.hit) {
                                         proj.hit = true;
                                         proj.hitX = proj.x; proj.hitY = proj.y;
-                                        teamHP -= enemyDamage * 1.2; m.takeDamage();
+                                        if (consumeBarrier(m)) { updateHPBar(); continue; }
+                                teamHP -= enemyDamage * 1.2; m.takeDamage();
                                         updateHPBar(); triggerGameOver();
                                         clearInterval(checkFlame);
                                     }
@@ -3027,7 +3062,8 @@
                             setTimeout(() => {
                                 const thornDmg = enemyDamage * 0.5;
                                 for (const m of playerMarbles) {
-                                    teamHP -= thornDmg; m.takeDamage();
+                                    if (consumeBarrier(m)) { updateHPBar(); continue; }
+                                teamHP -= thornDmg; m.takeDamage();
                                     explosions.push(new Explosion(m.x, m.y, m.radius * 0.4, '#204000'));
                                 }
                                 updateHPBar(); triggerGameOver();
@@ -3040,7 +3076,8 @@
                             enemyBeams.push(laser);
                             setTimeout(() => {
                                 // 着弾点ダメージ
-                                teamHP -= enemyDamage * 1.5; target.takeDamage();
+                                if (consumeBarrier(target)) { updateHPBar(); triggerGameOver(); } else { teamHP -= enemyDamage * 1.5; target.takeDamage();
+                                explosions.push(new Explosion(target.x, target.y, target.radius * 0.5, '#ff0000')); updateHPBar(); triggerGameOver(); }
                                 explosions.push(new Explosion(target.x, target.y, target.radius, '#aaddff'));
                                 // 十字ビームの当たり判定
                                 const angle = Math.atan2(target.y - attacker.y, target.x - attacker.x);
@@ -3052,7 +3089,7 @@
                                         const dist = Math.sqrt(dx*dx+dy*dy);
                                         const dot = (dx * Math.cos(ca) + dy * Math.sin(ca)) / dist;
                                         if (dot > 0.85 && dist < 200) {
-                                            teamHP -= enemyDamage * 0.8; m.takeDamage();
+                                            if (!consumeBarrier(m)) { teamHP -= enemyDamage * 0.8; m.takeDamage(); }
                                             explosions.push(new Explosion(m.x, m.y, m.radius * 0.6, '#ffffff'));
                                         }
                                     }
@@ -3074,7 +3111,8 @@
                                 for (const m of playerMarbles) {
                                     const dx = m.x - attacker.x, dy = m.y - attacker.y;
                                     if (Math.sqrt(dx*dx+dy*dy) < dome.maxRadius) {
-                                        teamHP -= domeDmg; m.takeDamage();
+                                        if (consumeBarrier(m)) { updateHPBar(); continue; }
+                                teamHP -= domeDmg; m.takeDamage();
                                         absorbed += domeDmg;
                                         explosions.push(new Explosion(m.x, m.y, m.radius * 0.3, '#660088'));
                                     }
@@ -3108,7 +3146,8 @@
                                 for (const m of playerMarbles) {
                                     const dx = m.x - bx, dy = m.y - by;
                                     if (Math.sqrt(dx*dx+dy*dy) < blastR) {
-                                        teamHP -= bombDamage; m.takeDamage();
+                                        if (consumeBarrier(m)) { updateHPBar(); continue; }
+                                    teamHP -= bombDamage; m.takeDamage();
                                         explosions.push(new Explosion(m.x, m.y, m.radius*0.2, '#ff6600'));
                                     }
                                 }
@@ -3127,9 +3166,9 @@
                                     enemyBeams.push(meteor);
                                     setTimeout(() => {
                                         for (const m of playerMarbles) { const dx = m.x - meteor.targetX, dy = m.y - meteor.targetY; 
-                                        if (Math.sqrt(dx*dx+dy*dy) < 38) { teamHP -= enemyDamage* 0.2; m.takeDamage(); 
+                                        if (Math.sqrt(dx*dx+dy*dy) < 38) { if (!consumeBarrier(m)) { teamHP -= enemyDamage* 0.2; m.takeDamage(); 
                                             explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#cc2200')); } }
-                                            explosions.push(new EnemyBombEffect(meteor.targetX, meteor.targetY, 45));
+                                            } explosions.push(new EnemyBombEffect(meteor.targetX, meteor.targetY, 45));
                                         updateHPBar(); triggerGameOver();
                                     }, 680);
                                 }, mi * 380);
@@ -3158,9 +3197,27 @@
             }
         }
 
+
+        // バリア消費ヘルパー: 消費したらtrue返す
+        function consumeBarrier(marble) {
+            if (marble.barrier) {
+                marble.barrier = false;
+                explosions.push(new CriticalEffect(marble.x, marble.y));
+                showMessage('🛡 バリアが攻撃を防いだ！', 'success');
+                updateFriendshipStatusBar();
+                return true;
+            }
+            return false;
+        }
         function checkBeamHits(beam) {
             for (const marble of playerMarbles) {
                 if (isPointOnLine(marble.x, marble.y, beam.startX, beam.startY, beam.endX, beam.endY, marble.radius)) {
+                    if (marble.barrier) {
+                        marble.barrier = false;
+                        explosions.push(new CriticalEffect(marble.x, marble.y));
+                        showMessage('🛡 バリアが攻撃を防いだ！', 'success');
+                        updateFriendshipStatusBar(); continue;
+                    }
                     teamHP -= enemyDamage; marble.takeDamage();
                     explosions.push(new Explosion(marble.x, marble.y, marble.radius * 0.5, '#ff0000'));
                 }
@@ -3240,11 +3297,17 @@
                 const zone = new WhiteLightZone(activeMarble);
                 zone.power = power;
                 explosions.push(zone);
+                if (hitMarble.friendshipBoost > 0) { hitMarble.friendshipBoost--; if (hitMarble.friendshipBoost === 0) updateFriendshipStatusBar(); }
                 const subBullets = hitMarble.createSubBullets();
                 return subBullets.length > 0 ? subBullets : null;
             }
             const bullets = hitMarble.createBullets();
             const subBullets = hitMarble.createSubBullets();
+            // 友情ブーストのカウンタを消費
+            if (hitMarble.friendshipBoost > 0) {
+                hitMarble.friendshipBoost--;
+                if (hitMarble.friendshipBoost === 0) updateFriendshipStatusBar();
+            }
             return [...bullets, ...subBullets];
         }
         
@@ -3507,6 +3570,20 @@
                                 } else {
                                     showMessage(`💉 全体友情強化注射…効果なし（未装備orMAX）`, 'info');
                                 }
+                            } else if (item.type === 'barrier') {
+                                // バリア：全仲間に貼る
+                                playerMarbles.forEach(m => m.barrier = true);
+                                playLevelUpSound();
+                                explosions.push(new HealEffect(marble.x, marble.y));
+                                showMessage('🛡 バリア発動！仲間全員に貼られた！', 'combo-effect');
+                                updateFriendshipStatusBar();
+                            } else if (item.type === 'friendship_boost') {
+                                // 友情アップ：全仲間に4行動分ブースト
+                                playerMarbles.forEach(m => m.friendshipBoost = Math.max(m.friendshipBoost, 4));
+                                playLevelUpSound();
+                                explosions.push(new CriticalEffect(marble.x, marble.y));
+                                showMessage('⚡ 友情アップ！4行動分1.25倍！', 'combo-effect');
+                                updateFriendshipStatusBar();
                             } else if (item.type.startsWith('friendship_')) {
                                 pendingItemModal = { item, marble };
                             }
@@ -3707,9 +3784,12 @@
                 const subLv = subIcon ? m.subFriendshipLevel : 0;
 
                 const card = document.createElement('div');
+                const hasEffect = m.barrier || m.friendshipBoost > 0;
+                const borderColor = m.barrier ? 'rgba(255,105,180,0.7)' : m.friendshipBoost > 0 ? 'rgba(224,64,251,0.7)' : 'rgba(255,255,255,0.12)';
+                const bgColor = m.barrier ? 'rgba(255,105,180,0.12)' : m.friendshipBoost > 0 ? 'rgba(180,64,255,0.12)' : 'rgba(255,255,255,0.06)';
                 card.style.cssText = `
-                    background: rgba(255,255,255,0.06);
-                    border: 1px solid rgba(255,255,255,0.12);
+                    background: ${bgColor};
+                    border: ${hasEffect ? '2px' : '1px'} solid ${borderColor};
                     border-radius: 5px;
                     text-align: center;
                     flex: 1;
@@ -3749,6 +3829,10 @@
                     }
                 }
 
+                // バリア・ブーストマーク
+                const barrierMark = m.barrier ? `<div style="font-size:12px;line-height:1;text-align:center;color:#ff69b4;text-shadow:0 0 4px rgba(255,105,180,0.8);">🛡</div>` : '';
+                const boostMark = m.friendshipBoost > 0 ? `<div style="font-size:9px;line-height:1.3;text-align:center;color:#e040fb;font-weight:bold;">⚡×${m.friendshipBoost}</div>` : '';
+
                 // メイン友情行
                 const mainRow = m.friendshipType !== 'normal'
                     ? `<div style="font-size:11px;line-height:1.5;padding:0 2px;">${FRIENDSHIP_ICONS[m.friendshipType]}<span style="color:#ffd700;font-size:10px;">Lv${mainLv}</span></div>`
@@ -3761,7 +3845,7 @@
                         : '');
 
                 card.appendChild(cvs);
-                card.insertAdjacentHTML('beforeend', mainRow + subRow);
+                card.insertAdjacentHTML('beforeend', barrierMark + boostMark + mainRow + subRow);
                 bar.appendChild(card);
             });
         }
