@@ -3389,21 +3389,10 @@
                 marble.update(); // 摩擦のみ計算されるようになった
             }
 
-            // 2. 友情コンボ判定（移動前）
-            if (activeMarbles.length > 0) {
-                const activeMarble = activeMarbles[0];
-                for (let marble of playerMarbles) {
-                    if (marble === activeMarble) continue;
-                    if (checkCollision(activeMarble, marble)) {
-                        const newBullets = triggerFriendshipAttack(activeMarble, marble);
-                        if (newBullets) bullets.push(...newBullets);
-                    }
-                }
-            }
-
-            // 3. 移動・壁判定・敵/アイテム判定（サブステップ処理）
-            const SUBSTEPS = 4; // 1フレームを4分割して判定
-            let pendingItemModal = null; // サブステップ後に表示するモーダル用
+            // 2+3. 移動・壁判定・友情判定・敵/アイテム判定（サブステップ処理）
+            // ★ 友情判定をサブステップ内に移動：高速通過によるすり抜けバグを修正
+            const SUBSTEPS = 4;
+            let pendingItemModal = null;
             for (let s = 0; s < SUBSTEPS; s++) {
                 for (let marble of activeMarbles) {
                     if (!marble.isActive || !marble.isMoving()) continue;
@@ -3417,6 +3406,15 @@
                     else if (marble.x + marble.radius > canvasSize.width) { marble.x = canvasSize.width - marble.radius; marble.vx *= -BOUNCE; playBounceSound('h'); }
                     if (marble.y - marble.radius < 0) { marble.y = marble.radius; marble.vy *= -BOUNCE; playBounceSound('v'); }
                     else if (marble.y + marble.radius > canvasSize.height) { marble.y = canvasSize.height - marble.radius; marble.vy *= -BOUNCE; playBounceSound('v'); }
+
+                    // 友情コンボ判定（サブステップ毎：すり抜けバグ修正）
+                    for (let other of playerMarbles) {
+                        if (other === marble) continue;
+                        if (checkCollision(marble, other)) {
+                            const nb = triggerFriendshipAttack(marble, other);
+                            if (nb) bullets.push(...nb);
+                        }
+                    }
 
                     // アイテム判定 (サブステップ毎にチェック)
                     for (let i = items.length - 1; i >= 0; i--) {
@@ -5168,45 +5166,107 @@
                 sub.start(t); sub.stop(t + dur + 0.02);
 
             } else if (type === 'instakill') {
-                // 瞬殺レーザー 2パターン（ランダム）
-                const pattern = Math.random() < 0.5 ? 0 : 1;
-                if (pattern === 0) {
-                    // ── ズバン（重い下降スライド：sawtooth + LPF）
-                    const lpf1 = audioCtx.createBiquadFilter(); lpf1.type = 'lowpass'; lpf1.Q.value = 4;
-                    lpf1.frequency.setValueAtTime(3000, t); lpf1.frequency.exponentialRampToValueAtTime(300, t + 0.28);
-                    const s1 = audioCtx.createOscillator(); const sg1 = audioCtx.createGain();
-                    const s3 = audioCtx.createOscillator(); const sg3 = audioCtx.createGain();
-                    s1.type = 'sawtooth';
-                    s1.frequency.setValueAtTime(1200, t); s1.frequency.exponentialRampToValueAtTime(55, t + 0.28);
-                    sg1.gain.setValueAtTime(0, t); sg1.gain.linearRampToValueAtTime(0.26, t + 0.01); sg1.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
-                    s3.type = 'sawtooth';
-                    s3.frequency.setValueAtTime(1212, t); s3.frequency.exponentialRampToValueAtTime(56, t + 0.28);
-                    sg3.gain.setValueAtTime(0, t); sg3.gain.linearRampToValueAtTime(0.10, t + 0.01); sg3.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
-                    s1.connect(lpf1); s3.connect(lpf1); lpf1.connect(sg1); sg1.connect(masterGain);
-                    lpf1.connect(sg3); sg3.connect(masterGain);
-                    s1.start(t); s1.stop(t + 0.34); s3.start(t); s3.stop(t + 0.32);
-                    // 着弾ドスン
-                    const s2 = audioCtx.createOscillator(); const sg2 = audioCtx.createGain();
-                    s2.type = 'sine'; s2.frequency.setValueAtTime(60, t + 0.25); s2.frequency.exponentialRampToValueAtTime(22, t + 0.65);
-                    sg2.gain.setValueAtTime(0, t + 0.25); sg2.gain.linearRampToValueAtTime(0.38, t + 0.27); sg2.gain.exponentialRampToValueAtTime(0.001, t + 0.68);
-                    s2.connect(sg2); sg2.connect(masterGain); s2.start(t + 0.25); s2.stop(t + 0.70);
-                } else {
-                    // ── キュイーン（高音上昇→ドン：square + bandpass）
-                    const bpf1 = audioCtx.createBiquadFilter(); bpf1.type = 'bandpass'; bpf1.Q.value = 3; bpf1.frequency.value = 1500;
-                    const s1 = audioCtx.createOscillator(); const sg1 = audioCtx.createGain();
-                    s1.type = 'square';
-                    s1.frequency.setValueAtTime(400, t); s1.frequency.exponentialRampToValueAtTime(3200, t + 0.08); s1.frequency.exponentialRampToValueAtTime(200, t + 0.24);
-                    sg1.gain.setValueAtTime(0, t); sg1.gain.linearRampToValueAtTime(0.22, t + 0.02); sg1.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-                    s1.connect(bpf1); bpf1.connect(sg1); sg1.connect(masterGain);
-                    s1.start(t); s1.stop(t + 0.30);
-                    // 着弾
-                    const s2 = audioCtx.createOscillator(); const sg2 = audioCtx.createGain();
-                    s2.type = 'sine'; s2.frequency.setValueAtTime(80, t + 0.22); s2.frequency.exponentialRampToValueAtTime(28, t + 0.60);
-                    sg2.gain.setValueAtTime(0, t + 0.22); sg2.gain.linearRampToValueAtTime(0.35, t + 0.24); sg2.gain.exponentialRampToValueAtTime(0.001, t + 0.64);
-                    s2.connect(sg2); sg2.connect(masterGain); s2.start(t + 0.22); s2.stop(t + 0.66);
-                }
+                // 瞬殺レーザー：メテオ系の重いローシンセ
+                // チャージ感（短い高音）→ 太いサブシン着弾
+                const dur = 0.85;
+                const NOTES_IL = [82.4, 73.4, 55.0, 98.0]; // E2, D2, A1, G2
+                const baseNote = NOTES_IL[Math.floor(Math.random() * NOTES_IL.length)];
 
-            } else if (type === 'dark_flame') {
+                // 短いチャージ音（一瞬だけ高音で「発射」を伝える）
+                const chg = audioCtx.createOscillator(); const chgG = audioCtx.createGain();
+                chg.type = 'sawtooth';
+                chg.frequency.setValueAtTime(baseNote * 12, t);
+                chg.frequency.exponentialRampToValueAtTime(baseNote * 4, t + 0.07);
+                const chgFlt = audioCtx.createBiquadFilter(); chgFlt.type = 'lowpass'; chgFlt.frequency.value = 1800;
+                chgG.gain.setValueAtTime(0.18, t); chgG.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+                chg.connect(chgFlt); chgFlt.connect(chgG); chgG.connect(masterGain);
+                chg.start(t); chg.stop(t + 0.09);
+
+                // デチューンドソウ×2（メテオと同じアナログシンセ核）
+                const saw1 = audioCtx.createOscillator();
+                const saw2 = audioCtx.createOscillator();
+                const lpf  = audioCtx.createBiquadFilter();
+                const env  = audioCtx.createGain();
+                lpf.type = 'lowpass'; lpf.Q.value = 7;
+                lpf.frequency.setValueAtTime(baseNote * 10, t + 0.06);
+                lpf.frequency.exponentialRampToValueAtTime(baseNote * 2.5, t + 0.35);
+                lpf.frequency.exponentialRampToValueAtTime(baseNote * 0.9, t + dur);
+                saw1.type = saw2.type = 'sawtooth';
+                saw1.frequency.setValueAtTime(baseNote, t + 0.06);
+                saw1.frequency.exponentialRampToValueAtTime(baseNote * 0.82, t + dur);
+                saw2.frequency.setValueAtTime(baseNote * 1.014, t + 0.06);
+                saw2.frequency.exponentialRampToValueAtTime(baseNote * 0.82 * 1.014, t + dur);
+                // 山形エンベロープ
+                env.gain.setValueAtTime(0.001, t + 0.06);
+                env.gain.exponentialRampToValueAtTime(0.28, t + 0.18);
+                env.gain.exponentialRampToValueAtTime(0.06, t + 0.55);
+                env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                saw1.connect(lpf); saw2.connect(lpf); lpf.connect(env); env.connect(masterGain);
+                saw1.start(t + 0.06); saw1.stop(t + dur + 0.02);
+                saw2.start(t + 0.06); saw2.stop(t + dur + 0.02);
+
+                // サブシン（底を支える）
+                const sub  = audioCtx.createOscillator(); const subG = audioCtx.createGain();
+                sub.type = 'sine';
+                sub.frequency.setValueAtTime(baseNote * 0.5, t + 0.06);
+                sub.frequency.exponentialRampToValueAtTime(baseNote * 0.36, t + dur);
+                subG.gain.setValueAtTime(0.001, t + 0.06);
+                subG.gain.exponentialRampToValueAtTime(0.40, t + 0.16);
+                subG.gain.exponentialRampToValueAtTime(0.08, t + 0.50);
+                subG.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                sub.connect(subG); subG.connect(masterGain);
+                sub.start(t + 0.06); sub.stop(t + dur + 0.02);
+
+            } else if (type === 'thorns') {
+                // イバラ：ずずずず（低い連続グロウル）
+                // ローパスノイズ＋ゆっくり動くLFOで「這う」感覚
+                const dur = 1.10;
+
+                // ① ローノイズ本体（地を這う感じ）
+                const nLen = Math.ceil(audioCtx.sampleRate * dur);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const lpfN = audioCtx.createBiquadFilter();
+                lpfN.type = 'lowpass'; lpfN.frequency.setValueAtTime(160, t);
+                lpfN.frequency.exponentialRampToValueAtTime(80, t + dur);
+                lpfN.Q.value = 3;
+                const envN = audioCtx.createGain();
+                envN.gain.setValueAtTime(0.001, t);
+                envN.gain.exponentialRampToValueAtTime(0.22, t + 0.08);
+                envN.gain.setValueAtTime(0.22, t + 0.30);
+                envN.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                // LFOで「ずずずず」感のリズムを作る
+                const lfo = audioCtx.createOscillator(); const lfoG = audioCtx.createGain();
+                lfo.type = 'sine'; lfo.frequency.setValueAtTime(9, t); // 9Hz でずずずず
+                lfoG.gain.setValueAtTime(0.14, t);
+                lfo.connect(lfoG); lfoG.connect(envN.gain);
+                nSrc.connect(lpfN); lpfN.connect(envN); envN.connect(masterGain);
+                nSrc.start(t); nSrc.stop(t + dur + 0.02);
+                lfo.start(t); lfo.stop(t + dur + 0.02);
+
+                // ② 低いサブサイン（どっしり感）
+                const sub = audioCtx.createOscillator(); const subG = audioCtx.createGain();
+                sub.type = 'sine';
+                sub.frequency.setValueAtTime(42, t); sub.frequency.linearRampToValueAtTime(35, t + dur);
+                subG.gain.setValueAtTime(0.001, t);
+                subG.gain.exponentialRampToValueAtTime(0.28, t + 0.06);
+                subG.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                sub.connect(subG); subG.connect(masterGain);
+                sub.start(t); sub.stop(t + dur + 0.02);
+
+                // ③ 少しだけ中域の「ガリ」感（爪っぽさを残す、控えめに）
+                [0.05, 0.25, 0.48, 0.72].forEach(d => {
+                    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                    o.type = 'sawtooth';
+                    o.frequency.setValueAtTime(120 + Math.random() * 60, t + d);
+                    o.frequency.exponentialRampToValueAtTime(50, t + d + 0.10);
+                    g.gain.setValueAtTime(0.06, t + d); g.gain.exponentialRampToValueAtTime(0.001, t + d + 0.12);
+                    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+                    o.connect(lp); lp.connect(g); g.connect(masterGain);
+                    o.start(t + d); o.stop(t + d + 0.13);
+                });
                 // 黒い炎：ドロドロ低音＋歪んだ唸り＋ダークノイズ
                 const df1 = audioCtx.createOscillator(); const dfg1 = audioCtx.createGain();
                 df1.connect(dfg1); dfg1.connect(masterGain); df1.type = 'sawtooth';
@@ -5225,21 +5285,6 @@
                 const dnGain = audioCtx.createGain(); dnSrc.connect(dnFlt); dnFlt.connect(dnGain); dnGain.connect(masterGain);
                 dnGain.gain.setValueAtTime(0,t); dnGain.gain.linearRampToValueAtTime(0.12,t+0.08); dnGain.gain.exponentialRampToValueAtTime(0.001,t+0.55);
                 dnSrc.start(t); dnSrc.stop(t+0.56);
-
-            } else if (type === 'thorns') {
-                // イバラ：じわじわ這う低音＋爪でひっかく高音
-                const th1 = audioCtx.createOscillator(); const thg1 = audioCtx.createGain();
-                th1.connect(thg1); thg1.connect(masterGain); th1.type = 'sawtooth';
-                th1.frequency.setValueAtTime(40,t); th1.frequency.linearRampToValueAtTime(55,t+0.8);
-                thg1.gain.setValueAtTime(0,t); thg1.gain.linearRampToValueAtTime(0.22,t+0.1); thg1.gain.linearRampToValueAtTime(0.18,t+0.7); thg1.gain.exponentialRampToValueAtTime(0.001,t+1.0);
-                th1.start(t); th1.stop(t+1.02);
-                [0.05,0.18,0.35,0.52].forEach(d => {
-                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(800+Math.random()*300,t+d); osc.frequency.exponentialRampToValueAtTime(300,t+d+0.12);
-                    gain.gain.setValueAtTime(0.08,t+d); gain.gain.exponentialRampToValueAtTime(0.001,t+d+0.14);
-                    osc.start(t+d); osc.stop(t+d+0.15);
-                });
 
             } else if (type === 'poison_dome') {
                 // ポイズンドーム：不気味なコード＋泡立ちノイズ
