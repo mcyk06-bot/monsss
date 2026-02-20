@@ -251,7 +251,7 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            background: #2f662a;
+            background: #0a0a0a;
             overflow: hidden;
             position: relative;
             width: 100%;
@@ -259,11 +259,21 @@
             margin: 0;
         }
 
+        #bgCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
         #gameCanvas {
             display: block;
             cursor: crosshair;
             touch-action: none;
-            background: #2f662a;
+            background: transparent;
+            position: relative;
+            z-index: 1;
         }
         
         .controls {
@@ -829,6 +839,7 @@
         </div>
         <div class="turn-indicator" id="turnIndicator" style="display:none;"></div>
         <div class="canvas-container">
+            <canvas id="bgCanvas"></canvas>
             <canvas id="gameCanvas"></canvas>
         </div>
         <div class="hp-panel">
@@ -3264,7 +3275,7 @@
         function update() {
             if (isPaused) { requestAnimationFrame(update); return; }
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-            ctx.fillStyle = currentStage >= 50 ? '#363554' : '#2f662a';
+            ctx.fillStyle = 'rgba(0,0,0,0.18)'; // 六角形を透かすため半透明オーバーレイ
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
             
             for (let i = enemyBeams.length - 1; i >= 0; i--) { enemyBeams[i].draw(); if (enemyBeams[i].isComplete()) enemyBeams.splice(i, 1); }
@@ -4990,35 +5001,42 @@
                 osc.start(now); osc.stop(now + 0.08);
 
             } else {
-                // ── 上下: スネア3連「タタタ」（中→小→極小）
-                const volumes = [0.75, 0.2, 0.04];
-                const interval = 0.07;
-                volumes.forEach((vol, i) => {
-                    const t = now + i * interval;
-                    // ノイズ（スネアのシャリシャリ感）
-                    const bufLen = Math.ceil(audioCtx.sampleRate * 0.15);
-                    const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
-                    const dat = buf.getChannelData(0);
-                    for (let j = 0; j < bufLen; j++) dat[j] = Math.random() * 2 - 1;
-                    const src = audioCtx.createBufferSource(); src.buffer = buf;
-                    const hpf = audioCtx.createBiquadFilter();
-                    hpf.type = 'highpass'; hpf.frequency.value = 1200;
-                    const nGain = audioCtx.createGain();
-                    nGain.gain.setValueAtTime(vol, t);
-                    nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-                    src.connect(hpf); hpf.connect(nGain); nGain.connect(masterGain);
-                    src.start(t); src.stop(t + 0.15);
-                    // 胴鳴り（低域ボディ）
-                    const osc = audioCtx.createOscillator();
-                    const og = audioCtx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(180, t);
-                    osc.frequency.exponentialRampToValueAtTime(80, t + 0.08);
-                    og.gain.setValueAtTime(vol * 0.6, t);
-                    og.gain.exponentialRampToValueAtTime(0.001, t + 0.10);
-                    osc.connect(og); og.connect(masterGain);
-                    osc.start(t); osc.stop(t + 0.15);
-                });
+                // ── 上下: 金属的リムショット「カッ」
+                // 高Qバンドパスノイズ（金属のリング感）＋高音サイン波（カチンと響く）
+                // ① 金属ノイズ（バンドパス高Q → 特定周波数だけ鳴ってリンとした金属感）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.04);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nd = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                // 高QバンドパスでメタリックなリングQ
+                const bpf1 = audioCtx.createBiquadFilter();
+                bpf1.type = 'bandpass'; bpf1.frequency.value = 4200; bpf1.Q.value = 12;
+                const bpf2 = audioCtx.createBiquadFilter();
+                bpf2.type = 'bandpass'; bpf2.frequency.value = 6800; bpf2.Q.value = 8;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.28, now);
+                nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+                nSrc.connect(bpf1); bpf1.connect(nGain); nGain.connect(masterGain);
+                // 2本目（並列で倍音感）
+                const nSrc2 = audioCtx.createBufferSource(); nSrc2.buffer = nBuf;
+                const nGain2 = audioCtx.createGain();
+                nGain2.gain.setValueAtTime(0.16, now);
+                nGain2.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+                nSrc2.connect(bpf2); bpf2.connect(nGain2); nGain2.connect(masterGain);
+                nSrc.start(now); nSrc.stop(now + 0.04);
+                nSrc2.start(now); nSrc2.stop(now + 0.04);
+
+                // ② 高音サイン波（カチンとした音程感、超速減衰で「カッ」の輪郭）
+                const osc = audioCtx.createOscillator();
+                const og = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1800, now);       // 高め → 金属感
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.02);
+                og.gain.setValueAtTime(0.13, now);
+                og.gain.exponentialRampToValueAtTime(0.001, now + 0.025); // 超速減衰
+                osc.connect(og); og.connect(masterGain);
+                osc.start(now); osc.stop(now + 0.03);
             }
         }
 
@@ -5575,6 +5593,103 @@
                 kickNoise(0.025, 2000, 0.40); // タイトなアタック
             }
         }
+
+        // ─────────────────────────────────────────────
+        // 六角形背景アニメーション（背景専用Canvas）
+        // 最適化① 別Canvas  ② 3フレーム間引き  ③ 大きめサイズで数を削減
+        // ─────────────────────────────────────────────
+        (function() {
+            const bgCanvas = document.getElementById('bgCanvas');
+            const bgCtx = bgCanvas.getContext('2d');
+            const HEX_SIZE = 30; // 大きめにして描画数削減
+            const HW = HEX_SIZE * 2;
+            const HH = Math.sqrt(3) * HEX_SIZE;
+            let tick = 0;
+            let frameCount = 0;
+            let lastPattern = -1;
+
+            // 6パターン定義（10ステージごとにループ）
+            const PATTERNS = [
+                { bg: '#06090f', speed: 0.4, distScale: 0.015, centerWave: false,
+                  stroke: a => `rgba(100,180,255,${a*0.22+0.04})`, fill: a => `rgba(100,180,255,${(a-0.72)*0.4})` },
+                { bg: '#0d0a18', speed: 1.2, distScale: 0.018, centerWave: false,
+                  stroke: a => `rgba(180,100,255,${a*0.25+0.04})`, fill: a => `rgba(200,80,255,${(a-0.72)*0.5})` },
+                { bg: '#100505', speed: 2.5, distScale: 0.025, centerWave: false,
+                  stroke: a => `rgba(255,80,60,${a*0.28+0.04})`, fill: a => `rgba(255,60,40,${(a-0.72)*0.6})` },
+                { bg: '#0f0b00', speed: 0.7, distScale: 0.022, centerWave: false,
+                  stroke: a => `rgba(255,200,60,${a*0.22+0.03})`, fill: a => `rgba(255,180,30,${(a-0.72)*0.45})` },
+                { bg: '#030f07', speed: 0.8, distScale: 0.02, centerWave: true,
+                  stroke: a => `rgba(60,220,120,${a*0.25+0.04})`, fill: a => `rgba(50,220,100,${(a-0.72)*0.45})` },
+                { bg: null, rainbow: true, speed: 0.6, distScale: 0.015, centerWave: false },
+            ];
+
+            function resizeBg() {
+                const rect = bgCanvas.parentElement.getBoundingClientRect();
+                bgCanvas.width = rect.width;
+                bgCanvas.height = rect.height;
+            }
+            resizeBg();
+            window.addEventListener('resize', resizeBg);
+
+            function hexPath(cx, cy, r) {
+                bgCtx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const a = (Math.PI / 180) * (60 * i - 30);
+                    bgCtx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+                }
+                bgCtx.closePath();
+            }
+
+            function drawBg() {
+                requestAnimationFrame(drawBg);
+                frameCount++;
+                if (frameCount % 3 !== 0) return; // ③ 3フレームに1回だけ描画
+
+                const w = bgCanvas.width, h = bgCanvas.height;
+                const patternIdx = Math.floor((currentStage - 1) / 10) % 6;
+
+                // パターン切替時はtickリセット（ブツ切り感をなくす）
+                if (patternIdx !== lastPattern) { tick = 0; lastPattern = patternIdx; }
+
+                const p = PATTERNS[patternIdx];
+                bgCtx.clearRect(0, 0, w, h);
+                bgCtx.fillStyle = p.bg || '#080808';
+                bgCtx.fillRect(0, 0, w, h);
+
+                const cx0 = p.centerWave ? w / 2 : 0;
+                const cy0 = p.centerWave ? h / 2 : 0;
+                const cols = Math.ceil(w / (HW * 0.75)) + 2;
+                const rows = Math.ceil(h / HH) + 2;
+
+                for (let row = -1; row < rows; row++) {
+                    for (let col = -1; col < cols; col++) {
+                        const cx = col * HW * 0.75;
+                        const cy = row * HH + (col % 2 === 0 ? 0 : HH / 2);
+                        const dx = cx - cx0, dy = cy - cy0;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const phase = (dist * p.distScale - tick * p.speed) % (Math.PI * 2);
+                        const a = Math.sin(phase) * 0.5 + 0.5;
+
+                        hexPath(cx, cy, HEX_SIZE - 2);
+
+                        if (p.rainbow) {
+                            const hue = (dist * 0.5 + tick * 30) % 360;
+                            bgCtx.strokeStyle = `hsla(${hue},90%,65%,${a*0.3+0.03})`;
+                            bgCtx.lineWidth = 1;
+                            bgCtx.stroke();
+                            if (a > 0.7) { bgCtx.fillStyle = `hsla(${hue},90%,65%,${(a-0.7)*0.3})`; bgCtx.fill(); }
+                        } else {
+                            bgCtx.strokeStyle = p.stroke(a);
+                            bgCtx.lineWidth = 1;
+                            bgCtx.stroke();
+                            if (a > 0.72) { bgCtx.fillStyle = p.fill(a); bgCtx.fill(); }
+                        }
+                    }
+                }
+                tick += 0.016 * 3; // 間引き分だけ速度補正
+            }
+            drawBg();
+        })();
 
         loadSettings(); // 保存済み設定を復元（SE/BGM ON-OFF・音量・抽選演出）
         initGame();
