@@ -1228,6 +1228,7 @@
         let nextStageBonusItems = 0;  // 次ステージで追加スポーンするアイテム数
         
         let friendshipAttackHistory = new Set();
+        let globalFriendshipBoost = 0; // 友情アップ共通カウント（全員共有）
         
         const BOUNCE = 0.8;
         const COLLISION_DAMPING = 0.88;
@@ -2383,7 +2384,6 @@
                 this.subFriendshipType = 'normal'; this.subFriendshipUnlocked = false;
                 this.subFriendshipLevel = 1; this.everSubLv5 = false;
                 this.barrier = false; // バリア（1回防御）
-                this.friendshipBoost = 0; // 友情アップ残り行動数
             }
             draw() {
                 this.animationFrame++;
@@ -2431,7 +2431,7 @@
                     ctx.restore();
                 }
                 // 友情ブースト：紫の輝き
-                if (this.friendshipBoost > 0) {
+                if (globalFriendshipBoost > 0) {
                     const t2 = Date.now() / 300;
                     ctx.save();
                     ctx.strokeStyle = `rgba(180,64,255,${0.5 + Math.sin(t2)*0.3})`;
@@ -2498,7 +2498,7 @@
                 const bulletSpeed = 6;
                 const newBullets = [];
                 const bulletCount = this.friendshipCount;
-                const power = this.friendshipPower * (this.friendshipBoost > 0 ? 1.25 : 1.0);
+                const power = this.friendshipPower * (globalFriendshipBoost > 0 ? 1.25 : 1.0);
                 if (this.friendshipType === 'homing') {
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
@@ -2792,7 +2792,7 @@
                     else if (r2 < 0.75) itemType = 'friendship_glow_homing';
                     else itemType = 'friendship_light_thread';
                 } else {
-                    itemType = Math.random() < 0.5 ? 'friendship_machinegun' : 'friendship_energy';
+                    itemType = Math.random() < 0.75 ? 'friendship_machinegun' : 'friendship_energy'; // energy出現率を下げた（25%）
                 }
                 
                 let x, y, valid, attempts = 0;
@@ -2830,7 +2830,7 @@
             }
 
             stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; enemyBeams = []; items = [];
-            defeated = 0; currentTurn = 0; friendshipAttackHistory = new Set();
+            defeated = 0; currentTurn = 0; friendshipAttackHistory = new Set(); globalFriendshipBoost = 0;
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false;
             stageEnemyTurnsCount = 0; pendingStageClear = false;
             
@@ -3251,12 +3251,17 @@
                 friendshipAttackHistory = new Set(); // ターンリセット時に友情履歴もクリア
                 for (let marble of playerMarbles) { marble.isUsed = false; marble.isActive = false; marble.hitEnemies = new Set(); }
                 stoppedMarbles = [];
+                // 1番手が動いた→共通友情ブーストを1消費
+                if (globalFriendshipBoost > 0) {
+                    globalFriendshipBoost--;
+                    updateFriendshipStatusBar();
+                }
             }
             updateTurnIndicator(); updateUI();
             // 敵ターン中に全滅した場合もここでクリアを発火
             if (pendingStageClear && !isStageClear) {
                 pendingStageClear = false;
-                setTimeout(() => showStageClear(), 300);
+                setTimeout(() => showStageClear(), 50);
             }
         }
         
@@ -3297,17 +3302,11 @@
                 const zone = new WhiteLightZone(activeMarble);
                 zone.power = power;
                 explosions.push(zone);
-                if (hitMarble.friendshipBoost > 0) { hitMarble.friendshipBoost--; if (hitMarble.friendshipBoost === 0) updateFriendshipStatusBar(); }
                 const subBullets = hitMarble.createSubBullets();
                 return subBullets.length > 0 ? subBullets : null;
             }
             const bullets = hitMarble.createBullets();
             const subBullets = hitMarble.createSubBullets();
-            // 友情ブーストのカウンタを消費
-            if (hitMarble.friendshipBoost > 0) {
-                hitMarble.friendshipBoost--;
-                if (hitMarble.friendshipBoost === 0) updateFriendshipStatusBar();
-            }
             return [...bullets, ...subBullets];
         }
         
@@ -3578,8 +3577,8 @@
                                 showMessage('🛡 バリア発動！仲間全員に貼られた！', 'combo-effect');
                                 updateFriendshipStatusBar();
                             } else if (item.type === 'friendship_boost') {
-                                // 友情アップ：全仲間に4行動分ブースト
-                                playerMarbles.forEach(m => m.friendshipBoost = Math.max(m.friendshipBoost, 4));
+                                // 友情アップ：全体共通4行動分ブースト
+                                globalFriendshipBoost = Math.max(globalFriendshipBoost, 4);
                                 playLevelUpSound();
                                 explosions.push(new CriticalEffect(marble.x, marble.y));
                                 showMessage('⚡ 友情アップ！4行動分1.25倍！', 'combo-effect');
@@ -3699,7 +3698,7 @@
                     activeMarbles = [];
                     if (pendingStageClear) {
                         pendingStageClear = false;
-                        setTimeout(() => showStageClear(), 300);
+                        setTimeout(() => showStageClear(), 50);
                     } else {
                         setTimeout(() => executeEnemyAttack(), 500);
                     }
@@ -3784,9 +3783,9 @@
                 const subLv = subIcon ? m.subFriendshipLevel : 0;
 
                 const card = document.createElement('div');
-                const hasEffect = m.barrier || m.friendshipBoost > 0;
-                const borderColor = m.barrier ? 'rgba(255,105,180,0.7)' : m.friendshipBoost > 0 ? 'rgba(224,64,251,0.7)' : 'rgba(255,255,255,0.12)';
-                const bgColor = m.barrier ? 'rgba(255,105,180,0.12)' : m.friendshipBoost > 0 ? 'rgba(180,64,255,0.12)' : 'rgba(255,255,255,0.06)';
+                const hasEffect = m.barrier || globalFriendshipBoost > 0;
+                const borderColor = m.barrier ? 'rgba(255,105,180,0.7)' : globalFriendshipBoost > 0 ? 'rgba(224,64,251,0.7)' : 'rgba(255,255,255,0.12)';
+                const bgColor = m.barrier ? 'rgba(255,105,180,0.12)' : globalFriendshipBoost > 0 ? 'rgba(180,64,255,0.12)' : 'rgba(255,255,255,0.06)';
                 card.style.cssText = `
                     background: ${bgColor};
                     border: ${hasEffect ? '2px' : '1px'} solid ${borderColor};
@@ -3831,7 +3830,7 @@
 
                 // バリア・ブーストマーク
                 const barrierMark = m.barrier ? `<div style="font-size:12px;line-height:1;text-align:center;color:#ff69b4;text-shadow:0 0 4px rgba(255,105,180,0.8);">🛡</div>` : '';
-                const boostMark = m.friendshipBoost > 0 ? `<div style="font-size:9px;line-height:1.3;text-align:center;color:#e040fb;font-weight:bold;">⚡×${m.friendshipBoost}</div>` : '';
+                const boostMark = globalFriendshipBoost > 0 ? `<div style="font-size:9px;line-height:1.3;text-align:center;color:#e040fb;font-weight:bold;">⚡×${globalFriendshipBoost}</div>` : '';
 
                 // メイン友情行
                 const mainRow = m.friendshipType !== 'normal'
@@ -4376,9 +4375,11 @@
                         playerMarbles.forEach(m => {
                             if (m.friendshipType !== 'normal' && m.friendshipLevel < 5) {
                                 m.friendshipLevel++; m.friendshipPower += 0.5; m.friendshipCount += 2;
+                                if (m.friendshipLevel === 5 && !m.subFriendshipUnlocked) m.subFriendshipUnlocked = true;
                             }
                             if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
                                 m.subFriendshipLevel++;
+                                if (m.subFriendshipLevel === 5) m.everSubLv5 = true;
                             }
                         });
                         playLevelUpSound(); updateFriendshipStatusBar();
@@ -4423,6 +4424,7 @@
                     apply() {
                         if (canUp) {
                             savedMarble.friendshipLevel++; savedMarble.friendshipPower += 0.5; savedMarble.friendshipCount += 2;
+                            if (savedMarble.friendshipLevel === 5 && !savedMarble.subFriendshipUnlocked) savedMarble.subFriendshipUnlocked = true;
                             playLevelUpSound(); updateFriendshipStatusBar();
                         } else {
                             teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
