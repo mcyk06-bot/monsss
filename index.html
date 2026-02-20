@@ -1202,6 +1202,7 @@
         let totalDefeated = 0;
         let isStageClear = false;
         let pendingStageClear = false; // 全滅確認済み、キャラ停止待ち
+        let energyChordIndex = 0; // エナジーサークルのコード進行カウンター
         
         let teamHP = 10;
         let MAX_TEAM_HP = 10;
@@ -5280,64 +5281,80 @@
                 osc2.start(t); osc2.stop(t + 0.36);
 
             } else if (type === 'energy') {
-                // ── スパーン＋ドゥーーーー（シャープでDnBらしい衝撃波）
-                // ① 衝撃波の「スパーン」：瞬間アタック＋高域の鋭い広がり
-                // ポワーン感を消すため：スロウアタックなし・ローパスなし・倍音を足す
-                const strikeNotes = [1047, 1568, 2093, 3136]; // C6,G6,C7,G7 ─ 高めに設定
-                strikeNotes.forEach((freq, i) => {
-                    const so = audioCtx.createOscillator();
-                    const sg = audioCtx.createGain();
-                    // triangle波（サインより倍音が多く金属的な輝き）
-                    so.type = 'triangle';
-                    so.frequency.setValueAtTime(freq, t);
-                    so.frequency.exponentialRampToValueAtTime(freq * 0.88, t + 0.35); // わずかに下降してピッチ感
-                    const delay = i * 0.018; // 速めにずらして「スパッ」と開く
-                    sg.gain.setValueAtTime(0, t + delay);
-                    sg.gain.linearRampToValueAtTime(0.10 - i * 0.018, t + delay + 0.01); // 瞬時アタック
-                    sg.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.55); // 速めに減衰
-                    so.connect(sg); sg.connect(masterGain);
-                    so.start(t + delay); so.stop(t + delay + 0.60);
+                // ── エナジーサークル ── 神々しいシャワーーーン＋ドゥーーー
+                // 3コード進行: Cmaj7 → Fmaj7 → G7 をループ
+                const ENERGY_CHORDS = [
+                    { notes: [523, 659, 784, 988],  sub: 65,  harm: 130 }, // Cmaj7: C-E-G-B
+                    { notes: [349, 440, 523, 659],  sub: 87,  harm: 175 }, // Fmaj7: F-A-C-E
+                    { notes: [392, 494, 587, 740],  sub: 98,  harm: 196 }, // G7:    G-B-D-F#
+                ];
+                const chord = ENERGY_CHORDS[energyChordIndex % 3];
+                energyChordIndex++;
+
+                // ① シャワーーーーーン（フィルタードノイズ、広がりのある輝き）
+                const shLen = Math.ceil(audioCtx.sampleRate * 2.0);
+                const shBuf = audioCtx.createBuffer(1, shLen, audioCtx.sampleRate);
+                const shDat = shBuf.getChannelData(0);
+                for (let i = 0; i < shLen; i++) shDat[i] = Math.random() * 2 - 1;
+                const shSrc = audioCtx.createBufferSource(); shSrc.buffer = shBuf;
+                const shBpf = audioCtx.createBiquadFilter();
+                shBpf.type = 'bandpass'; shBpf.Q.value = 0.6;
+                shBpf.frequency.setValueAtTime(800, t);
+                shBpf.frequency.linearRampToValueAtTime(3500, t + 0.3);
+                shBpf.frequency.linearRampToValueAtTime(1200, t + 1.8);
+                const shLpf = audioCtx.createBiquadFilter();
+                shLpf.type = 'lowpass'; shLpf.frequency.value = 5000;
+                const shGain = audioCtx.createGain();
+                shGain.gain.setValueAtTime(0, t);
+                shGain.gain.linearRampToValueAtTime(0.11, t + 0.12); // 音量抑えめ
+                shGain.gain.setValueAtTime(0.11, t + 0.5);
+                shGain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+                shSrc.connect(shBpf); shBpf.connect(shLpf); shLpf.connect(shGain); shGain.connect(masterGain);
+                shSrc.start(t); shSrc.stop(t + 2.05);
+
+                // ② 神々しい高音コード（ふわっと開く）
+                chord.notes.forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const og = audioCtx.createGain();
+                    const flt = audioCtx.createBiquadFilter();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t + i * 0.06);
+                    osc.frequency.linearRampToValueAtTime(freq * 1.005, t + 1.5);
+                    flt.type = 'lowpass'; flt.frequency.value = 1800; flt.Q.value = 0.7;
+                    const delay = i * 0.06;
+                    og.gain.setValueAtTime(0, t + delay);
+                    og.gain.linearRampToValueAtTime(0.06, t + delay + 0.1); // 音量抑えめ
+                    og.gain.setValueAtTime(0.06, t + 0.6);
+                    og.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+                    osc.connect(flt); flt.connect(og); og.connect(masterGain);
+                    osc.start(t + delay); osc.stop(t + 1.85);
                 });
 
-                // ② ノイズのシャーっと感（衝撃波の空気感）
-                const nLen = Math.ceil(audioCtx.sampleRate * 0.4);
-                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-                const nd = nBuf.getChannelData(0);
-                for (let j = 0; j < nLen; j++) nd[j] = Math.random() * 2 - 1;
-                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
-                const nhpf = audioCtx.createBiquadFilter();
-                nhpf.type = 'highpass'; nhpf.frequency.value = 4000;
-                const nGain = audioCtx.createGain();
-                nGain.gain.setValueAtTime(0.22, t);
-                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-                nSrc.connect(nhpf); nhpf.connect(nGain); nGain.connect(masterGain);
-                nSrc.start(t); nSrc.stop(t + 0.4);
+                // ③ ドゥーーーー（低音サブベース、どっしり）
+                const subOsc = audioCtx.createOscillator();
+                const subGain = audioCtx.createGain();
+                subOsc.type = 'sine';
+                subOsc.frequency.setValueAtTime(chord.sub, t);
+                subOsc.frequency.linearRampToValueAtTime(chord.sub * 0.85, t + 1.5);
+                subGain.gain.setValueAtTime(0, t);
+                subGain.gain.linearRampToValueAtTime(0.28, t + 0.08); // 音量抑えめ
+                subGain.gain.setValueAtTime(0.25, t + 0.8);
+                subGain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+                subOsc.connect(subGain); subGain.connect(masterGain);
+                subOsc.start(t); subOsc.stop(t + 2.05);
 
-                // ③ ドゥーーーー：ピッチドサブベース（DnBスタイル）
-                // より速い下降でグッとしたパンチ感を強調
-                const bd = audioCtx.createOscillator();
-                const bdg = audioCtx.createGain();
-                bd.type = 'sine';
-                bd.frequency.setValueAtTime(200, t);           // 高めスタート（音程感UP）
-                bd.frequency.exponentialRampToValueAtTime(42, t + 0.07);  // 超速で落下
-                bd.frequency.exponentialRampToValueAtTime(32, t + 0.75);  // ゆっくり沈む
-                bdg.gain.setValueAtTime(0, t);
-                bdg.gain.linearRampToValueAtTime(0.70, t + 0.004); // 瞬時に最大
-                bdg.gain.setValueAtTime(0.55, t + 0.12);
-                bdg.gain.exponentialRampToValueAtTime(0.001, t + 0.80);
-                bd.connect(bdg); bdg.connect(masterGain);
-                bd.start(t); bd.stop(t + 0.85);
-
-                // ④ 倍音で締まりを追加
-                const bd2 = audioCtx.createOscillator();
-                const bdg2 = audioCtx.createGain();
-                bd2.type = 'triangle';
-                bd2.frequency.setValueAtTime(100, t);
-                bd2.frequency.exponentialRampToValueAtTime(50, t + 0.10);
-                bdg2.gain.setValueAtTime(0.30, t);
-                bdg2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-                bd2.connect(bdg2); bdg2.connect(masterGain);
-                bd2.start(t); bd2.stop(t + 0.30);
+                // ④ うねり倍音（深みを足す）
+                const harmOsc = audioCtx.createOscillator();
+                const harmGain = audioCtx.createGain();
+                harmOsc.type = 'sine';
+                harmOsc.frequency.setValueAtTime(chord.harm, t);
+                harmOsc.frequency.linearRampToValueAtTime(chord.harm * 0.85, t + 1.5);
+                harmGain.gain.setValueAtTime(0, t);
+                harmGain.gain.linearRampToValueAtTime(0.12, t + 0.12); // 音量抑えめ
+                harmGain.gain.setValueAtTime(0.10, t + 0.8);
+                harmGain.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+                harmOsc.connect(harmGain); harmGain.connect(masterGain);
+                harmOsc.start(t); harmOsc.stop(t + 1.85);
 
             } else if (type === 'heal') {
                 // ポロロン（優しい3音）
