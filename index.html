@@ -1937,7 +1937,7 @@
                 else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
                 else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '友情強化薬'; this.description = '自分の友情コンボ（メイン・サブ）のレベルが1上がる！レア'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体友情強化注射'; this.description = '仲間全員の友情コンボのレベルが1上がる！激レア！'; }
-                else if (type === 'friendship_normal') { this.emoji = '🫛'; this.color = '#607d8b'; this.name = '豆粒友情'; this.description = '小さな弾を8発放つ基本の友情コンボ！'; }
+                else if (type === 'friendship_normal') { this.emoji = '🐿️'; this.color = '#607d8b'; this.name = '豆粒友情'; this.description = '小さな弾を8発放つ基本の友情コンボ！'; }
                 else if (type === 'friendship_sixteen_ring') { this.emoji = '◎'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
                 else if (type === 'friendship_white_light') { this.emoji = '◉'; this.color = '#e0f0ff'; this.name = '白い光'; this.description = '自身の周りに白い光ゾーンが広がり範囲にダメージ！'; }
                 else if (type === 'friendship_glow_homing') { this.emoji = '⚕'; this.color = '#aaddff'; this.name = '発光群'; this.description = '高速の白い光ホーミングビームが敵を追う！'; }
@@ -2436,7 +2436,7 @@
                     else if (this.friendshipType === 'heal') icon = '❤️';
                     else if (this.friendshipType === 'machinegun') icon = '🔫';
                     else if (this.friendshipType === 'energy') icon = '🧿';
-                    else if (this.friendshipType === 'normal_shot') icon = '🫛';
+                    else if (this.friendshipType === 'normal_shot') icon = '🐿️';
                     else if (this.friendshipType === 'sixteen_ring') icon = '◎';
                     else if (this.friendshipType === 'white_light') icon = '◉';
                     else if (this.friendshipType === 'glow_homing') icon = '⚕';
@@ -3778,7 +3778,7 @@
             setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
         }
         
-        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'🫛', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
+        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'🧿', normal_shot:'🐿️', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
         const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'友情・回復', machinegun:'マシンガン', energy:'エナジーサークル', normal_shot:'豆粒友情', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
 
         function iconBar(type, level) {
