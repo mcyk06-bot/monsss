@@ -1123,15 +1123,17 @@
         let canvasSize = resizeCanvas();
         
         window.addEventListener('resize', () => {
+            // キャラの論理座標（400x450固定）はリサイズで変わらないため
+            // repositionMarbles() は呼ばない（呼ぶと配置がリセットされるバグになる）
             canvasSize = resizeCanvas();
-            if (playerMarbles.length > 0) repositionMarbles();
         });
         
         window.addEventListener('orientationchange', () => {
+            // iOSで orientationchange 後にinnerWidthが確定するまで少し待つ
+            // こちらも repositionMarbles() は呼ばない
             setTimeout(() => {
                 canvasSize = resizeCanvas();
-                if (playerMarbles.length > 0) repositionMarbles();
-            }, 100);
+            }, 300);
         });
         
         document.getElementById('helpBtn').addEventListener('click', () => {
@@ -3996,6 +3998,17 @@
         canvas.addEventListener('touchmove', handleMove, { passive: false });
         canvas.addEventListener('touchend', handleEnd);
         canvas.addEventListener('touchcancel', handleEnd);
+
+        // 最初のタッチ/クリック時に AudioContext と BGM を確実に再開
+        // （iOSはユーザー操作がないと音声を再生できないため）
+        function resumeOnUserGesture() {
+            if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+            if (bgmEnabled && bgmAudio && bgmAudio.paused) {
+                bgmAudio.play().catch(() => {});
+            }
+        }
+        document.addEventListener('touchstart', resumeOnUserGesture, { once: false });
+        document.addEventListener('mousedown', resumeOnUserGesture, { once: false });
         
         document.getElementById('resetBtn').addEventListener('click', initGame);
 
@@ -4022,10 +4035,12 @@
             btn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
             btn.classList.toggle('active-btn', seEnabled);
             if (seEnabled) resumeAudio();
+            saveSettings();
         });
         document.getElementById('seVolSlider').addEventListener('input', (e) => {
             seVolume = e.target.value / 100;
             masterGain.gain.value = seVolume;
+            saveSettings();
         });
 
         // BGM
@@ -4035,10 +4050,12 @@
             btn.textContent = bgmEnabled ? '▶️ BGM' : '🎵 BGM';
             btn.classList.toggle('active-btn', bgmEnabled);
             if (bgmEnabled) { startBGM(); } else { stopBGM(); }
+            saveSettings();
         });
         document.getElementById('bgmVolSlider').addEventListener('input', (e) => {
             bgmVolume = e.target.value / 100;
             if (bgmAudio) bgmAudio.volume = bgmVolume;
+            saveSettings();
         });
 
         document.getElementById('lotteryAnimBtn').addEventListener('click', () => {
@@ -4046,6 +4063,7 @@
             const btn = document.getElementById('lotteryAnimBtn');
             btn.textContent = lotteryAnimEnabled ? '🎰 抽選演出' : '🎲 抽選演出';
             btn.classList.toggle('active-btn', lotteryAnimEnabled);
+            saveSettings();
         });
         
         document.getElementById('specialShotBtn').addEventListener('click', () => {
@@ -4491,11 +4509,89 @@
         let lotteryAnimEnabled = true; // 抽選演出 デフォルトON
         let bgmAudio = null; // オンにした時だけ生成
 
+        // ============================================================
+        // ⚙️ 設定の永続化（localStorage）
+        // ============================================================
+        function saveSettings() {
+            try {
+                localStorage.setItem('monsss_settings', JSON.stringify({
+                    seEnabled,
+                    bgmEnabled,
+                    seVolume,
+                    bgmVolume,
+                    lotteryAnimEnabled
+                }));
+            } catch(e) { /* プライベートブラウズ等で失敗しても無視 */ }
+        }
+
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('monsss_settings');
+                if (!saved) return;
+                const s = JSON.parse(saved);
+                seEnabled        = s.seEnabled        ?? false;
+                bgmEnabled       = s.bgmEnabled       ?? false;
+                seVolume         = s.seVolume         ?? 0.7;
+                bgmVolume        = s.bgmVolume        ?? 0.5;
+                lotteryAnimEnabled = s.lotteryAnimEnabled ?? true;
+
+                // masterGain に音量を反映
+                masterGain.gain.value = seVolume;
+
+                // UI ボタンを設定値に同期
+                const seBtn = document.getElementById('seBtn');
+                if (seBtn) {
+                    seBtn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
+                    seBtn.classList.toggle('active-btn', seEnabled);
+                }
+                const seSlider = document.getElementById('seVolSlider');
+                if (seSlider) seSlider.value = Math.round(seVolume * 100);
+
+                const bgmBtn = document.getElementById('bgmBtn');
+                if (bgmBtn) {
+                    bgmBtn.textContent = bgmEnabled ? '▶️ BGM' : '🎵 BGM';
+                    bgmBtn.classList.toggle('active-btn', bgmEnabled);
+                }
+                const bgmSlider = document.getElementById('bgmVolSlider');
+                if (bgmSlider) bgmSlider.value = Math.round(bgmVolume * 100);
+
+                const lotteryBtn = document.getElementById('lotteryAnimBtn');
+                if (lotteryBtn) {
+                    lotteryBtn.textContent = lotteryAnimEnabled ? '🎰 抽選演出' : '🎲 抽選演出';
+                    lotteryBtn.classList.toggle('active-btn', lotteryAnimEnabled);
+                }
+
+                // BGMが有効だった場合は再開（ユーザー操作後でないと再生できないので
+                // ここでは startBGM() はしない。最初のタッチ後に復帰する）
+            } catch(e) { /* 無視 */ }
+        }
+
+        // ============================================================
+        // 📱 バックグラウンド復帰時の音声再開
+        // ============================================================
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // AudioContext（SE用）を再開
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => {});
+                }
+                // BGMが有効で止まっていたら再開
+                if (bgmEnabled && bgmAudio && bgmAudio.paused) {
+                    bgmAudio.play().catch(() => {});
+                }
+            } else {
+                // バックグラウンドに入ったらBGMを一時停止（省電力・他アプリ音楽と干渉軽減）
+                if (bgmAudio && !bgmAudio.paused) {
+                    bgmAudio.pause();
+                }
+            }
+        });
+
         function startBGM() {
             if (!bgmAudio) {
                 bgmAudio = new Audio('zzz.mp3');
                 bgmAudio.loop = true;
-                bgmAudio.volume = 0.4;
+                bgmAudio.volume = bgmVolume;
             }
             bgmAudio.play().catch(() => {});
         }
@@ -5062,6 +5158,7 @@
             }
         }
 
+        loadSettings(); // 保存済み設定を復元（SE/BGM ON-OFF・音量・抽選演出）
         initGame();
         update();
     </script>

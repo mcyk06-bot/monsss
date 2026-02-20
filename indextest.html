@@ -554,10 +554,10 @@
         
         .item-modal-content {
             background: white;
-            padding: 30px;
-            border-radius: 20px;
+            padding: 16px 16px 12px;
+            border-radius: 18px;
             max-width: 400px;
-            width: 90%;
+            width: 92%;
             animation: itemModalIn 0.3s ease-out;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
@@ -569,71 +569,75 @@
         
         .item-modal-header {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         
         .item-emoji {
-            font-size: 70px;
-            margin-bottom: 10px;
+            font-size: 40px;
             animation: floatEmoji 2s infinite ease-in-out;
+            flex-shrink: 0;
         }
 
         @keyframes floatEmoji {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            50% { transform: translateY(-5px); }
         }
         
         .item-name {
-            font-size: 28px;
+            font-size: 22px;
             font-weight: bold;
             color: #d32f2f;
-            margin-bottom: 10px;
+            margin: 0;
             text-shadow: 1px 1px 0px rgba(0,0,0,0.1);
+            line-height: 1.2;
         }
         
         .item-description {
-            font-size: 14px;
+            font-size: 12px;
             color: #555;
-            line-height: 1.6;
+            line-height: 1.4;
             text-align: center;
-            margin-bottom: 20px;
-            padding: 10px;
+            margin-bottom: 8px;
+            padding: 6px 8px;
             background: #f9f9f9;
-            border-radius: 10px;
+            border-radius: 8px;
         }
         
         .item-character-info {
-            background: linear-gradient(to right, #e3f2fd, #bbdefb);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            background: #f4f8ff;
+            padding: 8px 10px;
+            border-radius: 10px;
+            margin-bottom: 8px;
             text-align: center;
-            border: 2px solid #64b5f6;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1.5px solid #b3d4f5;
         }
 
         .current-equip-label {
             background: #1565c0;
             color: white;
-            padding: 4px 12px;
-            border-radius: 15px;
-            font-size: 12px;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: bold;
             display: inline-block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .item-modal-buttons {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
         
         .item-btn {
             flex: 1;
-            padding: 15px;
+            padding: 10px 6px;
             border: none;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.2s;
@@ -698,6 +702,86 @@
             border-top: 1px dashed #ccc;
             padding-top: 5px;
         }
+
+        /* ====== 装備しない抽選演出パネル ====== */
+        #lotteryPanel {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 10px 10px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-radius: 14px;
+            margin-top: 4px;
+            border: 2px solid #e94560;
+            position: relative;
+        }
+        #lotteryTitle {
+            font-size: 11px;
+            font-weight: bold;
+            color: #aaa;
+            letter-spacing: 2px;
+        }
+        #lotterySlot {
+            width: 100%;
+            height: 60px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #lotterySlotText {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            padding: 0 8px;
+            line-height: 1.3;
+            text-shadow: 0 0 12px rgba(255,200,0,0.8);
+        }
+        #lotteryResult {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            animation: resultReveal 0.4s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes resultReveal {
+            from { transform: scale(0.6); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        #lotteryResultIcon { font-size: 38px; }
+        #lotteryResultText {
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            line-height: 1.4;
+        }
+        #lotteryResultRarity {
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .rarity-miracle { background: linear-gradient(90deg,#f39c12,#e74c3c); color:#fff; }
+        .rarity-rare    { background: #9b59b6; color: #fff; }
+        .rarity-normal  { background: #555; color: #ddd; }
+        #lotteryOkBtn {
+            padding: 8px 28px;
+            background: linear-gradient(135deg,#667eea,#764ba2);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -754,8 +838,8 @@
                 <div class="hp-text" id="hpText">10 / 10</div>
             </div>
             <!-- キャラ友情状況 + 大号令ボタン -->
-            <div style="display:flex; gap:0; margin-top:5px; align-items:stretch; padding: 0 4px;">
-                <div id="friendshipStatusBar" style="display:flex; flex:1;"></div>
+            <div style="display:flex; gap:4px; margin-top:5px; align-items:stretch; padding: 0 4px;">
+                <div id="friendshipStatusBar" style="display:flex; flex:1; gap:4px;"></div>
                 <div style="flex-shrink:0;">
                     <button class="special-shot-btn" id="specialShotBtn" disabled style="height:100%;">
                         <span id="specialShotBtnText">大号令</span>
@@ -778,6 +862,7 @@
             <button id="bgmBtn">🎵 BGM</button>
             <input type="range" id="bgmVolSlider" min="0" max="100" value="40">
         </div>
+        <button id="lotteryAnimBtn" class="active-btn">🎰 抽選演出</button>
     </div>
     <div class="message" id="message"></div>
     
@@ -815,8 +900,8 @@
                 🛼 <strong>スピードアップ</strong>　全員の速度+0.1（最大+2.0）<br>
                 ⏳ <strong>砂時計</strong>　大号令カウント+4<br>
                 💀 <strong>デス</strong>　超激レア！敵を全滅させる<br>
-                💊 <strong>友情強化薬</strong>　レア(2%)！自分の友情(メイン/サブ)Lv+1<br>
-                💉 <strong>全体友情強化注射</strong>　激レア(1%)！全員の友情Lv+1<br>
+                💊 <strong>友情強化薬</strong>　レア！自分の友情(メイン/サブ)Lv+1<br>
+                💉 <strong>全体友情強化注射</strong>　激レア！全員の友情Lv+1<br>
                 🚀 <strong>ホーミングミサイル</strong>　友情攻撃が敵を自動追尾<br>
                 ⚡ <strong>レーザービーム</strong>　友情攻撃が貫通レーザーに<br>
                 ❤️‍🩹 <strong>友情・回復</strong>　友情攻撃でHP回復<br>
@@ -829,19 +914,6 @@
         </div>
     </div>
 
-    <div id="stageClearModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center;">
-        <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 90%; animation: scaleIn 0.3s ease;">
-            <div style="font-size: 28px; font-weight: bold; color: #667eea; margin-bottom: 20px;">🎉 ステージクリア！</div>
-            <div style="margin: 20px 0; font-size: 16px; color: #333;">
-                <div id="clearStageNum"></div>
-                <div id="clearTurns"></div>
-                <div id="clearDefeated"></div>
-                <div id="hpRecovered"></div>
-            </div>
-            <button id="continueBtn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; margin-top: 20px;">次のステージへ →</button>
-        </div>
-    </div>
-    
     <div class="item-modal" id="itemModal">
         <div class="item-modal-content">
             <div class="item-modal-header">
@@ -855,7 +927,7 @@
                 <div id="itemFriendshipDetail" style="font-size: 14px; color: #333; font-weight: bold;"></div>
 
                 <!-- メイン友情ステータス -->
-                <div id="mainFriendshipInfo" style="background:#f8f9fa; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #ddd; text-align:center;">
+                <div id="mainFriendshipInfo" style="background:#f8f9fa; padding:8px; border-radius:8px; margin-top:6px; border:1px solid #ddd; text-align:center;">
                 </div>
 
                 <!-- サブ友情解放バナー（Lv5到達時のみ表示） -->
@@ -864,7 +936,7 @@
                 </div>
 
                 <!-- サブ友情ステータス（解放済みのみ表示） -->
-                <div id="subFriendshipInfo" style="display:none; background:#fff3e0; padding:10px; border-radius:8px; margin-top:8px; border:2px solid #ff9800; text-align:center;">
+                <div id="subFriendshipInfo" style="display:none; background:#f8f9fa; padding:8px; border-radius:8px; margin-top:6px; border:1.5px solid #ddd; text-align:center;">
                 </div>
             </div>
             <div class="item-modal-buttons" id="itemModalButtons">
@@ -872,6 +944,17 @@
                 <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">サブに装備 ⚡</button>
                 <button class="item-btn" id="itemGiveBtn" style="display:none; background:linear-gradient(135deg,#00bcd4,#0097a7); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">仲間に渡す 🤝</button>
                 <button class="item-btn item-btn-cancel" id="itemCancelBtn">装備しない ✗</button>
+            </div>
+            <!-- 抽選演出パネル（装備しない時に表示） -->
+            <div id="lotteryPanel">
+                <div id="lotteryTitle">🎰 おたのしみ抽選</div>
+                <div id="lotterySlot"><div id="lotterySlotText">...</div></div>
+                <div id="lotteryResult">
+                    <div id="lotteryResultIcon">🎁</div>
+                    <div id="lotteryResultText">結果テキスト</div>
+                    <div id="lotteryResultRarity" class="rarity-normal">NORMAL</div>
+                </div>
+                <button id="lotteryOkBtn">OK！</button>
             </div>
         </div>
     </div>
@@ -883,6 +966,19 @@
             <div id="giveItemLabel" style="font-size:13px; color:#666; margin-bottom:14px;"></div>
             <div id="giveMemberList" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;"></div>
             <button onclick="document.getElementById('giveModal').style.display='none'; document.getElementById('itemModal').classList.add('active');" style="background:#aaa; color:white; border:none; border-radius:8px; padding:10px 24px; font-size:13px; font-weight:bold; cursor:pointer;">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- 上書き確認モーダル -->
+    <div id="overwriteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:3500; justify-content:center; align-items:center;">
+        <div style="background:white; border-radius:16px; padding:20px 18px; max-width:320px; width:88%; text-align:center; animation: itemModalIn 0.2s ease-out;">
+            <div style="font-size:22px; margin-bottom:6px;">⚠️</div>
+            <div style="font-size:15px; font-weight:bold; color:#333; margin-bottom:10px;">友情を上書きしますか？</div>
+            <div id="overwriteDetail" style="font-size:12px; color:#666; background:#f5f5f5; border-radius:8px; padding:10px; margin-bottom:14px; line-height:1.6;"></div>
+            <div style="display:flex; gap:10px;">
+                <button id="overwriteCancelBtn" style="flex:1; padding:10px; background:#e0e0e0; color:#555; border:none; border-radius:10px; font-size:13px; font-weight:bold; cursor:pointer;">やめる</button>
+                <button id="overwriteConfirmBtn" style="flex:1; padding:10px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; border-radius:10px; font-size:13px; font-weight:bold; cursor:pointer;">上書きする</button>
+            </div>
         </div>
     </div>
 
@@ -1027,15 +1123,17 @@
         let canvasSize = resizeCanvas();
         
         window.addEventListener('resize', () => {
+            // キャラの論理座標（400x450固定）はリサイズで変わらないため
+            // repositionMarbles() は呼ばない（呼ぶと配置がリセットされるバグになる）
             canvasSize = resizeCanvas();
-            if (playerMarbles.length > 0) repositionMarbles();
         });
         
         window.addEventListener('orientationchange', () => {
+            // iOSで orientationchange 後にinnerWidthが確定するまで少し待つ
+            // こちらも repositionMarbles() は呼ばない
             setTimeout(() => {
                 canvasSize = resizeCanvas();
-                if (playerMarbles.length > 0) repositionMarbles();
-            }, 100);
+            }, 300);
         });
         
         document.getElementById('helpBtn').addEventListener('click', () => {
@@ -1057,19 +1155,19 @@
         const CHAR_NAMES = ['マイク', 'ホッパー', 'イレブン', 'ダスティン'];
         
         const MARBLE_TYPES = {
-            NORMAL: { name: 'ノーマル', color: '#4CAF50', secondaryColor: '#81C784', radius: 23, damage: 1.5, attackMult: 1.00, speedMult: 1.0,  friction: 0.99,  symbol: '●' },
-            POWER:  { name: 'パワー',   color: '#f44336', secondaryColor: '#e57373', radius: 23, damage: 1.5, attackMult: 1.25, speedMult: 0.7,  friction: 0.97,  symbol: '◆' },
-            SPEED:  { name: 'スピード', color: '#2196F3', secondaryColor: '#64B5F6', radius: 23, damage: 1.5, attackMult: 0.85, speedMult: 1.5,  friction: 0.995, symbol: '★' }
+            NORMAL: { name: 'ノーマル', color: '#4CAF50', secondaryColor: '#81C784', radius: 28, damage: 1.5, attackMult: 1.00, speedMult: 1.0,  friction: 0.99,  symbol: '●' },
+            POWER:  { name: 'パワー',   color: '#f44336', secondaryColor: '#e57373', radius: 28, damage: 1.5, attackMult: 1.25, speedMult: 0.7,  friction: 0.97,  symbol: '◆' },
+            SPEED:  { name: 'スピード', color: '#2196F3', secondaryColor: '#64B5F6', radius: 28, damage: 1.5, attackMult: 0.85, speedMult: 1.5,  friction: 0.995, symbol: '★' }
         };
         
         const ENEMY_SIZES = {
-            SMALL:  { name: '小', radius: 20, maxHp: 1, color: '#43a047', secondaryColor: '#66bb6a' },
-            MEDIUM: { name: '中', radius: 25, maxHp: 3, color: '#fb8c00', secondaryColor: '#ffa726' },
+            SMALL:  { name: '小', radius: 28, maxHp: 1, color: '#43a047', secondaryColor: '#66bb6a' },
+            MEDIUM: { name: '中', radius: 35, maxHp: 3, color: '#fb8c00', secondaryColor: '#ffa726' },
             LARGE:  { name: '大', radius: 40, maxHp: 5, color: '#e53935', secondaryColor: '#ef5350' }
         };
         const DARK_ENEMY_SIZES = {
-            SMALL:  { name: '小', radius: 20, maxHp: 2,  color: '#4a0080', secondaryColor: '#9b00cc', isDark: true },
-            MEDIUM: { name: '中', radius: 25, maxHp: 5,  color: '#2a0050', secondaryColor: '#7700aa', isDark: true },
+            SMALL:  { name: '小', radius: 28, maxHp: 2,  color: '#4a0080', secondaryColor: '#9b00cc', isDark: true },
+            MEDIUM: { name: '中', radius: 35, maxHp: 5,  color: '#2a0050', secondaryColor: '#7700aa', isDark: true },
             LARGE:  { name: '大', radius: 40, maxHp: 10, color: '#1a0040', secondaryColor: '#5500aa', isDark: true }
         };
         
@@ -1092,6 +1190,7 @@
         let totalTurns = 0;
         let totalDefeated = 0;
         let isStageClear = false;
+        let pendingStageClear = false; // 全滅確認済み、キャラ停止待ち
         
         let teamHP = 10;
         let MAX_TEAM_HP = 10;
@@ -1111,6 +1210,9 @@
         let currentItem = null;
         let currentMarble = null;
         let isPaused = false;
+        
+        let stageEnemyTurnsCount = 0; // このステージで敵ターンが何回起きたか
+        let nextStageBonusItems = 0;  // 次ステージで追加スポーンするアイテム数
         
         let friendshipAttackHistory = new Set();
         
@@ -1554,8 +1656,13 @@
 
         class EnergySurgeEffect {
             constructor(x, y) {
-                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 75;
-                this.rings = [{delay: 0, maxR: 270}, {delay: 10, maxR: 310}, {delay: 20, maxR: 350}];
+                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 90;
+                // 画面対角線より大きく広がるように maxR を大きく設定
+                this.rings = [
+                    {delay: 0,  maxR: 900, color1: [0,240,255], color2: [140,0,255]},
+                    {delay: 12, maxR: 950, color1: [0,200,255], color2: [180,40,255]},
+                    {delay: 24, maxR: 1000, color1: [80,255,255], color2: [220,80,255]},
+                ];
             }
             draw() {
                 this.frame++;
@@ -1565,28 +1672,41 @@
                     if (f <= 0) continue;
                     const dur = this.maxFrames - ring.delay;
                     const p = Math.min(f / dur, 1);
-                    const r = ring.maxR * Math.pow(p, 0.55);
-                    const alpha = p < 0.25 ? p / 0.25 : (1 - p) * 1.3;
+                    // イーズインで勢いよく広がる
+                    const r = ring.maxR * Math.pow(p, 0.5);
+                    // フェードインだけ、消えない（画面外に飛び出す）
+                    const alpha = p < 0.15 ? p / 0.15 : Math.max(0, 1 - (p - 0.7) / 0.3);
                     if (alpha <= 0) continue;
-                    const gr = ctx.createRadialGradient(this.x, this.y, r*0.7, this.x, this.y, r);
-                    gr.addColorStop(0, `rgba(0,220,255,0)`);
-                    gr.addColorStop(0.5,`rgba(0,200,255,${alpha*0.45})`);
-                    gr.addColorStop(0.82,`rgba(160,60,255,${alpha*0.8})`);
-                    gr.addColorStop(1, `rgba(255,255,255,0)`);
+
+                    const [r1,g1,b1] = ring.color1;
+                    const [r2,g2,b2] = ring.color2;
+                    const lineW = Math.max(18 - p * 12, 4);
+
+                    // 輝くリング本体
                     ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
-                    ctx.fillStyle = gr; ctx.fill();
-                    ctx.strokeStyle = `rgba(180,80,255,${alpha * 0.9})`; ctx.lineWidth = Math.max(5 - p * 3, 1);
-                    ctx.shadowColor = `rgba(0,200,255,${alpha})`; ctx.shadowBlur = 12;
-                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2); ctx.stroke();
+                    ctx.strokeStyle = `rgba(${r1},${g1},${b1},${alpha * 0.9})`;
+                    ctx.lineWidth = lineW;
+                    ctx.shadowColor = `rgba(${r1},${g1},${b1},1)`;
+                    ctx.shadowBlur = 28;
+                    ctx.stroke();
+
+                    // 外側グロー
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(${r2},${g2},${b2},${alpha * 0.6})`;
+                    ctx.lineWidth = lineW * 2.5;
+                    ctx.shadowColor = `rgba(${r2},${g2},${b2},0.8)`;
+                    ctx.shadowBlur = 40;
+                    ctx.stroke();
                     ctx.shadowBlur = 0;
                 }
-                if (this.frame < 18) {
-                    const fa = 1 - this.frame / 18;
-                    const fg = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 65);
+                // 中心フラッシュ
+                if (this.frame < 20) {
+                    const fa = 1 - this.frame / 20;
+                    const fg = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 90);
                     fg.addColorStop(0, `rgba(255,255,255,${fa})`);
-                    fg.addColorStop(0.5,`rgba(80,200,255,${fa*0.6})`);
+                    fg.addColorStop(0.4, `rgba(80,220,255,${fa*0.8})`);
                     fg.addColorStop(1, `rgba(80,200,255,0)`);
-                    ctx.beginPath(); ctx.arc(this.x, this.y, 65, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(this.x, this.y, 90, 0, Math.PI * 2);
                     ctx.fillStyle = fg; ctx.fill();
                 }
                 ctx.restore();
@@ -1809,7 +1929,7 @@
 
         class Item {
             constructor(x, y, type) {
-                this.x = x; this.y = y; this.type = type; this.radius = 15; this.frame = 0; this.collected = false;
+                this.x = x; this.y = y; this.type = type; this.radius = 22; this.frame = 0; this.collected = false;
                 if (type === 'hp') { this.emoji = '❤️'; this.color = '#ff1744'; this.name = 'HP上限アップ'; this.description = 'HP上限が4増加します'; }
                 else if (type === 'hourglass') { this.emoji = '⏳'; this.color = '#ff9800'; this.name = '砂時計'; this.description = '大号令カウントを4短縮します！'; }
                 else if (type === 'attack') { this.emoji = '💪'; this.color = '#ffd600'; this.name = '攻撃力アップ'; this.description = '攻撃力が0.5増加します'; }
@@ -1838,7 +1958,7 @@
                 gradient.addColorStop(0, this.color + 'aa'); gradient.addColorStop(0.5, this.color + '44'); gradient.addColorStop(1, this.color + '00');
                 ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize * 1.5, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = this.color + 'dd'; ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize, 0, Math.PI * 2); ctx.fill();
-                ctx.font = 'bold 24px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'white';
+                ctx.font = 'bold 28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'white';
                 ctx.fillText(this.emoji, this.x, currentY);
                 if (this.frame % 20 < 10) {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = 'bold 12px Arial';
@@ -2396,7 +2516,7 @@
                             }
                         }
                         updateUI();
-                        if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                        if (enemies.length === 0) pendingStageClear = true;
                     }, 350);
                     return [];
                 } else if (this.friendshipType === 'normal_shot') {
@@ -2578,9 +2698,9 @@
         }
 
         function repositionMarbles() {
-            const spacing = Math.min(80, canvasSize.width / 5);
+            const spacing = Math.min(90, canvasSize.width / 5);
             const startX = (canvasSize.width - (spacing * 3)) / 2;
-            const yPos = canvasSize.height - 50;
+            const yPos = canvasSize.height - 55;
             for (let i = 0; i < playerMarbles.length; i++) {
                 playerMarbles[i].x = startX + (i * spacing); playerMarbles[i].y = yPos;
                 playerMarbles[i].vx = 0; playerMarbles[i].vy = 0;
@@ -2592,6 +2712,7 @@
             currentStage = 1; totalTurns = 0; totalDefeated = 0;
             MAX_TEAM_HP = 10; teamHP = MAX_TEAM_HP; playerAttackBonus = 0; playerSpeedBonus = 0;
             specialShotCount = 0; isSpecialShotReady = false; isSpecialShotActive = false;
+            stageEnemyTurnsCount = 0; nextStageBonusItems = 0;
             playerMarbles = [];
             startStage();
         }
@@ -2626,7 +2747,7 @@
                     itemType = 'friendship_homing';    // 7%
                 } else if (rand < 0.84) {
                     itemType = 'friendship_laser';     // 7%
-                } else if (currentStage >= 1) {        // テスト用（本番は>=40）新友情が混入
+                } else if (currentStage >= 40) {        // 40ステージ以降：新友情が混入
                     const r2 = Math.random();
                     if (r2 < 0.25) itemType = 'friendship_sixteen_ring';
                     else if (r2 < 0.50) itemType = 'friendship_white_light';
@@ -2657,9 +2778,9 @@
             
             if (playerMarbles.length === 0) {
                 const types = [MARBLE_TYPES.NORMAL, MARBLE_TYPES.POWER, MARBLE_TYPES.SPEED, MARBLE_TYPES.NORMAL];
-                const spacing = Math.min(80, canvasSize.width / 5);
+                const spacing = Math.min(90, canvasSize.width / 5);
                 const startX = (canvasSize.width - (spacing * 3)) / 2;
-                const yPos = canvasSize.height - 50;
+                const yPos = canvasSize.height - 55;
                 for (let i = 0; i < MAX_MARBLES; i++) {
                     const m = new Marble(startX + (i * spacing), yPos, types[i]);
                     m.characterIndex = i;
@@ -2673,6 +2794,7 @@
             stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; enemyBeams = []; items = [];
             defeated = 0; currentTurn = 0; friendshipAttackHistory = new Set();
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false;
+            stageEnemyTurnsCount = 0; pendingStageClear = false;
             
             const isBossStage = currentStage % 5 === 0;
             const isDarkStage = currentStage >= 50; // 50ステージ以降
@@ -2681,8 +2803,8 @@
                 const normalBossHp = 15 + currentStage * 1.5;
                 const darkBossHp = Math.floor(normalBossHp * 1.5); // 通常の1.5倍
                 const bossSizeBase = isBossDark
-                    ? { name: 'ボス', radius: 55, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
-                    : { name: 'ボス', radius: 50, maxHp: normalBossHp, color: '#8b0000', secondaryColor: '#ff0000' };
+                    ? { name: 'ボス', radius: 83, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
+                    : { name: 'ボス', radius: 75, maxHp: normalBossHp, color: '#8b0000', secondaryColor: '#ff0000' };
                 const boss = new Enemy(canvasSize.width / 2, 150, bossSizeBase);
                 boss.isBoss = true; enemies.push(boss);
                 const minionCount = Math.min(2 + Math.floor(currentStage / 5), 3);
@@ -2728,6 +2850,9 @@
             }
             
             spawnItems(1.5);
+            // 前ステージ1手クリアボーナス：アイテム3つ追加スポーン
+            for (let _bi = 0; _bi < nextStageBonusItems; _bi++) spawnItems(999);
+            nextStageBonusItems = 0;
             updateUI(); updateStageDisplay(); updateHPBar(); updateTurnIndicator();
         }
         
@@ -2743,22 +2868,60 @@
             }
         }
         
+        // ステージクリアアニメーション状態
+        let stageClearAnim = null; // { phase, y, vy, alpha, timer, text, subText }
+
         function showStageClear() {
+            if (isStageClear) return; // 既にクリア処理済みなら無視（多重呼び出し防止）
             isStageClear = true;
             playStageClearSound();
-            const modal = document.getElementById('stageClearModal');
-            const hpRecovery = 3;
+            const hpRecovery = Math.floor(MAX_TEAM_HP * 0.3);
             teamHP = Math.min(MAX_TEAM_HP, teamHP + hpRecovery); updateHPBar();
+            const oneShotClear = stageEnemyTurnsCount === 0;
+            if (oneShotClear) nextStageBonusItems = 3;
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
                 if (specialShotCount === SPECIAL_SHOT_MAX) updateSpecialShotUI();
             }
             updateSpecialShotUI();
-            document.getElementById('clearStageNum').textContent = `ステージ ${currentStage} クリア！`;
-            document.getElementById('clearTurns').textContent = `このステージのターン数: ${currentTurn + 1}`;
-            document.getElementById('clearDefeated').textContent = `撃破数: ${defeated}体`;
-            document.getElementById('hpRecovered').textContent = `HP回復: +${hpRecovery} (現在: ${teamHP}/${MAX_TEAM_HP})`;
-            modal.style.display = 'flex';
+
+            const mainText = `STAGE ${currentStage} CLEAR!`;
+            const subText = oneShotClear ? '🎯 1手クリア！' : '';
+
+            // モーダル類が閉じてから演出開始する関数
+            function startClearAnimWhenReady() {
+                if (stageClearAnim) return; // 既に演出開始済みなら無視
+                const itemModalOpen = document.getElementById('itemModal').classList.contains('active');
+                const overwriteModalOpen = document.getElementById('overwriteModal').style.display === 'flex';
+                const lotteryVisible = document.getElementById('lotteryPanel').style.display === 'flex';
+                if (itemModalOpen || overwriteModalOpen || lotteryVisible) {
+                    // モーダルが開いている間はポーリングして待つ
+                    setTimeout(startClearAnimWhenReady, 200);
+                    return;
+                }
+
+                // アニメーション開始
+                stageClearAnim = {
+                    phase: 'rise',
+                    y: canvasSize.height + 60,
+                    vy: -35,
+                    alpha: 1,
+                    timer: 0,
+                    text: mainText,
+                    subText: subText,
+                };
+
+                // 2.2秒後に次のステージへ自動遷移
+                const clearStage = currentStage; // クロージャでステージ番号を保持
+                setTimeout(() => {
+                    if (currentStage !== clearStage) return; // 既に別のステージに遷移済みなら無視
+                    isStageClear = false; currentStage++;
+                    stageClearAnim = null;
+                    try { startStage(); } catch(e) { console.error(e); }
+                }, 2200);
+            }
+
+            startClearAnimWhenReady();
         }
         
         function updateHPBar() {
@@ -2828,6 +2991,7 @@
                         const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                         const type = pickAttackType(attacker);
                         if (type === 'dark_flame') {
+                            playEnemyAttackSound('dark_flame');
                             showMessage('🔥 黒い炎！', 'danger');
                             const proj = new DarkFlameProjectile(attacker.x, attacker.y, target.x, target.y);
                             enemyBeams.push(proj);
@@ -2847,6 +3011,7 @@
                             }, 16);
                             setTimeout(resolve, 1500);
                         } else if (type === 'thorns') {
+                            playEnemyAttackSound('thorns');
                             showMessage('🌿 イバラが這い回る！', 'danger');
                             const thorns = new ThornsEffect();
                             enemyBeams.push(thorns);
@@ -2861,6 +3026,7 @@
                             }, 800);
                             setTimeout(resolve, 2200);
                         } else if (type === 'instakill') {
+                            playEnemyAttackSound('instakill');
                             showMessage('⚡ 瞬殺レーザー！', 'danger');
                             const laser = new InstakillLaser(attacker.x, attacker.y, target.x, target.y);
                             enemyBeams.push(laser);
@@ -2887,6 +3053,7 @@
                             }, 600);
                             setTimeout(resolve, 1800);
                         } else if (type === 'poison_dome') {
+                            playEnemyAttackSound('poison_dome');
                             showMessage('🔮 ポイズンドーム！', 'danger');
                             const dome = new PoisonDome(attacker);
                             enemyBeams.push(dome);
@@ -3005,8 +3172,12 @@
 
         function endEnemyTurn() {
             isEnemyTurn = false; currentTurn++; totalTurns++;
-            spawnItems();
-            if (currentStage <= 20 && Math.random() < 0.50) spawnItems();
+            // 敵が残っている時だけカウントとアイテムスポーン（クリア済みステージには発生させない）
+            if (enemies.length > 0) {
+                stageEnemyTurnsCount++;
+                spawnItems();
+                if (currentStage <= 20 && Math.random() < 0.50) spawnItems();
+            }
             if (specialShotCount < SPECIAL_SHOT_MAX) {
                 specialShotCount++;
             }
@@ -3017,6 +3188,11 @@
                 stoppedMarbles = [];
             }
             updateTurnIndicator(); updateUI();
+            // 敵ターン中に全滅した場合もここでクリアを発火
+            if (pendingStageClear && !isStageClear) {
+                pendingStageClear = false;
+                setTimeout(() => showStageClear(), 300);
+            }
         }
         
         function checkCollision(m1, m2) {
@@ -3074,7 +3250,7 @@
         function update() {
             if (isPaused) { requestAnimationFrame(update); return; }
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
-            ctx.fillStyle = currentStage >= 1 ? '#363554' : '#2f662a'; // テスト用（本番は>=50）
+            ctx.fillStyle = currentStage >= 50 ? '#363554' : '#2f662a';
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
             
             for (let i = enemyBeams.length - 1; i >= 0; i--) { enemyBeams[i].draw(); if (enemyBeams[i].isComplete()) enemyBeams.splice(i, 1); }
@@ -3093,7 +3269,7 @@
                                     explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
                                     enemies.splice(j, 1);
                                     updateUI();
-                                    if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                    if (enemies.length === 0) pendingStageClear = true;
                                 }
                             }
                         }
@@ -3133,7 +3309,7 @@
                                                 explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
                                                 enemies.splice(j, 1);
                                                 updateUI();
-                                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                                if (enemies.length === 0) pendingStageClear = true;
                                             }
                                         }
                                     }
@@ -3160,7 +3336,7 @@
                                 explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                                 enemies.splice(j, 1);
                                 updateUI();
-                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                if (enemies.length === 0) pendingStageClear = true;
                             }
                             bullets.splice(i, 1); break;
                         }
@@ -3190,7 +3366,7 @@
                                 showMessage(`💚 HP回復！ +${healAmount}`, 'success'); updateHPBar();
                             }
                             updateUI();
-                            if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                            if (enemies.length === 0) pendingStageClear = true;
                         }
                         bullets.splice(i, 1); break;
                     }
@@ -3267,7 +3443,7 @@
                                 setTimeout(() => {
                                     enemies.forEach(e => { explosions.push(new Explosion(e.x, e.y, e.radius, e.color)); defeated++; totalDefeated++; });
                                     enemies = []; showMessage('💀 デス発動！敵を全滅させました！', 'danger');
-                                    ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 1000))(currentStage);
+                                    pendingStageClear = true;
                                 }, 1000);
                             } else if (item.type === 'friendship_up_self') {
                                 // 自分の友情レベルを1上げる
@@ -3345,7 +3521,7 @@
                                     updateHPBar();
                                 }
                                 updateUI();
-                                if (enemies.length === 0) ((s) => setTimeout(() => { if (currentStage === s) showStageClear(); }, 500))(currentStage);
+                                if (enemies.length === 0) pendingStageClear = true;
                             }
                         }
                     }
@@ -3426,10 +3602,79 @@
                         marble.isSpecialShot = false;
                     }
                     activeMarbles = [];
-                    setTimeout(() => executeEnemyAttack(), 500);
+                    if (pendingStageClear) {
+                        pendingStageClear = false;
+                        setTimeout(() => showStageClear(), 300);
+                    } else {
+                        setTimeout(() => executeEnemyAttack(), 500);
+                    }
                 }
             }
             
+            // ====== ステージクリアアニメーション描画 ======
+            if (stageClearAnim) {
+                const anim = stageClearAnim;
+                const cx = canvasSize.width / 2;
+                const centerY = canvasSize.height / 2;
+
+                // 物理更新（centerYが「床」、上方向へ跳ね返る）
+                if (anim.phase === 'rise') {
+                    anim.y += anim.vy; // vy=-35で上昇
+                    if (anim.y <= centerY) {
+                        anim.y = centerY;
+                        anim.vy = -Math.abs(anim.vy) * 0.7; // 上方向に跳ね返る
+                        anim.phase = 'bounce';
+                    }
+                } else if (anim.phase === 'bounce') {
+                    anim.vy += 2.2; // 重力（下向きに加速）
+                    anim.y += anim.vy;
+                    if (anim.y >= centerY) { // 床に当たったら再バウンス
+                        anim.y = centerY;
+                        anim.vy = -Math.abs(anim.vy) * 0.62;
+                        if (Math.abs(anim.vy) < 2) {
+                            anim.phase = 'fly';
+                            anim.vy = -9;
+                        }
+                    }
+                } else if (anim.phase === 'fly') {
+                    anim.vy -= 0.6;
+                    anim.y += anim.vy;
+                    anim.alpha = Math.max(0, anim.alpha - 0.022);
+                }
+
+                // 描画
+                ctx.save();
+                ctx.globalAlpha = anim.alpha;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // メインテキスト（70%サイズ）
+                const fontSize = Math.floor(canvasSize.width / 8 * 0.7);
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.strokeStyle = 'rgba(0,0,30,0.7)';
+                ctx.lineWidth = fontSize / 6;
+                ctx.strokeText(anim.text, cx, anim.y);
+                const grad = ctx.createLinearGradient(cx, anim.y - fontSize/2, cx, anim.y + fontSize/2);
+                grad.addColorStop(0, '#e8f4ff');
+                grad.addColorStop(0.4, '#ffffff');
+                grad.addColorStop(1, '#a8d4f5');
+                ctx.fillStyle = grad;
+                ctx.fillText(anim.text, cx, anim.y);
+
+                // サブテキスト（1手クリア）
+                if (anim.subText) {
+                    const subSize = Math.floor(fontSize * 0.45);
+                    ctx.font = `bold ${subSize}px Arial`;
+                    ctx.strokeStyle = 'rgba(0,0,30,0.5)';
+                    ctx.lineWidth = subSize / 5;
+                    ctx.strokeText(anim.subText, cx, anim.y + fontSize * 0.75);
+                    ctx.fillStyle = '#c8eedd';
+                    ctx.fillText(anim.subText, cx, anim.y + fontSize * 0.75);
+                }
+
+                ctx.restore();
+            }
+
             requestAnimationFrame(update);
         }
         
@@ -3454,7 +3699,7 @@
                     overflow: hidden;
                     display: flex;
                     flex-direction: column;
-                    margin: 0 2px;
+                    margin: 0;
                 `;
 
                 // キャラ画像：キャッシュcanvasから描画
@@ -3587,10 +3832,10 @@
                 const mainLv = isSameAsMain ? Math.min(marble.friendshipLevel + 1, 5) : marble.friendshipLevel;
                 const mainType = marble.friendshipType;
                 mainInfo.innerHTML = `
-                    <div style="font-size:11px;color:#888;font-weight:bold;margin-bottom:4px;">【メイン友情】</div>
-                    <div style="font-size:13px;color:#444;margin-bottom:4px;">${FRIENDSHIP_NAMES[mainType] || '未装備'}</div>
+                    <div style="font-size:11px;color:#888;font-weight:bold;margin-bottom:2px;">【メイン友情】</div>
+                    <div style="font-size:12px;color:#444;margin-bottom:2px;">${FRIENDSHIP_NAMES[mainType] || '未装備'}</div>
                     <div>${iconBar(mainType, marble.friendshipLevel)}</div>
-                    ${isSameAsMain && marble.friendshipLevel < 5 ? `<div style="font-size:11px;color:#c0392b;margin-top:4px;">装備後 → ${iconBar(newItemType, mainLv)}</div>` : ''}
+                    ${isSameAsMain && marble.friendshipLevel < 5 ? `<div style="font-size:11px;color:#c0392b;margin-top:2px;">装備後 → ${iconBar(newItemType, mainLv)}</div>` : ''}
                 `;
             } else {
                 mainInfo.innerHTML = '';
@@ -3605,12 +3850,17 @@
             const subBtn = document.getElementById('itemEquipSubBtn');
             if (marble.subFriendshipUnlocked && isFriendship) {
                 subInfo.style.display = 'block';
-                const subLv = isSameAsSub ? Math.min(marble.subFriendshipLevel + 1, 5) : marble.subFriendshipLevel;
+                const canSubLvUp = isSameAsSub && marble.subFriendshipLevel < 5;
+                // レベルアップできる時だけオレンジ、それ以外は白
+                subInfo.style.background = canSubLvUp ? '#fff3e0' : '#f8f9fa';
+                subInfo.style.border = canSubLvUp ? '1.5px solid #ff9800' : '1.5px solid #ddd';
+                const subLv = canSubLvUp ? Math.min(marble.subFriendshipLevel + 1, 5) : marble.subFriendshipLevel;
+                const subLabelColor = canSubLvUp ? '#e67e22' : '#888';
                 subInfo.innerHTML = `
-                    <div style="font-size:11px;color:#e67e22;font-weight:bold;margin-bottom:4px;">【サブ友情 / 威力1/2】</div>
-                    <div style="font-size:13px;color:#444;margin-bottom:4px;">${marble.subFriendshipType !== 'normal' ? FRIENDSHIP_NAMES[marble.subFriendshipType] : '未装備'}</div>
+                    <div style="font-size:11px;color:${subLabelColor};font-weight:bold;margin-bottom:3px;">【サブ友情 / 威力1/2】</div>
+                    <div style="font-size:12px;color:#444;margin-bottom:3px;">${marble.subFriendshipType !== 'normal' ? FRIENDSHIP_NAMES[marble.subFriendshipType] : '未装備'}</div>
                     <div>${iconBar(marble.subFriendshipType, marble.subFriendshipType !== 'normal' ? marble.subFriendshipLevel : 0)}</div>
-                    ${isSameAsSub && marble.subFriendshipLevel < 5 ? `<div style="font-size:11px;color:#e67e22;margin-top:4px;">装備後 → ${iconBar(newItemType, subLv)}</div>` : ''}
+                    ${canSubLvUp ? `<div style="font-size:11px;color:#e67e22;margin-top:3px;">装備後 → ${iconBar(newItemType, subLv)}</div>` : ''}
                 `;
                 subBtn.style.display = 'block';
             } else {
@@ -3717,6 +3967,7 @@
                     playerMarbles.forEach((marble, i) => {
                         marble.vx = (dx / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
                         marble.vy = (dy / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * 1.5;
+                        marble.launchEaseFrame = 0;
                         marble.isActive = true; marble.isUsed = true; marble.isSpecialShot = true;
                         setTimeout(() => playLaunchSound(power), i * 80);
                         activeMarbles.push(marble);
@@ -3731,6 +3982,7 @@
                     if (marble.isUsed) { isDragging = false; return; } 
                     marble.vx = (dx / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult;
                     marble.vy = (dy / distance) * power * (1.6 + playerSpeedBonus) * marble.type.speedMult;
+                    marble.launchEaseFrame = 0;
                     marble.isActive = true; marble.isUsed = true; activeMarbles.push(marble);
                     playLaunchSound(power);
                 }
@@ -3746,6 +3998,17 @@
         canvas.addEventListener('touchmove', handleMove, { passive: false });
         canvas.addEventListener('touchend', handleEnd);
         canvas.addEventListener('touchcancel', handleEnd);
+
+        // 最初のタッチ/クリック時に AudioContext と BGM を確実に再開
+        // （iOSはユーザー操作がないと音声を再生できないため）
+        function resumeOnUserGesture() {
+            if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+            if (bgmEnabled && bgmAudio && bgmAudio.paused) {
+                bgmAudio.play().catch(() => {});
+            }
+        }
+        document.addEventListener('touchstart', resumeOnUserGesture, { once: false });
+        document.addEventListener('mousedown', resumeOnUserGesture, { once: false });
         
         document.getElementById('resetBtn').addEventListener('click', initGame);
 
@@ -3772,10 +4035,12 @@
             btn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
             btn.classList.toggle('active-btn', seEnabled);
             if (seEnabled) resumeAudio();
+            saveSettings();
         });
         document.getElementById('seVolSlider').addEventListener('input', (e) => {
             seVolume = e.target.value / 100;
             masterGain.gain.value = seVolume;
+            saveSettings();
         });
 
         // BGM
@@ -3785,10 +4050,20 @@
             btn.textContent = bgmEnabled ? '▶️ BGM' : '🎵 BGM';
             btn.classList.toggle('active-btn', bgmEnabled);
             if (bgmEnabled) { startBGM(); } else { stopBGM(); }
+            saveSettings();
         });
         document.getElementById('bgmVolSlider').addEventListener('input', (e) => {
             bgmVolume = e.target.value / 100;
             if (bgmAudio) bgmAudio.volume = bgmVolume;
+            saveSettings();
+        });
+
+        document.getElementById('lotteryAnimBtn').addEventListener('click', () => {
+            lotteryAnimEnabled = !lotteryAnimEnabled;
+            const btn = document.getElementById('lotteryAnimBtn');
+            btn.textContent = lotteryAnimEnabled ? '🎰 抽選演出' : '🎲 抽選演出';
+            btn.classList.toggle('active-btn', lotteryAnimEnabled);
+            saveSettings();
         });
         
         document.getElementById('specialShotBtn').addEventListener('click', () => {
@@ -3799,25 +4074,71 @@
             }
         });
         
-        document.getElementById('itemEquipBtn').addEventListener('click', () => {
-            if (currentItem && currentMarble) {
-                const result = applyFriendshipItem(currentItem, currentMarble, false);
-                if (result === 'banner') {
-                    // サブ友情解放バナーを表示してから閉じる
-                    const banner = document.getElementById('subUnlockBanner');
-                    if (banner) banner.style.display = 'block';
-                    isPaused = true;
-                    const savedItem = currentItem; const savedMarble = currentMarble;
-                    currentItem = null; currentMarble = null;
-                    setTimeout(() => {
-                        document.getElementById('itemModal').classList.remove('active');
-                        isPaused = false;
-                        updateFriendshipStatusBar();
-                    }, 2500);
-                } else {
+        // 装備確定処理（確認後に呼ばれる共通関数）
+        // モーダルを閉じてから少し待ってポーズ解除（ガチャガチャ防止）
+        const MODAL_CLOSE_DELAY = 300; // ms
+        function unpauseAfterDelay() {
+            setTimeout(() => { isPaused = false; }, MODAL_CLOSE_DELAY);
+        }
+
+        function doEquip(item, marble, equipToSub) {
+            const result = applyFriendshipItem(item, marble, equipToSub);
+            if (result === 'banner') {
+                const banner = document.getElementById('subUnlockBanner');
+                if (banner) banner.style.display = 'block';
+                isPaused = true;
+                currentItem = null; currentMarble = null;
+                setTimeout(() => {
                     document.getElementById('itemModal').classList.remove('active');
-                    currentItem = null; currentMarble = null; isPaused = false;
-                }
+                    updateFriendshipStatusBar();
+                    unpauseAfterDelay();
+                }, 2500);
+            } else {
+                document.getElementById('itemModal').classList.remove('active');
+                currentItem = null; currentMarble = null;
+                unpauseAfterDelay();
+            }
+        }
+
+        document.getElementById('itemEquipBtn').addEventListener('click', () => {
+            if (!currentItem || !currentMarble) return;
+            const marble = currentMarble;
+            const item = currentItem;
+
+            // 上書きになるか判定（既に別の友情を持っていて、かつ種類が違う）
+            let newItemType = '';
+            if (item.type === 'friendship_homing') newItemType = 'homing';
+            else if (item.type === 'friendship_laser') newItemType = 'laser';
+            else if (item.type === 'friendship_heal') newItemType = 'heal';
+            else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
+            else if (item.type === 'friendship_energy') newItemType = 'energy';
+            else if (item.type === 'friendship_normal') newItemType = 'normal_shot';
+            else if (item.type === 'friendship_sixteen_ring') newItemType = 'sixteen_ring';
+            else if (item.type === 'friendship_white_light') newItemType = 'white_light';
+            else if (item.type === 'friendship_glow_homing') newItemType = 'glow_homing';
+            else if (item.type === 'friendship_light_thread') newItemType = 'light_thread';
+
+            const isOverwrite = newItemType && marble.friendshipType !== 'normal' && marble.friendshipType !== newItemType;
+
+            if (isOverwrite) {
+                // 確認モーダルを出す
+                const oldName = FRIENDSHIP_NAMES[marble.friendshipType] || marble.friendshipType;
+                const newName = FRIENDSHIP_NAMES[newItemType] || newItemType;
+                document.getElementById('overwriteDetail').innerHTML =
+                    `現在：<strong>${oldName}</strong>（Lv${marble.friendshipLevel}）<br>↓ 上書き<br>新しく：<strong>${newName}</strong>（Lv1）`;
+                document.getElementById('overwriteModal').style.display = 'flex';
+                // 確認ボタンの処理をセット
+                document.getElementById('overwriteConfirmBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    doEquip(item, marble, false);
+                };
+                document.getElementById('overwriteCancelBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    // アイテムモーダルを再表示
+                    document.getElementById('itemModal').classList.add('active');
+                };
+            } else {
+                doEquip(item, marble, false);
             }
         });
 
@@ -3873,33 +4194,278 @@
         });
 
         document.getElementById('itemEquipSubBtn').addEventListener('click', () => {
-            if (currentItem && currentMarble) {
-                applyFriendshipItem(currentItem, currentMarble, true);
-                document.getElementById('itemModal').classList.remove('active');
-                currentItem = null; currentMarble = null; isPaused = false;
-            }
-        });
-        
-        document.getElementById('itemCancelBtn').addEventListener('click', () => {
-            document.getElementById('itemModal').classList.remove('active');
-            if (Math.random() < 0.01) {
-                playerAttackBonus += 1;
-                explosions.push(new CriticalEffect(canvasSize.width / 2, canvasSize.height / 2));
-                showMessage('🎉 奇跡！装備しなかったのに攻撃力+1！', 'combo-effect');
-                updateUI();
+            if (!currentItem || !currentMarble) return;
+            const marble = currentMarble;
+            const item = currentItem;
+
+            let newItemType = '';
+            if (item.type === 'friendship_homing') newItemType = 'homing';
+            else if (item.type === 'friendship_laser') newItemType = 'laser';
+            else if (item.type === 'friendship_heal') newItemType = 'heal';
+            else if (item.type === 'friendship_machinegun') newItemType = 'machinegun';
+            else if (item.type === 'friendship_energy') newItemType = 'energy';
+            else if (item.type === 'friendship_normal') newItemType = 'normal_shot';
+            else if (item.type === 'friendship_sixteen_ring') newItemType = 'sixteen_ring';
+            else if (item.type === 'friendship_white_light') newItemType = 'white_light';
+            else if (item.type === 'friendship_glow_homing') newItemType = 'glow_homing';
+            else if (item.type === 'friendship_light_thread') newItemType = 'light_thread';
+
+            const isSubOverwrite = newItemType && marble.subFriendshipType !== 'normal' && marble.subFriendshipType !== newItemType;
+
+            if (isSubOverwrite) {
+                const oldName = FRIENDSHIP_NAMES[marble.subFriendshipType] || marble.subFriendshipType;
+                const newName = FRIENDSHIP_NAMES[newItemType] || newItemType;
+                document.getElementById('overwriteDetail').innerHTML =
+                    `サブ現在：<strong>${oldName}</strong>（Lv${marble.subFriendshipLevel}）<br>↓ 上書き<br>新しく：<strong>${newName}</strong>（Lv1）`;
+                document.getElementById('overwriteModal').style.display = 'flex';
+                document.getElementById('overwriteConfirmBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    doEquip(item, marble, true);
+                };
+                document.getElementById('overwriteCancelBtn').onclick = () => {
+                    document.getElementById('overwriteModal').style.display = 'none';
+                    document.getElementById('itemModal').classList.add('active');
+                };
             } else {
-                teamHP = Math.min(teamHP + 1, MAX_TEAM_HP);
-                explosions.push(new HealEffect(canvasSize.width / 2, canvasSize.height / 2));
-                showMessage('装備しなかった…でも HP+1 回復！', 'success');
-                updateHPBar();
+                doEquip(item, marble, true);
             }
-            currentItem = null; currentMarble = null; isPaused = false;
         });
         
-        document.getElementById('continueBtn').addEventListener('click', () => {
-            document.getElementById('stageClearModal').style.display = 'none';
-            isStageClear = false; currentStage++;
-            try { startStage(); } catch (error) { console.error('❌ ステージ開始エラー:', error); alert(`エラーが発生しました: ${error.message}`); }
+        // ====== 抽選演出システム ======
+        function closeLotteryAndModal() {
+            document.getElementById('lotteryPanel').style.display = 'none';
+            document.getElementById('lotteryResult').style.display = 'none';
+            document.getElementById('lotteryOkBtn').style.display = 'none';
+            document.getElementById('lotterySlot').style.display = 'flex';
+            document.getElementById('itemModal').classList.remove('active');
+            // ボタン群を元に戻す（次回表示のため）
+            document.getElementById('itemModalButtons').style.display = 'flex';
+        }
+
+        function resolveLotteryResult(savedMarble) {
+            const r = Math.random();
+            const FRIENDSHIP_TYPES = ['homing','laser','heal','machinegun','energy','normal_shot','sixteen_ring','white_light','glow_homing','light_thread'];
+
+            // 結果データ: { icon, text, rarity:'miracle'|'rare'|'normal', apply:fn }
+            let result;
+
+            if (r < 0.004) {
+                result = {
+                    icon: '🌟', rarity: 'miracle',
+                    rarityLabel: '✨ MIRACLE',
+                    text: '全員の友情が\n1レベルアップ！',
+                    apply() {
+                        playerMarbles.forEach(m => {
+                            if (m.friendshipType !== 'normal' && m.friendshipLevel < 5) {
+                                m.friendshipLevel++; m.friendshipPower += 0.5; m.friendshipCount += 2;
+                            }
+                            if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
+                                m.subFriendshipLevel++;
+                            }
+                        });
+                        playLevelUpSound(); updateFriendshipStatusBar();
+                        explosions.push(new CriticalEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
+            } else if (r < 0.008) {
+                result = {
+                    icon: '💖', rarity: 'miracle',
+                    rarityLabel: '✨ MIRACLE',
+                    text: 'HP上限値\n+10！',
+                    apply() {
+                        MAX_TEAM_HP += 10; updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
+            } else if (r < 0.012) {
+                const FRIENDSHIP_TYPES2 = ['homing','laser','heal','machinegun','energy','normal_shot','sixteen_ring','white_light','glow_homing','light_thread'];
+                const others = savedMarble ? FRIENDSHIP_TYPES2.filter(t => t !== savedMarble.friendshipType) : FRIENDSHIP_TYPES2;
+                const newType = others[Math.floor(Math.random() * others.length)];
+                result = {
+                    icon: '🎲', rarity: 'miracle',
+                    rarityLabel: '✨ MIRACLE',
+                    text: `友情が「${FRIENDSHIP_NAMES[newType]}」\nに変化！`,
+                    apply() {
+                        if (savedMarble) {
+                            savedMarble.friendshipType = newType;
+                            savedMarble.friendshipLevel = Math.max(savedMarble.friendshipLevel, 1);
+                            savedMarble.friendshipPower = savedMarble.friendshipLevel;
+                            savedMarble.friendshipCount = 8;
+                            explosions.push(new CriticalEffect(savedMarble.x, savedMarble.y));
+                            updateFriendshipStatusBar();
+                        }
+                    }
+                };
+            } else if (r < 0.024) {
+                const canUp = savedMarble && savedMarble.friendshipType !== 'normal' && savedMarble.friendshipLevel < 5;
+                result = {
+                    icon: '🆙', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: canUp ? `本人の友情が\n1レベルアップ！` : 'HP +10 回復！',
+                    apply() {
+                        if (canUp) {
+                            savedMarble.friendshipLevel++; savedMarble.friendshipPower += 0.5; savedMarble.friendshipCount += 2;
+                            playLevelUpSound(); updateFriendshipStatusBar();
+                        } else {
+                            teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
+                            explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                        }
+                    }
+                };
+            } else if (r < 0.036) {
+                result = {
+                    icon: '💗', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: 'HP上限値 +4！',
+                    apply() {
+                        MAX_TEAM_HP += 4; updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
+            } else if (r < 0.048) {
+                result = {
+                    icon: '💪', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: '攻撃力 +1！',
+                    apply() {
+                        playerAttackBonus += 1; updateUI();
+                        explosions.push(new CriticalEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
+            } else if (r < 0.148) {
+                result = {
+                    icon: '💚', rarity: 'rare',
+                    rarityLabel: '★ RARE',
+                    text: 'HP 全回復！',
+                    apply() {
+                        teamHP = MAX_TEAM_HP; updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
+            } else {
+                result = {
+                    icon: '❤️', rarity: 'normal',
+                    rarityLabel: 'NORMAL',
+                    text: 'HP +10 回復',
+                    apply() {
+                        teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
+                        explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
+                    }
+                };
+            }
+            return result;
+        }
+
+        function runLotteryAnimation(result) {
+            const panel = document.getElementById('lotteryPanel');
+            const slot = document.getElementById('lotterySlot');
+            const slotText = document.getElementById('lotterySlotText');
+            const resultDiv = document.getElementById('lotteryResult');
+            const resultIcon = document.getElementById('lotteryResultIcon');
+            const resultText = document.getElementById('lotteryResultText');
+            const resultRarity = document.getElementById('lotteryResultRarity');
+            const okBtn = document.getElementById('lotteryOkBtn');
+
+            // ボタンを隠して抽選パネルを表示
+            document.getElementById('itemModalButtons').style.display = 'none';
+            panel.style.display = 'flex';
+            resultDiv.style.display = 'none';
+            okBtn.style.display = 'none';
+            slotText.style.fontSize = '14px';
+
+            // 演出OFFならスロットなしで即結果表示
+            if (!lotteryAnimEnabled) {
+                showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn);
+                return;
+            }
+
+            // スロット演出用の候補リスト
+            const candidates = [
+                '❤️ HP+10回復', '💪 攻撃力+1', '💗 HP上限+4',
+                '💚 HP全回復', '🆙 友情LvUp', '🌟 全員LvUp！',
+                '💖 HP上限+10', '🎲 友情変化', '❤️ HP+10回復',
+                '💚 HP全回復', '💪 攻撃力+1', '🆙 友情LvUp',
+            ];
+
+            // 高速→低速でスロットを回す
+            let frame = 0;
+            const totalFrames = 28; // 総フレーム数
+            let idx = Math.floor(Math.random() * candidates.length);
+            let skipped = false; // タップでスキップされたか
+
+            // ランダムなスタートから徐々にスローダウン
+            const intervals = [];
+            // 高速フェーズ: 50ms×10回
+            for (let i = 0; i < 10; i++) {
+                intervals.push(50);
+            }
+            // 中速フェーズ: 80ms×6回
+            for (let i = 0; i < 6; i++) {
+                intervals.push(80);
+            }
+            // 低速フェーズ: 140ms×5回 → 結果へ
+            for (let i = 0; i < 5; i++) {
+                intervals.push(140 + i * 30);
+            }
+
+            // タップでスキップ
+            function onSkipTap() {
+                if (skipped) return;
+                skipped = true;
+                panel.removeEventListener('click', onSkipTap);
+                panel.removeEventListener('touchstart', onSkipTap);
+                showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn);
+            }
+            panel.addEventListener('click', onSkipTap);
+            panel.addEventListener('touchstart', onSkipTap);
+
+            function tick(stepIdx) {
+                if (skipped) return; // スキップ済みなら停止
+                if (stepIdx >= intervals.length) {
+                    panel.removeEventListener('click', onSkipTap);
+                    panel.removeEventListener('touchstart', onSkipTap);
+                    // 結果表示へ
+                    showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn);
+                    return;
+                }
+                idx = (idx + 1) % candidates.length;
+                slotText.textContent = candidates[idx];
+                // 色を交互に変える
+                slotText.style.color = stepIdx % 2 === 0 ? '#ffe082' : '#80d8ff';
+                setTimeout(() => tick(stepIdx + 1), intervals[stepIdx]);
+            }
+            tick(0);
+        }
+
+        function showLotteryResult(result, slot, slotText, resultDiv, resultIcon, resultText, resultRarity, okBtn) {
+            // スロットを結果表示に切り替え
+            slot.style.display = 'none';
+            resultDiv.style.display = 'flex';
+            resultIcon.textContent = result.icon;
+            resultText.textContent = result.text;
+            resultRarity.textContent = result.rarityLabel;
+            resultRarity.className = `rarity-${result.rarity}`;
+
+            // 効果を実際に適用
+            result.apply();
+
+            // OKボタン表示
+            okBtn.style.display = 'block';
+
+            // 1秒後に自動クローズ（OKボタンでも閉じられる）
+            let closed = false;
+            const autoClose = setTimeout(() => {
+                if (!closed) { closed = true; closeLotteryAndModal(); currentItem = null; currentMarble = null; unpauseAfterDelay(); }
+            }, 1000);
+            okBtn.onclick = () => {
+                if (!closed) { closed = true; clearTimeout(autoClose); closeLotteryAndModal(); currentItem = null; currentMarble = null; unpauseAfterDelay(); }
+            };
+        }
+
+        document.getElementById('itemCancelBtn').addEventListener('click', () => {
+            const savedMarble = currentMarble;
+            const result = resolveLotteryResult(savedMarble);
+            runLotteryAnimation(result);
         });
         
         // ============================================================
@@ -3935,16 +4501,97 @@
         const masterGain = audioCtx.createGain();
         masterGain.gain.value = 0.7;
         masterGain.connect(audioCtx.destination);
+        let seVolume = 0.7;
+        let bgmVolume = 0.5;
 
         let seEnabled = false; // デフォルトOFF
         let bgmEnabled = false;
+        let lotteryAnimEnabled = true; // 抽選演出 デフォルトON
         let bgmAudio = null; // オンにした時だけ生成
+
+        // ============================================================
+        // ⚙️ 設定の永続化（localStorage）
+        // ============================================================
+        function saveSettings() {
+            try {
+                localStorage.setItem('monsss_settings', JSON.stringify({
+                    seEnabled,
+                    bgmEnabled,
+                    seVolume,
+                    bgmVolume,
+                    lotteryAnimEnabled
+                }));
+            } catch(e) { /* プライベートブラウズ等で失敗しても無視 */ }
+        }
+
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('monsss_settings');
+                if (!saved) return;
+                const s = JSON.parse(saved);
+                seEnabled        = s.seEnabled        ?? false;
+                bgmEnabled       = s.bgmEnabled       ?? false;
+                seVolume         = s.seVolume         ?? 0.7;
+                bgmVolume        = s.bgmVolume        ?? 0.5;
+                lotteryAnimEnabled = s.lotteryAnimEnabled ?? true;
+
+                // masterGain に音量を反映
+                masterGain.gain.value = seVolume;
+
+                // UI ボタンを設定値に同期
+                const seBtn = document.getElementById('seBtn');
+                if (seBtn) {
+                    seBtn.textContent = seEnabled ? '🔊 SE' : '🔇 SE';
+                    seBtn.classList.toggle('active-btn', seEnabled);
+                }
+                const seSlider = document.getElementById('seVolSlider');
+                if (seSlider) seSlider.value = Math.round(seVolume * 100);
+
+                const bgmBtn = document.getElementById('bgmBtn');
+                if (bgmBtn) {
+                    bgmBtn.textContent = bgmEnabled ? '▶️ BGM' : '🎵 BGM';
+                    bgmBtn.classList.toggle('active-btn', bgmEnabled);
+                }
+                const bgmSlider = document.getElementById('bgmVolSlider');
+                if (bgmSlider) bgmSlider.value = Math.round(bgmVolume * 100);
+
+                const lotteryBtn = document.getElementById('lotteryAnimBtn');
+                if (lotteryBtn) {
+                    lotteryBtn.textContent = lotteryAnimEnabled ? '🎰 抽選演出' : '🎲 抽選演出';
+                    lotteryBtn.classList.toggle('active-btn', lotteryAnimEnabled);
+                }
+
+                // BGMが有効だった場合は再開（ユーザー操作後でないと再生できないので
+                // ここでは startBGM() はしない。最初のタッチ後に復帰する）
+            } catch(e) { /* 無視 */ }
+        }
+
+        // ============================================================
+        // 📱 バックグラウンド復帰時の音声再開
+        // ============================================================
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // AudioContext（SE用）を再開
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => {});
+                }
+                // BGMが有効で止まっていたら再開
+                if (bgmEnabled && bgmAudio && bgmAudio.paused) {
+                    bgmAudio.play().catch(() => {});
+                }
+            } else {
+                // バックグラウンドに入ったらBGMを一時停止（省電力・他アプリ音楽と干渉軽減）
+                if (bgmAudio && !bgmAudio.paused) {
+                    bgmAudio.pause();
+                }
+            }
+        });
 
         function startBGM() {
             if (!bgmAudio) {
                 bgmAudio = new Audio('zzz.mp3');
                 bgmAudio.loop = true;
-                bgmAudio.volume = 0.4;
+                bgmAudio.volume = bgmVolume;
             }
             bgmAudio.play().catch(() => {});
         }
@@ -4067,22 +4714,41 @@
 
         // 壁バウンド音（コツッ・連続鳴り間引きあり）
         let lastBounceTime = 0;
+        // 壁バウンド音 ── スネアドラム
+        // ホワイトノイズ（スネアの胴鳴り）+ 短い音程オシレータ（リムっぽさ）
         function playBounceSound() {
             if (!seEnabled) return;
-            // バウンドは連続しすぎるので60ms間引く
             const now = audioCtx.currentTime;
-            if (now - lastBounceTime < 0.06) return;
+            if (now - lastBounceTime < 0.06) return; // 60ms 間引き
             lastBounceTime = now;
             resumeAudio();
+
+            // ① ノイズ（スネアの「シャッ」）
+            const nLen = Math.ceil(audioCtx.sampleRate * 0.12);
+            const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+            const nDat = nBuf.getChannelData(0);
+            for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+            const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = 'highpass'; hpf.frequency.value = 1800;
+
+            const nGain = audioCtx.createGain();
+            nGain.gain.setValueAtTime(0.28, now);
+            nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+            nSrc.connect(hpf); hpf.connect(nGain); nGain.connect(masterGain);
+            nSrc.start(now); nSrc.stop(now + 0.12);
+
+            // ② 音程成分（リムショットのコン！）
             const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(masterGain);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(320, now);
-            osc.frequency.exponentialRampToValueAtTime(180, now + 0.06);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-            osc.start(now); osc.stop(now + 0.09);
+            const oscGain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(120, now + 0.06);
+            oscGain.gain.setValueAtTime(0.18, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+            osc.connect(oscGain); oscGain.connect(masterGain);
+            osc.start(now); osc.stop(now + 0.08);
         }
 
         // デスアイテム発動音（ブワーン＋ハッハッハッハ）
@@ -4099,7 +4765,7 @@
             vibrato.frequency.value = 4;
             vibratoGain.gain.value = 12;
             vibrato.connect(vibratoGain); vibratoGain.connect(osc1.frequency);
-            osc1.connect(gain1); gain1.connect(audioCtx.destination);
+            osc1.connect(gain1); gain1.connect(masterGain);
             osc1.type = 'sawtooth';
             osc1.frequency.setValueAtTime(55, t);
             osc1.frequency.linearRampToValueAtTime(38, t + 1.2);
@@ -4153,7 +4819,7 @@
                 // 飛ぶ音
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
-                osc1.connect(gain1); gain1.connect(audioCtx.destination);
+                osc1.connect(gain1); gain1.connect(masterGain);
                 osc1.type = 'sine';
                 osc1.frequency.setValueAtTime(600, t);
                 osc1.frequency.exponentialRampToValueAtTime(200, t + 0.25);
@@ -4165,7 +4831,7 @@
                 const gain2 = audioCtx.createGain();
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'lowpass'; filter.frequency.value = 400;
-                osc2.connect(filter); filter.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.connect(filter); filter.connect(gain2); gain2.connect(masterGain);
                 osc2.type = 'sawtooth';
                 osc2.frequency.setValueAtTime(100, t + 0.4);
                 osc2.frequency.exponentialRampToValueAtTime(25, t + 0.75);
@@ -4178,7 +4844,7 @@
                 // ゴォォォ→ドスン（落下→着弾）
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
-                osc1.connect(gain1); gain1.connect(audioCtx.destination);
+                osc1.connect(gain1); gain1.connect(masterGain);
                 osc1.type = 'sawtooth';
                 osc1.frequency.setValueAtTime(300, t);
                 osc1.frequency.exponentialRampToValueAtTime(80, t + 0.45);
@@ -4189,13 +4855,85 @@
                 // 着弾ドスン
                 const osc2 = audioCtx.createOscillator();
                 const gain2 = audioCtx.createGain();
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.connect(gain2); gain2.connect(masterGain);
                 osc2.type = 'sine';
                 osc2.frequency.setValueAtTime(55, t + 0.42);
                 osc2.frequency.exponentialRampToValueAtTime(25, t + 0.65);
                 gain2.gain.setValueAtTime(0.4, t + 0.42);
                 gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
                 osc2.start(t + 0.42); osc2.stop(t + 0.72);
+
+            } else if (type === 'dark_flame') {
+                // 黒い炎：ドロドロ低音＋歪んだ唸り＋ダークノイズ
+                const df1 = audioCtx.createOscillator(); const dfg1 = audioCtx.createGain();
+                df1.connect(dfg1); dfg1.connect(masterGain); df1.type = 'sawtooth';
+                df1.frequency.setValueAtTime(55,t); df1.frequency.linearRampToValueAtTime(40,t+0.5);
+                dfg1.gain.setValueAtTime(0,t); dfg1.gain.linearRampToValueAtTime(0.28,t+0.06); dfg1.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+                df1.start(t); df1.stop(t+0.62);
+                const df2 = audioCtx.createOscillator(); const dfg2 = audioCtx.createGain();
+                df2.connect(dfg2); dfg2.connect(masterGain); df2.type = 'sawtooth';
+                df2.frequency.setValueAtTime(110,t); df2.frequency.exponentialRampToValueAtTime(65,t+0.45);
+                dfg2.gain.setValueAtTime(0,t); dfg2.gain.linearRampToValueAtTime(0.14,t+0.05); dfg2.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+                df2.start(t); df2.stop(t+0.52);
+                const dnSz = audioCtx.sampleRate*0.55; const dnBuf = audioCtx.createBuffer(1,dnSz,audioCtx.sampleRate);
+                const dnDat = dnBuf.getChannelData(0); for (let j=0;j<dnSz;j++) dnDat[j]=Math.random()*2-1;
+                const dnSrc = audioCtx.createBufferSource(); dnSrc.buffer = dnBuf;
+                const dnFlt = audioCtx.createBiquadFilter(); dnFlt.type='lowpass'; dnFlt.frequency.value=400;
+                const dnGain = audioCtx.createGain(); dnSrc.connect(dnFlt); dnFlt.connect(dnGain); dnGain.connect(masterGain);
+                dnGain.gain.setValueAtTime(0,t); dnGain.gain.linearRampToValueAtTime(0.12,t+0.08); dnGain.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+                dnSrc.start(t); dnSrc.stop(t+0.56);
+
+            } else if (type === 'thorns') {
+                // イバラ：じわじわ這う低音＋爪でひっかく高音
+                const th1 = audioCtx.createOscillator(); const thg1 = audioCtx.createGain();
+                th1.connect(thg1); thg1.connect(masterGain); th1.type = 'sawtooth';
+                th1.frequency.setValueAtTime(40,t); th1.frequency.linearRampToValueAtTime(55,t+0.8);
+                thg1.gain.setValueAtTime(0,t); thg1.gain.linearRampToValueAtTime(0.22,t+0.1); thg1.gain.linearRampToValueAtTime(0.18,t+0.7); thg1.gain.exponentialRampToValueAtTime(0.001,t+1.0);
+                th1.start(t); th1.stop(t+1.02);
+                [0.05,0.18,0.35,0.52].forEach(d => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(800+Math.random()*300,t+d); osc.frequency.exponentialRampToValueAtTime(300,t+d+0.12);
+                    gain.gain.setValueAtTime(0.08,t+d); gain.gain.exponentialRampToValueAtTime(0.001,t+d+0.14);
+                    osc.start(t+d); osc.stop(t+d+0.15);
+                });
+
+            } else if (type === 'instakill') {
+                // 瞬殺レーザー：真空を切る鋭い高音→着弾ドンッ
+                const il1 = audioCtx.createOscillator(); const ilg1 = audioCtx.createGain();
+                il1.connect(ilg1); ilg1.connect(masterGain); il1.type = 'square';
+                il1.frequency.setValueAtTime(2400,t); il1.frequency.exponentialRampToValueAtTime(180,t+0.22);
+                ilg1.gain.setValueAtTime(0,t); ilg1.gain.linearRampToValueAtTime(0.24,t+0.01); ilg1.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+                il1.start(t); il1.stop(t+0.26);
+                const il2 = audioCtx.createOscillator(); const ilg2 = audioCtx.createGain();
+                il2.connect(ilg2); ilg2.connect(masterGain); il2.type = 'sine';
+                il2.frequency.setValueAtTime(70,t+0.2); il2.frequency.exponentialRampToValueAtTime(20,t+0.55);
+                ilg2.gain.setValueAtTime(0,t+0.2); ilg2.gain.linearRampToValueAtTime(0.35,t+0.22); ilg2.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+                il2.start(t+0.2); il2.stop(t+0.62);
+                const il3 = audioCtx.createOscillator(); const ilg3 = audioCtx.createGain();
+                il3.connect(ilg3); ilg3.connect(masterGain); il3.type = 'sawtooth';
+                il3.frequency.setValueAtTime(140,t+0.2); il3.frequency.exponentialRampToValueAtTime(50,t+0.5);
+                ilg3.gain.setValueAtTime(0,t+0.2); ilg3.gain.linearRampToValueAtTime(0.16,t+0.23); ilg3.gain.exponentialRampToValueAtTime(0.001,t+0.55);
+                il3.start(t+0.2); il3.stop(t+0.56);
+
+            } else if (type === 'poison_dome') {
+                // ポイズンドーム：不気味なコード＋泡立ちノイズ
+                [65,77,92].forEach(freq => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq,t); osc.frequency.linearRampToValueAtTime(freq*0.97,t+1.2);
+                    gain.gain.setValueAtTime(0,t); gain.gain.linearRampToValueAtTime(0.10,t+0.15); gain.gain.linearRampToValueAtTime(0.08,t+0.9); gain.gain.exponentialRampToValueAtTime(0.001,t+1.3);
+                    osc.start(t); osc.stop(t+1.32);
+                });
+                for (let k=0; k<5; k++) {
+                    const bSz = audioCtx.sampleRate*0.07; const bBuf = audioCtx.createBuffer(1,bSz,audioCtx.sampleRate);
+                    const bDat = bBuf.getChannelData(0); for (let j=0;j<bSz;j++) bDat[j]=Math.random()*2-1;
+                    const bSrc = audioCtx.createBufferSource(); bSrc.buffer = bBuf;
+                    const bFlt = audioCtx.createBiquadFilter(); bFlt.type='bandpass'; bFlt.frequency.value=300+k*80; bFlt.Q.value=3;
+                    const bGain = audioCtx.createGain(); bSrc.connect(bFlt); bFlt.connect(bGain); bGain.connect(masterGain);
+                    bGain.gain.setValueAtTime(0.09,t+k*0.18);
+                    bSrc.start(t+k*0.18); bSrc.stop(t+k*0.18+0.08);
+                }
             }
         }
 
@@ -4205,19 +4943,30 @@
             resumeAudio();
             const t = audioCtx.currentTime;
 
+            // ── クローズドハイハット1発（多段系共通パーツ）
+            function closedHat(when, vol = 0.18) {
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.045);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const hpf = audioCtx.createBiquadFilter();
+                hpf.type = 'highpass'; hpf.frequency.value = 8000;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(vol, when);
+                gain.gain.exponentialRampToValueAtTime(0.001, when + 0.04);
+                nSrc.connect(hpf); hpf.connect(gain); gain.connect(masterGain);
+                nSrc.start(when); nSrc.stop(when + 0.045);
+            }
+
             if (type === 'homing') {
-                // ピュンピュン×2
-                [0, 0.08].forEach(delay => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(masterGain);
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(400, t + delay);
-                    osc.frequency.exponentialRampToValueAtTime(900, t + delay + 0.12);
-                    gain.gain.setValueAtTime(0.2, t + delay);
-                    gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.14);
-                    osc.start(t + delay); osc.stop(t + delay + 0.15);
-                });
+                // ホーミング ── クローズドハイハット×2（ピュンピュンのリズム感）
+                closedHat(t,       0.20);
+                closedHat(t + 0.08, 0.16);
+
+            } else if (type === 'machinegun') {
+                // マシンガン ── クローズドハイハット×4 連打
+                for (let i = 0; i < 4; i++) closedHat(t + i * 0.055, 0.18);
 
             } else if (type === 'laser') {
                 // SFレーザー：高音チャージ→ズバッと下降
@@ -4230,8 +4979,8 @@
                 filter.frequency.setValueAtTime(1200, t);
                 filter.frequency.exponentialRampToValueAtTime(300, t + 0.4);
                 filter.Q.value = 8;
-                osc1.connect(filter); filter.connect(gain1); gain1.connect(audioCtx.destination);
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc1.connect(filter); filter.connect(gain1); gain1.connect(masterGain);
+                osc2.connect(gain2); gain2.connect(masterGain);
                 // メイン：ズバッと下降
                 osc1.type = 'sawtooth';
                 osc1.frequency.setValueAtTime(1800, t);
@@ -4250,19 +4999,6 @@
                 gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
                 osc2.start(t); osc2.stop(t + 0.36);
 
-            } else if (type === 'machinegun') {
-                // タタタタ（4発分だけ、間引き）
-                for (let i = 0; i < 4; i++) {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(masterGain);
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(180 + Math.random() * 40, t + i * 0.055);
-                    gain.gain.setValueAtTime(0.15, t + i * 0.055);
-                    gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.055 + 0.05);
-                    osc.start(t + i * 0.055); osc.stop(t + i * 0.055 + 0.06);
-                }
-
             } else if (type === 'energy') {
                 // ドォォォン（重い爆発音）
                 const osc = audioCtx.createOscillator();
@@ -4270,7 +5006,7 @@
                 const osc2 = audioCtx.createOscillator();
                 const gain2 = audioCtx.createGain();
                 osc.connect(gain); gain.connect(masterGain);
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.connect(gain2); gain2.connect(masterGain);
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(80, t);
                 osc.frequency.exponentialRampToValueAtTime(30, t + 0.5);
@@ -4297,6 +5033,85 @@
                     osc.start(t + i * 0.09); osc.stop(t + i * 0.09 + 0.22);
                 });
 
+            } else if (type === 'sixteen_ring') {
+                // 光のリング：高音の残響リングが広がっていく神々しい音
+                [1046, 1318, 1568, 2093].forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t + i * 0.07); osc.frequency.linearRampToValueAtTime(freq * 1.015, t + i * 0.07 + 0.3);
+                    gain.gain.setValueAtTime(0, t + i * 0.07); gain.gain.linearRampToValueAtTime(0.13, t + i * 0.07 + 0.03); gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.55);
+                    osc.start(t + i * 0.07); osc.stop(t + i * 0.07 + 0.56);
+                });
+                const nbSz = audioCtx.sampleRate * 0.5; const nbBuf = audioCtx.createBuffer(1, nbSz, audioCtx.sampleRate);
+                const nbDat = nbBuf.getChannelData(0); for (let j = 0; j < nbSz; j++) nbDat[j] = (Math.random()*2-1)*0.25;
+                const nbSrc = audioCtx.createBufferSource(); nbSrc.buffer = nbBuf;
+                const nbFlt = audioCtx.createBiquadFilter(); nbFlt.type = 'highpass'; nbFlt.frequency.value = 3500;
+                const nbGain = audioCtx.createGain(); nbSrc.connect(nbFlt); nbFlt.connect(nbGain); nbGain.connect(masterGain);
+                nbGain.gain.setValueAtTime(0,t); nbGain.gain.linearRampToValueAtTime(0.06,t+0.1); nbGain.gain.linearRampToValueAtTime(0,t+0.5);
+                nbSrc.start(t); nbSrc.stop(t+0.51);
+
+            } else if (type === 'white_light') {
+                // 白い光：広がるドローン＋高域の輝き＋風ノイズ
+                [523, 784, 1047].forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, t); osc.frequency.linearRampToValueAtTime(freq*1.008, t+0.6);
+                    gain.gain.setValueAtTime(0,t); gain.gain.linearRampToValueAtTime(0.10-i*0.02,t+0.08); gain.gain.linearRampToValueAtTime(0.001,t+0.7);
+                    osc.start(t); osc.stop(t+0.72);
+                });
+                const shOsc = audioCtx.createOscillator(); const shGain = audioCtx.createGain();
+                shOsc.connect(shGain); shGain.connect(masterGain); shOsc.type = 'sine';
+                shOsc.frequency.setValueAtTime(2800,t); shOsc.frequency.exponentialRampToValueAtTime(3600,t+0.4);
+                shGain.gain.setValueAtTime(0,t); shGain.gain.linearRampToValueAtTime(0.09,t+0.05); shGain.gain.exponentialRampToValueAtTime(0.001,t+0.45);
+                shOsc.start(t); shOsc.stop(t+0.46);
+                const wSz = audioCtx.sampleRate*0.6; const wBuf = audioCtx.createBuffer(1,wSz,audioCtx.sampleRate);
+                const wDat = wBuf.getChannelData(0); for (let j=0;j<wSz;j++) wDat[j]=Math.random()*2-1;
+                const wSrc = audioCtx.createBufferSource(); wSrc.buffer = wBuf;
+                const wFlt = audioCtx.createBiquadFilter(); wFlt.type='bandpass'; wFlt.frequency.value=2000; wFlt.Q.value=0.8;
+                const wGain = audioCtx.createGain(); wSrc.connect(wFlt); wFlt.connect(wGain); wGain.connect(masterGain);
+                wGain.gain.setValueAtTime(0,t); wGain.gain.linearRampToValueAtTime(0.07,t+0.15); wGain.gain.linearRampToValueAtTime(0,t+0.6);
+                wSrc.start(t); wSrc.stop(t+0.61);
+
+            } else if (type === 'glow_homing') {
+                // 発光群：光の粒が飛ぶ、高音きらきら＋風ノイズ
+                [0,0.06,0.12,0.18].forEach((delay,i) => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    const bf = 1400+i*180;
+                    osc.frequency.setValueAtTime(bf,t+delay); osc.frequency.exponentialRampToValueAtTime(bf*1.6,t+delay+0.18);
+                    gain.gain.setValueAtTime(0.12,t+delay); gain.gain.exponentialRampToValueAtTime(0.001,t+delay+0.22);
+                    osc.start(t+delay); osc.stop(t+delay+0.23);
+                });
+                const gSz = audioCtx.sampleRate*0.4; const gBuf = audioCtx.createBuffer(1,gSz,audioCtx.sampleRate);
+                const gDat = gBuf.getChannelData(0); for (let j=0;j<gSz;j++) gDat[j]=Math.random()*2-1;
+                const gSrc = audioCtx.createBufferSource(); gSrc.buffer = gBuf;
+                const gFlt = audioCtx.createBiquadFilter(); gFlt.type='highpass'; gFlt.frequency.value=5000;
+                const gGain = audioCtx.createGain(); gSrc.connect(gFlt); gFlt.connect(gGain); gGain.connect(masterGain);
+                gGain.gain.setValueAtTime(0,t); gGain.gain.linearRampToValueAtTime(0.08,t+0.05); gGain.gain.linearRampToValueAtTime(0,t+0.4);
+                gSrc.start(t); gSrc.stop(t+0.41);
+
+            } else if (type === 'light_thread') {
+                // 光の糸：チャキン→スゥゥ＋細ノイズ
+                const chOsc = audioCtx.createOscillator(); const chGain = audioCtx.createGain();
+                chOsc.connect(chGain); chGain.connect(masterGain); chOsc.type = 'triangle';
+                chOsc.frequency.setValueAtTime(1760,t); chOsc.frequency.exponentialRampToValueAtTime(3520,t+0.08);
+                chGain.gain.setValueAtTime(0,t); chGain.gain.linearRampToValueAtTime(0.18,t+0.02); chGain.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+                chOsc.start(t); chOsc.stop(t+0.26);
+                [880,1320,1760].forEach(freq => {
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                    osc.connect(gain); gain.connect(masterGain); osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq,t+0.05);
+                    gain.gain.setValueAtTime(0,t+0.05); gain.gain.linearRampToValueAtTime(0.08,t+0.12); gain.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+                    osc.start(t+0.05); osc.stop(t+0.51);
+                });
+                const lSz = audioCtx.sampleRate*0.45; const lBuf = audioCtx.createBuffer(1,lSz,audioCtx.sampleRate);
+                const lDat = lBuf.getChannelData(0); for (let j=0;j<lSz;j++) lDat[j]=Math.random()*2-1;
+                const lSrc = audioCtx.createBufferSource(); lSrc.buffer = lBuf;
+                const lFlt = audioCtx.createBiquadFilter(); lFlt.type='bandpass'; lFlt.frequency.value=6000; lFlt.Q.value=2;
+                const lGain = audioCtx.createGain(); lSrc.connect(lFlt); lFlt.connect(lGain); lGain.connect(masterGain);
+                lGain.gain.setValueAtTime(0,t); lGain.gain.linearRampToValueAtTime(0.06,t+0.1); lGain.gain.linearRampToValueAtTime(0,t+0.45);
+                lSrc.start(t); lSrc.stop(t+0.46);
+
             } else {
                 // 通常友情（ポンッ）
                 const osc = audioCtx.createOscillator();
@@ -4311,55 +5126,118 @@
             }
         }
 
-        // 発射音（powerの強さで音程が変わる）
+        // 発射音 ── オープンハイハット
+        // ホワイトノイズをハイパスで成形、余韻長めでシンバルらしく
         function playLaunchSound(power) {
             if (!seEnabled) return;
             resumeAudio();
-            const osc = audioCtx.createOscillator();
+            const t     = audioCtx.currentTime;
+            const vol   = 0.18 + power * 0.04;          // 強打ほど音量UP
+            const decay = 0.18 + power * 0.06;          // 0.18〜0.36s の余韻
+
+            // ホワイトノイズ生成
+            const bufLen = Math.ceil(audioCtx.sampleRate * (decay + 0.05));
+            const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+            const dat = buf.getChannelData(0);
+            for (let i = 0; i < bufLen; i++) dat[i] = Math.random() * 2 - 1;
+            const src = audioCtx.createBufferSource();
+            src.buffer = buf;
+
+            // ハイパス（低域カット → シャリシャリ感）
+            const hpf = audioCtx.createBiquadFilter();
+            hpf.type = 'highpass'; hpf.frequency.value = 7000;
+
+            // ハイシェルフ（超高域を少し持ち上げ → シンバルの輝き）
+            const shelf = audioCtx.createBiquadFilter();
+            shelf.type = 'highshelf'; shelf.frequency.value = 10000; shelf.gain.value = 6;
+
             const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(masterGain);
-            // パワーに応じて音程を変える（低め→高め）
-            const freq = 180 + power * 60;
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq * 0.4, audioCtx.currentTime + 0.15);
-            osc.type = 'sawtooth';
-            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
-            osc.start(audioCtx.currentTime);
-            osc.stop(audioCtx.currentTime + 0.18);
+            src.connect(hpf); hpf.connect(shelf); shelf.connect(gain); gain.connect(masterGain);
+
+            // アタック → ゆっくり減衰（オープンハイハットの余韻）
+            gain.gain.setValueAtTime(vol, t);
+            gain.gain.setValueAtTime(vol * 0.7, t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+            src.start(t); src.stop(t + decay + 0.01);
         }
 
-        // 敵ヒット音（isCritical=trueで重い音になる）
+        // 敵ヒット音 ── バスドラム2種
+        // 通常ヒット = ドゥン（短くパンチ）  クリティカル = ドゥゥゥン（太く長い）
         function playHitSound(isCritical = false) {
             if (!seEnabled) return;
             resumeAudio();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            // ノイズっぽい衝撃感を出すためにdetuneを使う
-            const distortion = audioCtx.createWaveShaper();
-            const curve = new Float32Array(256);
-            for (let i = 0; i < 256; i++) curve[i] = (i < 128 ? i - 128 : i - 128) / 64;
-            distortion.curve = curve;
-            osc.connect(distortion); distortion.connect(gain); gain.connect(masterGain);
+            const t = audioCtx.currentTime;
+
             if (isCritical) {
-                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
-                osc.type = 'square';
-                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
-                osc.start(audioCtx.currentTime);
-                osc.stop(audioCtx.currentTime + 0.35);
+                // ── ドゥゥゥン（重いバスドラ：長い音程下降 + ノイズトランジェント）
+                // ① 音程成分：高め→深く落とす
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(180, t);
+                osc.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+                oscGain.gain.setValueAtTime(0.0, t);
+                oscGain.gain.linearRampToValueAtTime(0.7, t + 0.005);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                osc.connect(oscGain); oscGain.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.56);
+
+                // ② アタックノイズ（バスドラの「ポン」頭）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.06);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const nFlt = audioCtx.createBiquadFilter();
+                nFlt.type = 'lowpass'; nFlt.frequency.value = 3000;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.5, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(t); nSrc.stop(t + 0.06);
+
+                // ③ 倍音で太さを追加
+                const osc2 = audioCtx.createOscillator();
+                const osc2Gain = audioCtx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(90, t);
+                osc2.frequency.exponentialRampToValueAtTime(45, t + 0.2);
+                osc2Gain.gain.setValueAtTime(0.3, t);
+                osc2Gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+                osc2.connect(osc2Gain); osc2Gain.connect(masterGain);
+                osc2.start(t); osc2.stop(t + 0.31);
+
             } else {
-                osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.12);
-                osc.type = 'triangle';
-                gain.gain.setValueAtTime(0.28, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-                osc.start(audioCtx.currentTime);
-                osc.stop(audioCtx.currentTime + 0.15);
+                // ── ドゥン（コンパクトなバスドラ：素早い下降）
+                // ① 音程成分
+                const osc = audioCtx.createOscillator();
+                const oscGain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(130, t);
+                osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+                oscGain.gain.setValueAtTime(0.0, t);
+                oscGain.gain.linearRampToValueAtTime(0.55, t + 0.004);
+                oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                osc.connect(oscGain); oscGain.connect(masterGain);
+                osc.start(t); osc.stop(t + 0.19);
+
+                // ② アタックノイズ（短め）
+                const nLen = Math.ceil(audioCtx.sampleRate * 0.035);
+                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+                const nDat = nBuf.getChannelData(0);
+                for (let i = 0; i < nLen; i++) nDat[i] = Math.random() * 2 - 1;
+                const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+                const nFlt = audioCtx.createBiquadFilter();
+                nFlt.type = 'lowpass'; nFlt.frequency.value = 2500;
+                const nGain = audioCtx.createGain();
+                nGain.gain.setValueAtTime(0.3, t);
+                nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+                nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
+                nSrc.start(t); nSrc.stop(t + 0.035);
             }
         }
 
+        loadSettings(); // 保存済み設定を復元（SE/BGM ON-OFF・音量・抽選演出）
         initGame();
         update();
     </script>
