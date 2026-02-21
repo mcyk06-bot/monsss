@@ -3329,7 +3329,7 @@
 
             stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; enemyBeams = []; items = [];
             defeated = 0; currentTurn = nextStageTurn; nextStageTurn = 0; friendshipAttackHistory = new Set(); globalFriendshipBoost = 0;
-            isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false;
+            isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false; resumeBeatClock();
             stageEnemyTurnsCount = 0; pendingStageClear = false;
 
             
@@ -3852,7 +3852,7 @@
             document.getElementById('subUnlockCharName').textContent = `✨ ${charName} の覚醒が目覚めた！`;
             const modal = document.getElementById('subUnlockModal');
             modal.style.display = 'flex';
-            isPaused = true;
+            isPaused = true; pauseBeatClock();
             // ステータスバーカードをぴょんぴょんさせる
             setTimeout(() => {
                 const cards = document.querySelectorAll('#friendshipStatusBar > div');
@@ -3876,7 +3876,7 @@
                 if (onComplete) {
                     setTimeout(onComplete, 200); // isPausedはtrueのまま次へ
                 } else {
-                    setTimeout(() => { isPaused = false; }, 100);
+                    setTimeout(() => { isPaused = false; resumeBeatClock(); }, 100);
                 }
             };
         }
@@ -4400,6 +4400,7 @@
             if (activeMarbles.length > 0) {
                 const allStopped = activeMarbles.every(m => !m.isMoving());
                 if (allStopped && !isEnemyTurn && !isGameOver && !isStageClear) {
+                    stopBeatClock(); // ★ 全員停止でビートクロック終了
                     for (let marble of activeMarbles) {
                         marble.isActive = false; marble.isStopped = true; stoppedMarbles.push(marble);
                         marble.isSpecialShot = false;
@@ -4719,7 +4720,7 @@
         }
 
         function showItemModal(item, marble) {
-            isPaused = true;
+            isPaused = true; pauseBeatClock();
             currentItem = item;
             currentMarble = marble;
 
@@ -4932,6 +4933,7 @@
                     marble.vy = ldy * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * launchMult;
                     marble.launchEaseFrame = 0;
                     marble.isActive = true; marble.isUsed = true; activeMarbles.push(marble);
+                    startBeatClock(); // ★ 発射時にビートクロック開始
                     playLaunchSound(power);
                 }
             }
@@ -5035,7 +5037,7 @@
         // モーダルを閉じてから少し待ってポーズ解除（ガチャガチャ防止）
         const MODAL_CLOSE_DELAY = 300; // ms
         function unpauseAfterDelay() {
-            setTimeout(() => { isPaused = false; }, MODAL_CLOSE_DELAY);
+            setTimeout(() => { isPaused = false; resumeBeatClock(); }, MODAL_CLOSE_DELAY);
         }
 
         function doEquip(item, marble, equipToSub) {
@@ -5043,7 +5045,7 @@
             if (result === 'banner') {
                 const banner = document.getElementById('subUnlockBanner');
                 if (banner) banner.style.display = 'block';
-                isPaused = true;
+                isPaused = true; pauseBeatClock();
                 currentItem = null; currentMarble = null;
                 setTimeout(() => {
                     document.getElementById('itemModal').classList.remove('active');
@@ -5729,7 +5731,7 @@
         function playCoinSound() {
             if (!seEnabled) return;
             resumeAudio();
-            const t = audioCtx.currentTime;
+            const t = getQuantizedTime(audioCtx.currentTime);
 
             // ① ホワイトノイズ（タイトなハイハット）
             const bufLen = Math.ceil(audioCtx.sampleRate * 0.12);
@@ -5891,6 +5893,47 @@
 
         // 壁バウンド音（コツッ・連続鳴り間引きあり）
         let lastBounceTime = 0;
+
+        // ─── ビートクオンタイザー (160BPM / 16分音符) ───
+        const BEAT_BPM = 160;
+        const SIXTEENTH = 60 / BEAT_BPM / 4; // 約0.09375秒
+        let beatOrigin = null;
+        let beatPauseStart = null;
+        let beatPausedTotal = 0;
+
+        // 予約済みグリッド時刻を管理（重複発音防止）
+        const scheduledBeats = new Map(); // key: 'type:gridTime(ms)', value: true
+
+        function startBeatClock() {
+            beatOrigin = audioCtx.currentTime;
+            beatPausedTotal = 0;
+            beatPauseStart = null;
+            scheduledBeats.clear();
+        }
+        function pauseBeatClock() {
+            if (beatOrigin !== null && beatPauseStart === null)
+                beatPauseStart = audioCtx.currentTime;
+        }
+        function resumeBeatClock() {
+            if (beatPauseStart !== null) {
+                beatPausedTotal += audioCtx.currentTime - beatPauseStart;
+                beatPauseStart = null;
+            }
+        }
+        function stopBeatClock() {
+            beatOrigin = null; beatPauseStart = null; beatPausedTotal = 0;
+            scheduledBeats.clear();
+        }
+        // 次の16分音符グリッド時刻を返す（待ちが長すぎる場合は即時）
+        function getQuantizedTime(now, lookahead = 0.12) {
+            if (beatOrigin === null) return now;
+            const elapsed = (now - beatOrigin) - beatPausedTotal;
+            if (elapsed < 0) return now;
+            const nextBeat = Math.ceil(elapsed / SIXTEENTH + 0.01);
+            const nextTime = beatOrigin + beatPausedTotal + nextBeat * SIXTEENTH;
+            return (nextTime - now) <= lookahead ? nextTime : now;
+        }
+        // ──────────────────────────────────────────────
         // 壁バウンド音
         //   side='h'（左右壁）→ スネア（ノイズ＋音程）
         //   side='v'（上下壁）→ スネアのリムショットのみ（コン！）
@@ -6276,7 +6319,12 @@
         function playFriendshipSound(type) {
             if (!seEnabled || !type) return;
             resumeAudio();
-            const t = audioCtx.currentTime;
+            const t = getQuantizedTime(audioCtx.currentTime);
+            // 同グリッド時刻に同じ種類の友情SEが予約済みならスキップ
+            const fsKey = 'fs_' + type + ':' + Math.round(t * 1000);
+            if (scheduledBeats.has(fsKey)) return;
+            scheduledBeats.set(fsKey, true);
+            setTimeout(() => scheduledBeats.delete(fsKey), 300);
 
             // 豆粒友情 ── ハイハット（8:2でクローズ多め）
             if (type === 'normal_shot') {
@@ -6890,7 +6938,23 @@
         function playHitSound(isCritical = false) {
             if (!seEnabled) return;
             resumeAudio();
-            const t = audioCtx.currentTime;
+            // ★ 160BPM 3連符グリッド（1連符≒0.125秒）にクオンタイズ＋重複防止
+            const TRIPLET = 60 / 160 / 3; // ≈ 0.125秒
+            const rawNow = audioCtx.currentTime;
+            let t = rawNow;
+            if (beatOrigin !== null) {
+                const elapsed = (rawNow - beatOrigin) - beatPausedTotal;
+                if (elapsed >= 0) {
+                    const nextBeat = Math.ceil(elapsed / TRIPLET + 0.01);
+                    const nextTime = beatOrigin + beatPausedTotal + nextBeat * TRIPLET;
+                    if (nextTime - rawNow <= TRIPLET) t = nextTime;
+                }
+            }
+            // 同グリッド時刻に既にバスドラが予約済みならスキップ
+            const hitKey = 'kick:' + Math.round(t * 1000);
+            if (scheduledBeats.has(hitKey)) return;
+            scheduledBeats.set(hitKey, true);
+            setTimeout(() => scheduledBeats.delete(hitKey), 300);
 
             // アタックノイズ共通（バスドラの頭のスキン感）★キャッシュ利用
             function kickNoise(dur, cutoff, vol) {
