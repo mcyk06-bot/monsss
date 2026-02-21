@@ -1933,64 +1933,123 @@
             constructor(startX, startY, targetX, targetY) {
                 this.startX = startX; this.startY = startY;
                 this.targetX = targetX; this.targetY = targetY;
-                this.frame = 0; this.maxFrames = 50;
+                this.frame = 0; this.maxFrames = 60;
                 this.hit = false; this.crossed = false;
                 this.crossBeams = [];
+                this.sparks = [];
             }
             draw() {
-            this.frame++;
-            const progress = Math.min(this.frame / 15, 1);
-            const curX = this.startX + (this.targetX - this.startX) * progress;
-            const curY = this.startY + (this.targetY - this.startY) * progress;
-            ctx.save();
-            const alpha = this.frame < 30 ? 1 : 1 - (this.frame - 30) / 20;
+                this.frame++;
+                const progress = Math.min(this.frame / 12, 1); // 速く伸びる
+                const curX = this.startX + (this.targetX - this.startX) * progress;
+                const curY = this.startY + (this.targetY - this.startY) * progress;
+                ctx.save();
+                const fadeAlpha = this.frame < 40 ? 1 : 1 - (this.frame - 40) / 20;
+                const pulse = 0.85 + Math.sin(this.frame * 0.5) * 0.15; // ゆらぎ
 
-            // 太い赤黒レーザー
-            ctx.globalAlpha = alpha;
-            ctx.strokeStyle = '#1a0000'; ctx.lineWidth = 20; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+                // ── 外側：黒い影（重さ・太さ）
+                ctx.globalAlpha = fadeAlpha * 0.9;
+                ctx.strokeStyle = '#0a0000';
+                ctx.lineWidth = 32;
+                ctx.lineCap = 'round';
+                ctx.shadowBlur = 0;
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
 
-            ctx.strokeStyle = '#cc0000'; ctx.lineWidth = 10;
-            ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+                // ── 赤黒コア（深みのある暗赤）
+                ctx.globalAlpha = fadeAlpha * pulse;
+                ctx.strokeStyle = '#3a0000';
+                ctx.lineWidth = 22;
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
 
-            ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
+                // ── 血赤ミドル
+                ctx.strokeStyle = '#8b0000';
+                ctx.lineWidth = 13;
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
 
-            // 着弾後、十字に展開
-            if (progress >= 1 && !this.crossed) {
-                this.crossed = true;
-                const angle = Math.atan2(this.targetY - this.startY, this.targetX - this.startX);
-                this.crossBeams = [
-                {a: angle + Math.PI / 2}, {a: angle - Math.PI / 2},
-                {a: angle}, {a: angle + Math.PI}
-                ];
-            }
-            if (this.crossed) {
-                const ca = this.frame < 30 ? 1 : alpha;
-                for (const b of this.crossBeams) {
-                const len = 200;
-                ctx.globalAlpha = ca * 0.8;
+                // ── 鮮血赤（中間層）
+                ctx.strokeStyle = '#cc1111';
+                ctx.lineWidth = 7;
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
 
-                ctx.strokeStyle = '#1a0000'; ctx.lineWidth = 14;
-                ctx.beginPath();
-                ctx.moveTo(this.targetX, this.targetY);
-                ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
-                ctx.stroke();
+                // ── 輝くコア（細い白赤）
+                ctx.globalAlpha = fadeAlpha * pulse * 0.9;
+                ctx.strokeStyle = '#ff6666';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
 
-                ctx.strokeStyle = '#aa0000'; ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(this.targetX, this.targetY);
-                ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
-                ctx.stroke();
+                // ── 外側グロー（広がる赤いオーラ）
+                ctx.globalAlpha = fadeAlpha * 0.18 * pulse;
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 48;
+                ctx.beginPath(); ctx.moveTo(this.startX, this.startY); ctx.lineTo(curX, curY); ctx.stroke();
 
-                ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(this.targetX, this.targetY);
-                ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len);
-                ctx.stroke();
+                // 着弾後、十字に展開
+                if (progress >= 1 && !this.crossed) {
+                    this.crossed = true;
+                    const angle = Math.atan2(this.targetY - this.startY, this.targetX - this.startX);
+                    this.crossBeams = [
+                        {a: angle + Math.PI / 2}, {a: angle - Math.PI / 2},
+                        {a: angle}, {a: angle + Math.PI}
+                    ];
+                    // スパーク生成
+                    for (let k = 0; k < 12; k++) {
+                        const sa = Math.random() * Math.PI * 2;
+                        this.sparks.push({ x: this.targetX, y: this.targetY,
+                            vx: Math.cos(sa) * (2 + Math.random() * 5),
+                            vy: Math.sin(sa) * (2 + Math.random() * 5), life: 1 });
+                    }
                 }
-            }
-            ctx.restore();
+                if (this.crossed) {
+                    const ca = this.frame < 40 ? 1 : fadeAlpha;
+                    for (const b of this.crossBeams) {
+                        const len = 220;
+                        // 影
+                        ctx.globalAlpha = ca * 0.85;
+                        ctx.strokeStyle = '#0a0000'; ctx.lineWidth = 22;
+                        ctx.beginPath(); ctx.moveTo(this.targetX, this.targetY);
+                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len); ctx.stroke();
+                        // 暗赤
+                        ctx.strokeStyle = '#5a0000'; ctx.lineWidth = 14;
+                        ctx.beginPath(); ctx.moveTo(this.targetX, this.targetY);
+                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len); ctx.stroke();
+                        // 血赤
+                        ctx.globalAlpha = ca * pulse;
+                        ctx.strokeStyle = '#aa0000'; ctx.lineWidth = 7;
+                        ctx.beginPath(); ctx.moveTo(this.targetX, this.targetY);
+                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len); ctx.stroke();
+                        // 細いコア
+                        ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2;
+                        ctx.beginPath(); ctx.moveTo(this.targetX, this.targetY);
+                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len); ctx.stroke();
+                        // グロー
+                        ctx.globalAlpha = ca * 0.15;
+                        ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 36;
+                        ctx.beginPath(); ctx.moveTo(this.targetX, this.targetY);
+                        ctx.lineTo(this.targetX + Math.cos(b.a) * len, this.targetY + Math.sin(b.a) * len); ctx.stroke();
+                    }
+                    // 着弾点：脈動する赤黒い光球
+                    const sp = pulse;
+                    ctx.globalAlpha = fadeAlpha * sp;
+                    const grd = ctx.createRadialGradient(this.targetX, this.targetY, 0, this.targetX, this.targetY, 40);
+                    grd.addColorStop(0, 'rgba(255,200,200,0.95)');
+                    grd.addColorStop(0.2, 'rgba(220,0,0,0.85)');
+                    grd.addColorStop(0.6, 'rgba(80,0,0,0.5)');
+                    grd.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.beginPath(); ctx.arc(this.targetX, this.targetY, 40, 0, Math.PI*2);
+                    ctx.fillStyle = grd; ctx.fill();
+                    // スパーク描画
+                    for (const spark of this.sparks) {
+                        spark.x += spark.vx; spark.y += spark.vy;
+                        spark.vx *= 0.92; spark.vy *= 0.92;
+                        spark.life -= 0.04;
+                        if (spark.life > 0) {
+                            ctx.globalAlpha = spark.life * fadeAlpha;
+                            ctx.fillStyle = spark.life > 0.5 ? '#ff6666' : '#ff2222';
+                            ctx.beginPath(); ctx.arc(spark.x, spark.y, 2.5, 0, Math.PI*2); ctx.fill();
+                        }
+                    }
+                }
+                ctx.restore();
             }
             isComplete() { return this.frame >= this.maxFrames; }
         }
@@ -3039,13 +3098,14 @@
                 this.friendshipType = this.subFriendshipType;
                 this.friendshipPower = saved.power; // 覚醒は100%威力
                 this.friendshipLevel = this.subFriendshipLevel;
-                this.friendshipCount = this.friendshipCount;
-                const bullets = this.createBullets(subReactionMult);
+                // ★ バグ修正: サブ友情用のfriendshipCountを正しく設定（ホーミング等の発射数に影響）
+                this.friendshipCount = 8 + (this.subFriendshipLevel - 1) * 2;
+                const subResult = this.createBullets(subReactionMult);
                 this.friendshipType = saved.type;
                 this.friendshipPower = saved.power;
                 this.friendshipLevel = saved.level;
                 this.friendshipCount = saved.count;
-                return bullets;
+                return subResult;
             }
             takeDamage() { this.damageFrame = 20; }
         }
@@ -3335,6 +3395,8 @@
             for (let _bi = 0; _bi < nextStageBonusItems; _bi++) spawnItems(999);
             nextStageBonusItems = 0;
             updateUI(); updateStageDisplay(); updateHPBar(); updateTurnIndicator();
+            // ★ ステージ開始時も一回休みを自動チェック（ステージ引き継ぎで最初から休みのケース）
+            setTimeout(() => checkAutoSkip(), 400);
             // ★ ステージ変更時に六角形背景を再描画
             if (window._redrawHexBg) window._redrawHexBg();
         }
@@ -3421,7 +3483,8 @@
                     b instanceof LightThreadBeam) continue; // 残す
                 b.life = Math.min(b.life, 20); // 約0.33秒でフェード
             }
-            items.length = 0;
+            // ★ アイテムは消さない: 全滅後もキャラが動いていれば取得可能
+            // items.length = 0; は startStage() で行う
         }
 
         function updateHPBar() {
@@ -3477,8 +3540,8 @@
                 if (currentStage < 5) return 'beam';
                 else if (currentStage < 10) return r < 0.80 ? 'beam' : 'bomb';
                 else if (currentStage < 15) { if (r < 0.55) return 'beam'; if (r < 0.75) return 'bomb'; return 'meteor'; }
-                else if (currentStage < 20) { if (r < 0.40) return 'beam'; if (r < 0.60) return 'bomb'; if (r < 0.80) return 'meteor'; if (r < 0.88) return 'chaos_arrow'; if (r < 0.95) return 'half_power'; return 'have_not'; }
-                else { if (r < 0.32) return 'beam'; if (r < 0.52) return 'bomb'; if (r < 0.68) return 'meteor'; if (r < 0.78) return 'chaos_arrow'; if (r < 0.88) return 'half_power'; return 'have_not'; }
+                else if (currentStage < 20) { if (r < 0.45) return 'beam'; if (r < 0.65) return 'bomb'; if (r < 0.85) return 'meteor'; if (r < 0.92) return 'chaos_arrow'; if (r < 0.97) return 'half_power'; return 'have_not'; }
+                else { if (r < 0.38) return 'beam'; if (r < 0.58) return 'bomb'; if (r < 0.76) return 'meteor'; if (r < 0.84) return 'chaos_arrow'; if (r < 0.92) return 'half_power'; if (r < 0.96) return 'have_not'; return 'beam'; }
             }
             const usedAttackers = new Set();
             function doOneAttack(delayMs) {
@@ -3863,7 +3926,10 @@
                 const healAmount = Math.floor((3 + (hitMarble.friendshipLevel - 1) * 2) * reactionMult);
                 teamHP = Math.min(roundHP(teamHP + healAmount), MAX_TEAM_HP);
                 explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
-                updateHPBar(); return null;
+                updateHPBar();
+                // ★ バグ修正: healでもcreateSubBullets()を呼ぶ（覚醒枠が発動しないバグ修正）
+                const subBullets = hitMarble.createSubBullets(reactionMult);
+                return subBullets.length > 0 ? subBullets : null;
             }
             // 白い光：activeMarble（手番キャラ）にゾーンを付ける
             if (hitMarble.friendshipType === 'white_light') {
@@ -3876,7 +3942,18 @@
             }
             // reactionMult を bullets/subBullets の power に反映
             const bullets = hitMarble.createBullets(reactionMult);
-            const subBullets = hitMarble.createSubBullets(reactionMult);
+
+            // ★ バグ修正: サブが白い光の場合、createSubBullets()→createBullets()経由では
+            // white_lightがreturn[]になるため発動しない。triggerFriendshipAttack側で直接ゾーン生成する
+            let subBullets = [];
+            if (hitMarble.subFriendshipUnlocked && hitMarble.subFriendshipType === 'white_light') {
+                const subPower = hitMarble.friendshipPower * 0.5 * reactionMult * 1.25 * (1 + playerAttackBonus * 0.15) * (1 + hitMarble.subFriendshipLevel * 0.3);
+                const zone = new WhiteLightZone(activeMarble);
+                zone.power = subPower;
+                explosions.push(zone);
+            } else {
+                subBullets = hitMarble.createSubBullets(reactionMult);
+            }
             return [...bullets, ...subBullets];
         }
         
@@ -4498,11 +4575,13 @@
 
                 const card = document.createElement('div');
                 const hasEffect = m.barrier || globalFriendshipBoost > 0 || m.debuffHalfPower || m.debuffChaosArrow || m.skipNextTurn;
-                const borderColor = m.barrier ? 'rgba(255,105,180,0.7)' : globalFriendshipBoost > 0 ? 'rgba(224,64,251,0.7)' : m.skipNextTurn ? 'rgba(156,39,176,0.7)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.7)' : 'rgba(255,255,255,0.12)';
-                const bgColor = m.barrier ? 'rgba(255,105,180,0.12)' : globalFriendshipBoost > 0 ? 'rgba(180,64,255,0.12)' : m.skipNextTurn ? 'rgba(156,39,176,0.08)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.08)' : 'rgba(255,255,255,0.06)';
+                const isMyTurn = (i === currentTurn && !isEnemyTurn && !isGameOver && !isStageClear);
+                const borderColor = isMyTurn ? 'rgba(255, 215, 0, 0.95)' : m.barrier ? 'rgba(255,105,180,0.7)' : globalFriendshipBoost > 0 ? 'rgba(224,64,251,0.7)' : m.skipNextTurn ? 'rgba(156,39,176,0.7)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.7)' : 'transparent';
+                const bgColor = isMyTurn ? 'rgba(255, 215, 0, 0.15)' : m.barrier ? 'rgba(255,105,180,0.12)' : globalFriendshipBoost > 0 ? 'rgba(180,64,255,0.12)' : m.skipNextTurn ? 'rgba(156,39,176,0.08)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.08)' : 'rgba(255,255,255,0.06)';
                 card.style.cssText = `
                     background: ${bgColor};
-                    border: ${hasEffect ? '2px' : '1px'} solid ${borderColor};
+                    border: 2px solid ${borderColor};
+                    ${isMyTurn ? 'box-shadow: 0 0 8px 2px rgba(255,215,0,0.4);' : ''}
                     border-radius: 5px;
                     text-align: center;
                     flex: 1;
@@ -4513,11 +4592,12 @@
                     margin: 0;
                 `;
 
-                // キャラ画像：キャッシュcanvasから描画
+                // キャラ画像：キャッシュcanvasから描画（DPR対応で高画質）
                 const cvs = document.createElement('canvas');
-                const sz = 48;
+                const dpr = window.devicePixelRatio || 1;
+                const sz = Math.round(80 * dpr); // DPR対応で鮮明に
                 cvs.width = sz; cvs.height = sz;
-                cvs.style.cssText = `width:100%;aspect-ratio:1;display:block;`;
+                cvs.style.cssText = `width:100%;aspect-ratio:1;display:block;image-rendering:auto;`;
                 const cctx = cvs.getContext('2d');
                 const cached = charCanvasCache[m.characterIndex];
                 if (cached) {
@@ -6627,12 +6707,16 @@
             setTimeout(() => {
                 currentTurn++;
                 if (currentTurn >= MAX_MARBLES) {
-                    currentTurn = 0;
+                    // ★ バグ修正: currentTurn = 0 に自分でリセットしない
+                    // endEnemyTurn() が increment してから wrap するので、
+                    // ここでは currentTurn を MAX_MARBLES のまま残し、
+                    // マーブルリセットだけ行って敵ターンに渡す
                     friendshipAttackHistory = new Set();
                     for (let m of playerMarbles) { m.isUsed = false; m.isActive = false; m.hitEnemies = new Set(); }
                     stoppedMarbles = [];
                     if (globalFriendshipBoost > 0) { globalFriendshipBoost--; }
                     updateTurnIndicator(); updateUI();
+                    // currentTurn は MAX_MARBLES のまま → endEnemyTurn で ++ → wrap → 0 になる
                     setTimeout(() => executeEnemyAttack(), 500);
                 } else {
                     updateTurnIndicator(); updateUI();
