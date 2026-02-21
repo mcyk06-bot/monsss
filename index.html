@@ -1332,6 +1332,9 @@
         let stageEnemyTurnsCount = 0; // このステージで敵ターンが何回起きたか
         let nextStageTurn = 0;        // 次ステージの開始手番を引き継ぐ
         let psychoEffect = null;       // 精神攻撃エフェクト { cx,cy,frame,maxFrame,onComplete }
+        // ★ テスト用フラグ: true にすると最初の敵攻撃を必ず精神攻撃エフェクトにする
+        //    確認できたら false に戻すだけ
+        const DEBUG_PSYCHO = false;
         let nextStageBonusItems = 0;  // 次ステージで追加スポーンするアイテム数
         
         let friendshipAttackHistory = new Set();
@@ -2045,7 +2048,7 @@
                 else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
                 else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '才能の覚醒薬'; this.description = '自分の化学反応（才能・覚醒）のレベルが1上がる！レア'; }
                 else if (type === 'barrier') { this.emoji = '🛡'; this.color = '#ff69b4'; this.name = '愛情'; this.description = '仲間キャラが愛情に包まれ、敵の攻撃を1回だけ無効にする！'; }
-                else if (type === 'friendship_boost') { this.emoji = '⚡'; this.color = '#7b1fa2'; this.name = '化学反応アップ'; this.description = '仲間の化学反応の威力が4行動分1.25倍になる！'; }
+                else if (type === 'friendship_boost') { this.emoji = '✨'; this.color = '#7b1fa2'; this.name = '化学反応アップ'; this.description = '仲間の化学反応の威力が4行動分1.25倍になる！'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体才能覚醒注射'; this.description = '仲間全員の化学反応のレベルが1上がる！激レア！'; }
                 else if (type === 'friendship_normal') { this.emoji = '🐿️'; this.color = '#607d8b'; this.name = '胞子'; this.description = '胞子を8発放つ基本の化学反応！'; }
                 else if (type === 'friendship_sixteen_ring') { this.emoji = '◎'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
@@ -2422,16 +2425,23 @@
                 if (this.target) {
                     const dx = this.target.x - this.x, dy = this.target.y - this.y;
                     const dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist > 0) { 
-                        this.vx += (dx / dist) * this.homingStrength; 
-                        this.vy += (dy / dist) * this.homingStrength;
-                        
-                        // 追加: 速度制限ロジック
+                    if (dist > 0) {
+                        // 近距離（60px以内）は速度ベクトルを目標方向に強制リダイレクト
+                        // → ぐるぐる周回を防いで直撃させる
+                        if (dist < 60) {
+                            const speed = Math.hypot(this.vx, this.vy) || this.maxSpeed;
+                            const blend = Math.max(0, 1 - dist / 60); // 近いほど1
+                            this.vx = this.vx * (1 - blend) + (dx / dist) * speed * blend;
+                            this.vy = this.vy * (1 - blend) + (dy / dist) * speed * blend;
+                        } else {
+                            this.vx += (dx / dist) * this.homingStrength;
+                            this.vy += (dy / dist) * this.homingStrength;
+                        }
+                        // 速度上限
                         const currentSpeed = Math.hypot(this.vx, this.vy);
                         if (currentSpeed > this.maxSpeed) {
                             const scale = this.maxSpeed / currentSpeed;
-                            this.vx *= scale;
-                            this.vy *= scale;
+                            this.vx *= scale; this.vy *= scale;
                         }
                     }
                 }
@@ -2637,7 +2647,9 @@
                 if (this.friendshipType === 'homing') {
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
-                        const b = new HomingBullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0);
+                        // delay をずらして同じタイミングで群れにならないようにする
+                        const delay = i * 4; // 4フレーム(約67ms)刻みで発射
+                        const b = new HomingBullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, delay);
                         b.useHiHat = true;
                         newBullets.push(b);
                     }
@@ -3171,7 +3183,10 @@
                         const attacker = candidates[Math.floor(Math.random() * candidates.length)];
                         usedAttackers.add(attacker);
                         const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
-                        const type = pickAttackType(attacker);
+                        // ★ テスト: 最初の攻撃を強制的に精神攻撃エフェクトにする
+                        const type = (DEBUG_PSYCHO && !window._psychoTested)
+                            ? (window._psychoTested = true, 'chaos_arrow')
+                            : pickAttackType(attacker);
                         if (type === 'dark_flame') {
                             playEnemyAttackSound('dark_flame');
                             showMessage('🔥 黒い炎！', 'danger');
@@ -3273,7 +3288,7 @@
                             target.debuffChaosArrow = true;
                             showMessage(`🌀 ささやかな反抗！${CHAR_NAMES[playerMarbles.indexOf(target)]}の矢印がランダムに！`, 'danger');
                             updateFriendshipStatusBar(); updateDebuffStatusPanel();
-                            psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 120, onComplete: resolve };
+                            psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 90, onComplete: resolve };
                         } else if (type === 'half_power') {
                             // 秩序の乱れ：精神攻撃エフェクト＋攻撃半減
                             playEnemyAttackSound('dark_flame');
@@ -3281,7 +3296,7 @@
                             target.debuffHalfPower = true;
                             showMessage(`📉 秩序の乱れ！${CHAR_NAMES[playerMarbles.indexOf(target)]}の次の攻撃が半減！`, 'danger');
                             updateFriendshipStatusBar(); updateDebuffStatusPanel();
-                            psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 120, onComplete: resolve };
+                            psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 90, onComplete: resolve };
                         } else if (type === 'have_not') {
                             // 持たざる者：精神攻撃エフェクト＋一回休み
                             playEnemyAttackSound('dark_flame');
@@ -3295,7 +3310,7 @@
                                 showMessage(`😔 持たざる者！${CHAR_NAMES[playerMarbles.indexOf(poorTarget)]}は恐怖で一回休み！`, 'danger');
                                 explosions.push(new CriticalEffect(poorTarget.x, poorTarget.y));
                                 updateFriendshipStatusBar(); updateDebuffStatusPanel();
-                                psychoEffect = { cx: poorTarget.x, cy: poorTarget.y, frame: 0, maxFrame: 120, onComplete: resolve };
+                                psychoEffect = { cx: poorTarget.x, cy: poorTarget.y, frame: 0, maxFrame: 90, onComplete: resolve };
                             } else {
                                 resolve();
                             }
@@ -3825,7 +3840,7 @@
                                 globalFriendshipBoost = Math.max(globalFriendshipBoost, 4);
                                 playLevelUpSound();
                                 explosions.push(new CriticalEffect(marble.x, marble.y));
-                                showMessage('⚡ 化学反応アップ！4行動分1.25倍！', 'combo-effect');
+                                showMessage('✨ 化学反応アップ！4行動分1.25倍！', 'combo-effect');
                                 updateFriendshipStatusBar();
                             } else if (item.type.startsWith('friendship_')) {
                                 pendingItemModal = { item, marble };
@@ -4038,78 +4053,68 @@
             if (psychoEffect) {
                 const pe = psychoEffect;
                 pe.frame++;
-                const progress = pe.frame / pe.maxFrame; // 0→1
-                // sin カーブで強さが出て引く
-                const strength = Math.sin(progress * Math.PI);
-                const intensity = strength * 32;
+                const progress = pe.frame / pe.maxFrame;
+                // easeIn: 最初から急増、後半ゆっくり引く
+                const strength = Math.pow(progress, 0.4) * Math.sin(progress * Math.PI * 0.95);
+                const intensity = Math.max(0, strength) * 34;
 
                 if (intensity > 0.3) {
-                    const pw = canvas.width, ph = canvas.height;
-                    const dpr = pw / canvasSize.width;
+                    const W = canvasSize.width, H = canvasSize.height;
                     const f = pe.frame;
 
-                    const snapshot = ctx.getImageData(0, 0, pw, ph);
-                    const src = snapshot.data;
-                    const dst = new ImageData(pw, ph);
-                    const d = dst.data;
-
-                    const iS = intensity * dpr;
-                    // 複数の sin 波を重ねてフィールド全体をグニャ〜
-                    for (let y = 0; y < ph; y++) {
-                        const ny = y / ph; // 0〜1
-                        // 横方向歪み（縦位置と時間で変わる波）
-                        const wx =
-                            Math.sin(ny * Math.PI * 4  + f * 0.19) * iS * 0.9 +
-                            Math.sin(ny * Math.PI * 7  + f * 0.28) * iS * 0.45 +
-                            Math.sin(ny * Math.PI * 13 + f * 0.11) * iS * 0.2;
-                        // 縦方向歪み
-                        const wy =
-                            Math.sin(ny * Math.PI * 3  + f * 0.17) * iS * 0.45 +
-                            Math.sin(ny * Math.PI * 9  + f * 0.23) * iS * 0.2;
-
-                        const shiftX = Math.round(wx);
-                        const srcY   = Math.min(ph - 1, Math.max(0, Math.round(y + wy)));
-                        const rowSrc = srcY * pw;
-                        const rowDst = y * pw;
-
-                        for (let x = 0; x < pw; x++) {
-                            // X 方向にも縦成分を加える（渦感）
-                            const nx = x / pw;
-                            const wxExtra = Math.sin(nx * Math.PI * 6 + f * 0.21) * iS * 0.3;
-                            const srcX = Math.min(pw - 1, Math.max(0, x - shiftX + Math.round(wxExtra)));
-                            const si = (rowSrc + srcX) * 4;
-                            const di = (rowDst + x) * 4;
-                            d[di]   = src[si];
-                            d[di+1] = src[si+1];
-                            d[di+2] = src[si+2];
-                            d[di+3] = src[si+3];
-                        }
+                    // ── オフスクリーンcanvasに今フレームをコピー ──
+                    // psychoOffscreen は初回だけ生成（使い回し）
+                    if (!pe.offscreen) {
+                        pe.offscreen = document.createElement('canvas');
+                        pe.offscreen.width  = canvas.width;
+                        pe.offscreen.height = canvas.height;
+                        pe.offCtx = pe.offscreen.getContext('2d');
                     }
-                    ctx.putImageData(dst, 0, 0);
+                    // 論理サイズに合わせてdrawImage（DPR込みのcanvasをCSS座標系で渡す）
+                    pe.offCtx.clearRect(0, 0, W, H);
+                    pe.offCtx.drawImage(canvas, 0, 0, W, H);
 
-                    // 色収差（R/B チャンネルを逆方向にズラす）
-                    const aberr = Math.round(iS * 0.5);
-                    if (aberr > 0) {
-                        const frame2 = ctx.getImageData(0, 0, pw, ph);
-                        const f2 = frame2.data;
-                        const out = new ImageData(pw, ph);
-                        const o = out.data;
-                        for (let i = 0; i < ph * pw; i++) {
-                            const x = i % pw, y = Math.floor(i / pw);
-                            const di = i * 4;
-                            const siR = (y * pw + Math.min(pw-1, x + aberr)) * 4;
-                            const siB = (y * pw + Math.max(0,   x - aberr)) * 4;
-                            o[di]   = f2[siR];      // R: 右にシフト
-                            o[di+1] = f2[di+1];     // G: そのまま
-                            o[di+2] = f2[siB+2];    // B: 左にシフト
-                            o[di+3] = f2[di+3];
-                        }
-                        ctx.putImageData(out, 0, 0);
+                    // ── スライス分割でズラして再描画（getImageData不使用） ──
+                    // 縦を STRIPS 本に分割、各ストリップを横にsinシフト
+                    const STRIPS = 48; // 本数：多いほど滑らか、重くなる
+                    const stripH = H / STRIPS;
+
+                    ctx.save();
+                    ctx.clearRect(0, 0, W, H);
+
+                    for (let i = 0; i < STRIPS; i++) {
+                        const ny  = i / STRIPS;
+                        // 複数sin重ねて不規則な波に
+                        const shiftX =
+                            Math.sin(ny * Math.PI * 4  + f * 0.19) * intensity * 0.9 +
+                            Math.sin(ny * Math.PI * 7  + f * 0.28) * intensity * 0.4 +
+                            Math.sin(ny * Math.PI * 11 + f * 0.13) * intensity * 0.2;
+                        const shiftY =
+                            Math.sin(ny * Math.PI * 3  + f * 0.17) * intensity * 0.35 +
+                            Math.sin(ny * Math.PI * 8  + f * 0.22) * intensity * 0.15;
+
+                        const sy  = i * stripH;
+                        const dh  = Math.ceil(stripH) + 1; // 隙間防止で1px余分
+
+                        ctx.drawImage(
+                            pe.offscreen,
+                            0, sy, W, dh,          // ソース（論理座標）
+                            shiftX, sy + shiftY, W, dh  // 描画先（横にズラす）
+                        );
                     }
+                    ctx.restore();
 
-                    // 全体に薄い紫フィルム
-                    ctx.fillStyle = `rgba(80,0,120,${strength * 0.12})`;
-                    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+                    // ── 色収差：赤チャンネルだけ薄く重ね描き（乗算不使用・軽量） ──
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = 0.07;
+                    const aberr = intensity * 0.4;
+                    ctx.drawImage(pe.offscreen, aberr, 0, W, H);
+                    ctx.restore();
+
+                    // ── 全体に紫フィルム ──
+                    ctx.fillStyle = `rgba(70,0,110,${strength * 0.10})`;
+                    ctx.fillRect(0, 0, W, H);
                 }
 
                 if (pe.frame >= pe.maxFrame) {
