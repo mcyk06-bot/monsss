@@ -2089,6 +2089,8 @@
             }
             draw() {
                 if (this.delay > 0) return;
+                const alpha = this.life < 20 ? this.life / 20 : 1; // ふわっとフェード
+                ctx.save(); ctx.globalAlpha = alpha;
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 const gradient = ctx.createRadialGradient(this.x - 1, this.y - 1, 0, this.x, this.y, this.radius);
                 gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(1, this.color);
@@ -2096,8 +2098,9 @@
                 const speed = Math.sqrt(this.vx ** 2 + this.vy ** 2);
                 if (speed > 1) {
                     ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 1, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(255, 215, 0, ${Math.min(speed / 5, 0.6)})`; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.strokeStyle = `rgba(255, 215, 0, ${Math.min(speed / 5, 0.6) * alpha})`; ctx.lineWidth = 2; ctx.stroke();
                 }
+                ctx.restore();
             }
             update() {
                 if (this.delay > 0) { this.delay--; return; }
@@ -2421,6 +2424,8 @@
                         if (dist < closestDist) { closestDist = dist; closestEnemy = enemy; }
                     }
                     this.target = closestEnemy;
+                    // 敵が全滅していたら即消える
+                    if (!this.target) { this.life = 0; return; }
                 }
                 if (this.target) {
                     const dx = this.target.x - this.x, dy = this.target.y - this.y;
@@ -2449,7 +2454,9 @@
             }
             draw() {
                 if (this.delay > 0) return;
-                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(Math.atan2(this.vy, this.vx));
+                const alpha = this.life < 20 ? this.life / 20 : 1;
+                ctx.save(); ctx.globalAlpha = alpha;
+                ctx.translate(this.x, this.y); ctx.rotate(Math.atan2(this.vy, this.vx));
                 ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-4, -4); ctx.lineTo(-4, 4); ctx.closePath();
                 ctx.fillStyle = '#ff4444'; ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
                 if (this.frame % 4 < 2) {
@@ -2695,7 +2702,7 @@
                             }
                         }
                         updateUI();
-                        if (enemies.length === 0) pendingStageClear = true;
+                        if (enemies.length === 0) { pendingStageClear = true; clearBulletsAfterClear(); }
                     }, 350);
                     return [];
                 } else if (this.friendshipType === 'normal_shot') {
@@ -3116,6 +3123,20 @@
         
         // HP値を小数点2桁に丸める
         function roundHP(v) { return Math.round(v * 100) / 100; }
+
+        // 敵全滅時に全弾をすぐ消す（ホーミングの無駄ぐるぐる防止）
+        function clearBulletsAfterClear() {
+            // 綺麗なエフェクト系（十六輪・発光群・光の糸）はそのまま自然消滅
+            // それ以外はlifeを短くしてふわっとフェードアウト
+            for (const b of bullets) {
+                if (!b) continue;
+                if (b instanceof SixteenRingBullet ||
+                    b instanceof GlowHomingBullet ||
+                    b instanceof LightThreadBeam) continue; // 残す
+                b.life = Math.min(b.life, 20); // 約0.33秒でフェード
+            }
+            items.length = 0;
+        }
 
         function updateHPBar() {
             const hpBarFill = document.getElementById('hpBarFill');
@@ -3593,7 +3614,7 @@
                                     explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
                                     enemies.splice(j, 1);
                                     updateUI();
-                                    if (enemies.length === 0) pendingStageClear = true;
+                                    if (enemies.length === 0) { pendingStageClear = true; clearBulletsAfterClear(); }
                                 }
                             }
                         }
@@ -3609,8 +3630,9 @@
             for (let i = enemies.length - 1; i >= 0; i--) enemies[i].draw();
             for (let i = items.length - 1; i >= 0; i--) { items[i].update(); items[i].draw(); }
             
-            for (let i = bullets.length - 1; i >= 0; i--) {
+            bulletLoop: for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i];
+                if (!b) continue;
                 b.update(); b.draw();
                 if (!b.isAlive()) { bullets.splice(i, 1); continue; }
 
@@ -3633,7 +3655,7 @@
                                                 explosions.push(new Explosion(en.x, en.y, en.radius, en.color));
                                                 enemies.splice(j, 1);
                                                 updateUI();
-                                                if (enemies.length === 0) pendingStageClear = true;
+                                                if (enemies.length === 0) { pendingStageClear = true; clearBulletsAfterClear(); }
                                             }
                                         }
                                     }
@@ -3661,7 +3683,7 @@
                                 explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                                 enemies.splice(j, 1);
                                 updateUI();
-                                if (enemies.length === 0) { pendingStageClear = true; bullets.forEach(b => { if (b instanceof SixteenRingBullet || b instanceof GlowHomingBullet) b.life = Math.min(b.life, 8); }); }
+                                if (enemies.length === 0) { pendingStageClear = true; clearBulletsAfterClear(); break bulletLoop; }
                             }
                             bullets.splice(i, 1); break;
                         }
@@ -3692,9 +3714,9 @@
                                 showMessage(`💚 HP回復！ +${healAmount}`, 'success'); updateHPBar();
                             }
                             updateUI();
-                            if (enemies.length === 0) pendingStageClear = true;
+                            if (enemies.length === 0) { pendingStageClear = true; clearBulletsAfterClear(); break bulletLoop; }
                         }
-                        if (enemies.length === 0) { bullets.forEach(b => { if (b instanceof SixteenRingBullet || b instanceof GlowHomingBullet) b.life = Math.min(b.life, 8); }); }
+                        // (bullets cleared by clearBulletsAfterClear above)
                         bullets.splice(i, 1); break;
                     }
                 }
@@ -3874,7 +3896,7 @@
                                     updateHPBar();
                                 }
                                 updateUI();
-                                if (enemies.length === 0) pendingStageClear = true;
+                                if (enemies.length === 0) { pendingStageClear = true; clearBulletsAfterClear(); }
                             }
                         }
                     }
@@ -3952,6 +3974,13 @@
             
             // 以前の衝突判定ループは削除済み（サブステップ内に統合）
             
+            // マーブルが既に止まっている状態で弾が最後の敵を倒した場合
+            if (activeMarbles.length === 0 && pendingStageClear && !isStageClear && !isEnemyTurn) {
+                pendingStageClear = false;
+                nextStageTurn = (currentTurn + 1) % MAX_MARBLES;
+                setTimeout(() => showStageClear(), 50);
+            }
+
             if (activeMarbles.length > 0) {
                 const allStopped = activeMarbles.every(m => !m.isMoving());
                 if (allStopped && !isEnemyTurn && !isGameOver && !isStageClear) {
