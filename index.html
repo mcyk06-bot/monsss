@@ -853,7 +853,7 @@
                 <div id="friendshipStatusBar" style="display:flex; flex:1; gap:4px;"></div>
                 <div style="flex-shrink:0;">
                     <button class="special-shot-btn" id="specialShotBtn" disabled style="height:100%;">
-                        <span id="specialShotBtnText">大号令</span>
+                        <span id="specialShotBtnText">みんな一緒だよ</span>
                         <span id="specialShotText" style="font-size:10px; opacity:0.8; display:block; margin-top:1px;">0 / 24</span>
                     </button>
                 </div>
@@ -909,15 +909,15 @@
                 ❤️ <strong>HPアップ</strong>　最大HP+4<br>
                 💪 <strong>攻撃力アップ</strong>　全員の攻撃力+0.5<br>
                 🏃 <strong>スピードアップ</strong>　全員の速度+0.1（最大+2.0）<br>
-                ⏳ <strong>砂時計</strong>　大号令カウント+4<br>
+                ⏳ <strong>砂時計</strong>　みんな一緒だよカウント+4<br>
                 💀 <strong>デス</strong>　超激レア！敵を全滅させる<br>
-                💊 <strong>才能の覚醒薬</strong>　レア！自分の化学反応(才能/努力)Lv+1<br>
+                💊 <strong>才能の覚醒薬</strong>　レア！自分の化学反応(才能/覚醒)Lv+1<br>
                 💉 <strong>全体才能覚醒注射</strong>　激レア！全員の化学反応Lv+1<br>
                 🚀 <strong>ホーミングミサイル</strong>　化学反応が敵を自動追尾<br>
                 ⚡ <strong>レーザービーム</strong>　化学反応が貫通レーザーに<br>
                 💝 <strong>回復の化学反応</strong>　化学反応でHP回復<br>
                 🔫 <strong>友情・マシンガン</strong>　弱った敵に連射<br>
-                ⭕ <strong>エナジーサークル</strong>　全敵にダメージ<br>
+                ⭕ <strong>水面和音</strong>　全敵にダメージ<br>
                 <small>※才能(アイテム)は同じ種類を重ねるとLv5まで強化！</small>
             </div>
 
@@ -943,7 +943,7 @@
 
                 <!-- サブ友情解放バナー（Lv5到達時のみ表示） -->
                 <div id="subUnlockBanner" style="display:none; background:linear-gradient(135deg,#ff6b35,#f7c948); color:white; font-weight:bold; font-size:14px; padding:8px; border-radius:8px; margin-top:8px; text-align:center; animation: scaleIn 0.3s ease;">
-                    🔓 努力して得た才能が解放されました！
+                    🔓 覚醒が解放されました！
                 </div>
 
                 <!-- サブ友情ステータス（解放済みのみ表示） -->
@@ -952,7 +952,7 @@
             </div>
             <div class="item-modal-buttons" id="itemModalButtons">
                 <button class="item-btn item-btn-equip" id="itemEquipBtn">学習する ✓</button>
-                <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">努力で学習 ⚡</button>
+                <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">覚醒を習得 ⚡</button>
                 <button class="item-btn" id="itemGiveBtn" style="display:none; background:linear-gradient(135deg,#00bcd4,#0097a7); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">仲間に教育する 🤝</button>
                 <button class="item-btn item-btn-cancel" id="itemCancelBtn">学習しない ✗</button>
             </div>
@@ -1920,8 +1920,8 @@
                 if (this.frame < 45) {
                     ctx.save(); ctx.globalAlpha = Math.max(0, 1 - this.frame / 45);
                     ctx.font = 'bold 36px Arial'; ctx.textAlign = 'center';
-                    ctx.strokeStyle = '#000000'; ctx.lineWidth = 6; ctx.strokeText('大号令ショット！！', this.x, this.y - 40 - this.frame * 0.8);
-                    ctx.fillStyle = this.frame % 8 < 4 ? '#ff6b00' : '#ffd700'; ctx.fillText('大号令ショット！！', this.x, this.y - 40 - this.frame * 0.8);
+                    ctx.strokeStyle = '#000000'; ctx.lineWidth = 6; ctx.strokeText('みんな一緒だよ！！', this.x, this.y - 40 - this.frame * 0.8);
+                    ctx.fillStyle = this.frame % 8 < 4 ? '#ff6b00' : '#ffd700'; ctx.fillText('みんな一緒だよ！！', this.x, this.y - 40 - this.frame * 0.8);
                     ctx.restore();
                 }
             }
@@ -1932,15 +1932,15 @@
             constructor(x, y, type) {
                 this.x = x; this.y = y; this.type = type; this.radius = 22; this.frame = 0; this.collected = false;
                 if (type === 'hp') { this.emoji = '❤️'; this.color = '#ff1744'; this.name = 'HP上限アップ'; this.description = 'HP上限が4増加します'; }
-                else if (type === 'hourglass') { this.emoji = '⏳'; this.color = '#ff9800'; this.name = '砂時計'; this.description = '大号令カウントを4短縮します！'; }
+                else if (type === 'hourglass') { this.emoji = '⏳'; this.color = '#ff9800'; this.name = '砂時計'; this.description = 'みんな一緒だよカウントを4短縮します！'; }
                 else if (type === 'attack') { this.emoji = '💪'; this.color = '#ffd600'; this.name = '攻撃力アップ'; this.description = '攻撃力が0.5増加します'; }
                 else if (type === 'speedup') { this.emoji = '🏃'; this.color = '#00bcd4'; this.name = 'スピードアップ'; this.description = '全キャラの移動速度が上がります！'; }
                 else if (type === 'death') { this.emoji = '💀'; this.color = '#333333'; this.name = 'デス'; this.description = '現在ステージ上の全ての敵を即死させます！'; }
-                else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '才能の覚醒薬'; this.description = '自分の化学反応（才能・努力）のレベルが1上がる！レア'; }
+                else if (type === 'friendship_up_self') { this.emoji = '💊'; this.color = '#e91e63'; this.name = '才能の覚醒薬'; this.description = '自分の化学反応（才能・覚醒）のレベルが1上がる！レア'; }
                 else if (type === 'barrier') { this.emoji = '🛡'; this.color = '#ff69b4'; this.name = '愛情'; this.description = '仲間キャラが愛情に包まれ、敵の攻撃を1回だけ無効にする！'; }
                 else if (type === 'friendship_boost') { this.emoji = '⚡'; this.color = '#7b1fa2'; this.name = '化学反応アップ'; this.description = '仲間の化学反応の威力が4行動分1.25倍になる！'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体才能覚醒注射'; this.description = '仲間全員の化学反応のレベルが1上がる！激レア！'; }
-                else if (type === 'friendship_normal') { this.emoji = '🐿️'; this.color = '#607d8b'; this.name = '豆粒化学反応'; this.description = '小さな弾を8発放つ基本の化学反応！'; }
+                else if (type === 'friendship_normal') { this.emoji = '🐿️'; this.color = '#607d8b'; this.name = '胞子'; this.description = '胞子を8発放つ基本の化学反応！'; }
                 else if (type === 'friendship_sixteen_ring') { this.emoji = '◎'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
                 else if (type === 'friendship_white_light') { this.emoji = '◉'; this.color = '#e0f0ff'; this.name = '白い光'; this.description = '自身の周りに白い光ゾーンが広がり範囲にダメージ！'; }
                 else if (type === 'friendship_glow_homing') { this.emoji = '⚕'; this.color = '#aaddff'; this.name = '発光群'; this.description = '高速の白い光ホーミングビームが敵を追う！'; }
@@ -1949,7 +1949,7 @@
                 else if (type === 'friendship_laser') { this.emoji = '⚡'; this.color = '#9c27b0'; this.name = 'レーザービーム'; this.description = '化学反応が貫通レーザーになります。敵を一直線に貫く！'; }
                 else if (type === 'friendship_heal') { this.emoji = '💝'; this.color = '#ff69b4'; this.name = '回復の化学反応'; this.description = '化学反応発動時、攻撃の代わりにHPを回復します。'; }
                 else if (type === 'friendship_machinegun') { this.emoji = '🔫'; this.color = '#607d8b'; this.name = '友情・マシンガン'; this.description = '弱った敵にめがけて高速弾を16発連射します！'; }
-                else if (type === 'friendship_energy') { this.emoji = '⭕'; this.color = '#00bcd4'; this.name = 'エナジーサークル'; this.description = '自身を中心にエネルギー衝撃波が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
+                else if (type === 'friendship_energy') { this.emoji = '⭕'; this.color = '#00bcd4'; this.name = '水面和音'; this.description = '自身を中心に和音の波紋が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
             }
             update() { this.frame++; }
             draw() {
@@ -2386,6 +2386,7 @@
                 this.barrier = false; // 愛情（1回防御）
                 this.debuffHalfPower = false; // 秩序の乱れ：次のターンまで攻撃/反応威力半減
                 this.debuffChaosArrow = false; // ささやかな反抗：次のターン矢印がランダムになる
+                this.skipNextTurn = false; // 持たざる者：次の手番を一回休み
             }
             draw() {
                 this.animationFrame++;
@@ -2430,6 +2431,18 @@
                     ctx.lineWidth = 4;
                     ctx.shadowColor = '#ff69b4'; ctx.shadowBlur = 10;
                     ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                }
+                // 一回休み：紫の螺旋リング
+                if (this.skipNextTurn) {
+                    const t2 = Date.now() / 200;
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(156,39,176,${0.6 + Math.sin(t2)*0.3})`;
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([8, 4]);
+                    ctx.lineDashOffset = -t2 * 12;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 11, 0, Math.PI * 2); ctx.stroke();
+                    ctx.setLineDash([]);
                     ctx.restore();
                 }
                 // デバフ：赤い点滅リング
@@ -2513,7 +2526,7 @@
                 const bulletSpeed = 6;
                 const newBullets = [];
                 const bulletCount = this.friendshipCount;
-                const power = this.friendshipPower * reactionMult * (globalFriendshipBoost > 0 ? 1.25 : 1.0) * (this.debuffHalfPower ? 0.5 : 1.0);
+                const power = this.friendshipPower * 0.5 * reactionMult * (globalFriendshipBoost > 0 ? 1.25 : 1.0) * (this.debuffHalfPower ? 0.5 : 1.0);
                 if (this.friendshipType === 'homing') {
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
@@ -2613,10 +2626,10 @@
             createSubBullets(reactionMult = 1.0) {
                 if (!this.subFriendshipUnlocked || this.subFriendshipType === 'normal') return [];
                 const subReactionMult = reactionMult;
-                // サブ友情：威力1/2、レベルはsubFriendshipLevel
+                // 覚醒：威力100%、レベルはsubFriendshipLevel
                 const saved = { type: this.friendshipType, power: this.friendshipPower, level: this.friendshipLevel, count: this.friendshipCount };
                 this.friendshipType = this.subFriendshipType;
-                this.friendshipPower = saved.power * 0.5;
+                this.friendshipPower = saved.power; // 覚醒は100%威力
                 this.friendshipLevel = this.subFriendshipLevel;
                 this.friendshipCount = this.friendshipCount;
                 const bullets = this.createBullets(subReactionMult);
@@ -3034,8 +3047,8 @@
                 if (currentStage < 5) return 'beam';
                 else if (currentStage < 10) return r < 0.80 ? 'beam' : 'bomb';
                 else if (currentStage < 15) { if (r < 0.55) return 'beam'; if (r < 0.75) return 'bomb'; return 'meteor'; }
-                else if (currentStage < 20) { if (r < 0.40) return 'beam'; if (r < 0.60) return 'bomb'; if (r < 0.80) return 'meteor'; if (r < 0.90) return 'chaos_arrow'; return 'half_power'; }
-                else { if (r < 0.35) return 'beam'; if (r < 0.55) return 'bomb'; if (r < 0.72) return 'meteor'; if (r < 0.83) return 'chaos_arrow'; return 'half_power'; }
+                else if (currentStage < 20) { if (r < 0.40) return 'beam'; if (r < 0.60) return 'bomb'; if (r < 0.80) return 'meteor'; if (r < 0.88) return 'chaos_arrow'; if (r < 0.95) return 'half_power'; return 'have_not'; }
+                else { if (r < 0.32) return 'beam'; if (r < 0.52) return 'bomb'; if (r < 0.68) return 'meteor'; if (r < 0.78) return 'chaos_arrow'; if (r < 0.88) return 'half_power'; return 'have_not'; }
             }
             const usedAttackers = new Set();
             function doOneAttack(delayMs) {
@@ -3159,6 +3172,22 @@
                             showMessage(`📉 秩序の乱れ！${CHAR_NAMES[playerMarbles.indexOf(target)]}の次の攻撃が半減！`, 'danger');
                             updateFriendshipStatusBar();
                             setTimeout(resolve, 800);
+                        } else if (type === 'have_not') {
+                            // 持たざる者：才能の総数が最も少ないキャラを一回休みにする
+                            playEnemyAttackSound('dark_flame');
+                            // 才能合計が最小のマーブルを探す（同数なら一番若い番号）
+                            let minTalent = Infinity, poorTarget = null;
+                            for (const m of availableTargets) {
+                                const t = getTotalTalent(m);
+                                if (t < minTalent) { minTalent = t; poorTarget = m; }
+                            }
+                            if (poorTarget) {
+                                poorTarget.skipNextTurn = true;
+                                showMessage(`😔 持たざる者！${CHAR_NAMES[playerMarbles.indexOf(poorTarget)]}は恐怖で一回休み！`, 'danger');
+                                explosions.push(new CriticalEffect(poorTarget.x, poorTarget.y));
+                                updateFriendshipStatusBar();
+                            }
+                            setTimeout(resolve, 900);
                         } else if (type === 'beam') {
                             const beam = new EnemyBeam(attacker.x, attacker.y, target.x, target.y, attacker.color);
                             enemyBeams.push(beam);
@@ -3363,7 +3392,7 @@
             }
             // 白い光：activeMarble（手番キャラ）にゾーンを付ける
             if (hitMarble.friendshipType === 'white_light') {
-                const power = hitMarble.friendshipPower * reactionMult * 1.25 * (1 + playerAttackBonus * 0.15) * (1 + hitMarble.friendshipLevel * 0.3);
+                const power = hitMarble.friendshipPower * 0.5 * reactionMult * 1.25 * (1 + playerAttackBonus * 0.15) * (1 + hitMarble.friendshipLevel * 0.3);
                 const zone = new WhiteLightZone(activeMarble);
                 zone.power = power;
                 explosions.push(zone);
@@ -3562,9 +3591,9 @@
                                 specialShotCount = Math.min(specialShotCount + 4, SPECIAL_SHOT_MAX);
                                 explosions.push(new CriticalEffect(item.x, item.y));
                                 if (specialShotCount >= SPECIAL_SHOT_MAX) {
-                                    showMessage('⏳ 砂時計！大号令準備完了！', 'combo-effect');
+                                    showMessage('⏳ 砂時計！みんな一緒だよ準備完了！', 'combo-effect');
                                 } else {
-                                    showMessage(`⏳ 砂時計！大号令カウント+4 (${specialShotCount}/${SPECIAL_SHOT_MAX})`, 'success');
+                                    showMessage(`⏳ 砂時計！みんな一緒だよカウント+4 (${specialShotCount}/${SPECIAL_SHOT_MAX})`, 'success');
                                 }
                                 updateSpecialShotUI();
                             } else if (item.type === 'speedup') {
@@ -3603,7 +3632,7 @@
                                         const banner = document.getElementById('subUnlockBanner');
                                         if (banner) { banner.style.display = 'block'; setTimeout(() => banner.style.display = 'none', 2500); }
                                     }, 200);
-                                    showMessage('🔓 努力して得た才能が解放された！', 'combo-effect');
+                                    showMessage('🔓 覚醒が解放された！', 'combo-effect');
                                 }
                                 if (leveled) {
                                     playLevelUpSound();
@@ -3766,9 +3795,10 @@
                     for (let marble of activeMarbles) {
                         marble.isActive = false; marble.isStopped = true; stoppedMarbles.push(marble);
                         marble.isSpecialShot = false;
-                        // デバフ消費：このターン使ったマーブルの秩序の乱れを解除
+                        // デバフ消費：このターン使ったマーブルの状態異常を解除
                         marble.debuffHalfPower = false;
                         marble.debuffChaosArrow = false;
+                        marble.skipNextTurn = false; // 一回休み（発動してここに来た場合のみ）
                     }
                     activeMarbles = [];
                     if (pendingStageClear) {
@@ -3858,9 +3888,9 @@
                 const subLv = subIcon ? m.subFriendshipLevel : 0;
 
                 const card = document.createElement('div');
-                const hasEffect = m.barrier || globalFriendshipBoost > 0 || m.debuffHalfPower || m.debuffChaosArrow;
-                const borderColor = m.barrier ? 'rgba(255,105,180,0.7)' : globalFriendshipBoost > 0 ? 'rgba(224,64,251,0.7)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.7)' : 'rgba(255,255,255,0.12)';
-                const bgColor = m.barrier ? 'rgba(255,105,180,0.12)' : globalFriendshipBoost > 0 ? 'rgba(180,64,255,0.12)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.08)' : 'rgba(255,255,255,0.06)';
+                const hasEffect = m.barrier || globalFriendshipBoost > 0 || m.debuffHalfPower || m.debuffChaosArrow || m.skipNextTurn;
+                const borderColor = m.barrier ? 'rgba(255,105,180,0.7)' : globalFriendshipBoost > 0 ? 'rgba(224,64,251,0.7)' : m.skipNextTurn ? 'rgba(156,39,176,0.7)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.7)' : 'rgba(255,255,255,0.12)';
+                const bgColor = m.barrier ? 'rgba(255,105,180,0.12)' : globalFriendshipBoost > 0 ? 'rgba(180,64,255,0.12)' : m.skipNextTurn ? 'rgba(156,39,176,0.08)' : (m.debuffHalfPower || m.debuffChaosArrow) ? 'rgba(244,67,54,0.08)' : 'rgba(255,255,255,0.06)';
                 card.style.cssText = `
                     background: ${bgColor};
                     border: ${hasEffect ? '2px' : '1px'} solid ${borderColor};
@@ -3908,6 +3938,7 @@
                 const boostMark = globalFriendshipBoost > 0 ? `<div style="font-size:9px;line-height:1.3;text-align:center;color:#e040fb;font-weight:bold;">⚡×${globalFriendshipBoost}</div>` : '';
                 const halfMark = m.debuffHalfPower ? `<div style="font-size:9px;line-height:1.3;text-align:center;color:#f44336;font-weight:bold;">📉½</div>` : '';
                 const chaosMark = m.debuffChaosArrow ? `<div style="font-size:9px;line-height:1.3;text-align:center;color:#ff9800;font-weight:bold;">🌀</div>` : '';
+                const skipMark = m.skipNextTurn ? `<div style="font-size:9px;line-height:1.3;text-align:center;color:#9c27b0;font-weight:bold;">😔休</div>` : '';
 
                 // メイン友情行
                 const mainRow = m.friendshipType !== 'normal'
@@ -3917,11 +3948,11 @@
                 const subRow = subIcon
                     ? `<div style="font-size:11px;line-height:1.4;padding:0 2px;opacity:0.85;">${subIcon}<span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
                     : (m.subFriendshipUnlocked
-                        ? `<div style="font-size:9px;color:#444;line-height:1.4;padding:0 2px;">sub─</div>`
+                        ? `<div style="font-size:9px;color:#444;line-height:1.4;padding:0 2px;">覚醒─</div>`
                         : '');
 
                 card.appendChild(cvs);
-                card.insertAdjacentHTML('beforeend', barrierMark + boostMark + halfMark + chaosMark + mainRow + subRow);
+                card.insertAdjacentHTML('beforeend', barrierMark + boostMark + halfMark + chaosMark + skipMark + mainRow + subRow);
                 bar.appendChild(card);
             });
         }
@@ -3943,10 +3974,10 @@
             text.textContent = `${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
             if (specialShotCount >= SPECIAL_SHOT_MAX) {
                 isSpecialShotReady = true; btn.disabled = false;
-                if (isSpecialShotActive) { btn.classList.remove('ready'); btn.classList.add('active'); btnText.textContent = '⚡ 大号令！'; }
-                else { btn.classList.add('ready'); btn.classList.remove('active'); btnText.textContent = '⚡ 大号令！'; }
+                if (isSpecialShotActive) { btn.classList.remove('ready'); btn.classList.add('active'); btnText.textContent = '⚡ みんな一緒だよ！'; }
+                else { btn.classList.add('ready'); btn.classList.remove('active'); btnText.textContent = '⚡ みんな一緒だよ！'; }
             } else {
-                isSpecialShotReady = false; btn.disabled = true; btn.classList.remove('ready', 'active'); btnText.textContent = '大号令';
+                isSpecialShotReady = false; btn.disabled = true; btn.classList.remove('ready', 'active'); btnText.textContent = 'みんな一緒だよ';
             }
         }
         
@@ -3957,7 +3988,7 @@
         }
         
         const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'⭕', normal_shot:'🐿️', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
-        const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'回復の化学反応', machinegun:'マシンガン', energy:'エナジーサークル', normal_shot:'豆粒化学反応', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
+        const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'回復の化学反応', machinegun:'マシンガン', energy:'水面和音', normal_shot:'胞子', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
 
         function iconBar(type, level) {
             const icon = FRIENDSHIP_ICONS[type] || '　';
@@ -3999,7 +4030,7 @@
             if (isFriendship && isSameAsMain && marble.friendshipLevel < 5) {
                 statusLabel.textContent = '🔼 才能の開花チャンス！'; statusLabel.style.background = '#c0392b';
             } else if (isFriendship && marble.subFriendshipUnlocked && isSameAsSub && marble.subFriendshipLevel < 5) {
-                statusLabel.textContent = '🔼 努力レベルアップ！'; statusLabel.style.background = '#e67e22';
+                statusLabel.textContent = '🔼 覚醒レベルアップ！'; statusLabel.style.background = '#e67e22';
             } else {
                 statusLabel.textContent = '✨ NEW'; statusLabel.style.background = '#1565c0';
             }
@@ -4014,7 +4045,7 @@
                 mainInfo.style.background = canMainLvUp ? '#fff3e0' : '#f8f9fa';
                 mainInfo.style.border    = canMainLvUp ? '1.5px solid #e74c3c' : '1px solid #ddd';
                 mainInfo.innerHTML = `
-                    <div style="font-size:11px;color:${canMainLvUp ? '#c0392b' : '#888'};font-weight:bold;margin-bottom:2px;">【生まれ持った才能】</div>
+                    <div style="font-size:11px;color:${canMainLvUp ? '#c0392b' : '#888'};font-weight:bold;margin-bottom:2px;">【才能】</div>
                     <div style="font-size:12px;color:#444;margin-bottom:2px;">${FRIENDSHIP_NAMES[mainType] || '未装備'}</div>
                     <div>${iconBar(mainType, marble.friendshipLevel)}</div>
                     ${canMainLvUp ? `<div style="font-size:11px;color:#c0392b;margin-top:2px;">装備後 → ${iconBar(newItemType, mainLv)}</div>` : ''}
@@ -4041,7 +4072,7 @@
                 const subLv = canSubLvUp ? Math.min(marble.subFriendshipLevel + 1, 5) : marble.subFriendshipLevel;
                 const subLabelColor = canSubLvUp ? '#e67e22' : '#888';
                 subInfo.innerHTML = `
-                    <div style="font-size:11px;color:${subLabelColor};font-weight:bold;margin-bottom:3px;">【努力して得た才能 / 威力1/2】</div>
+                    <div style="font-size:11px;color:${subLabelColor};font-weight:bold;margin-bottom:3px;">【覚醒 / 威力100%】</div>
                     <div style="font-size:12px;color:#444;margin-bottom:3px;">${marble.subFriendshipType !== 'normal' ? FRIENDSHIP_NAMES[marble.subFriendshipType] : '未装備'}</div>
                     <div>${iconBar(marble.subFriendshipType, marble.subFriendshipType !== 'normal' ? marble.subFriendshipLevel : 0)}</div>
                     ${canSubLvUp ? `<div style="font-size:11px;color:#e67e22;margin-top:3px;">装備後 → ${iconBar(newItemType, subLv)}</div>` : ''}
@@ -4065,8 +4096,8 @@
             else if (item.type === 'friendship_laser') { newItemType = 'laser'; itemName = 'レーザー'; }
             else if (item.type === 'friendship_heal') { newItemType = 'heal'; itemName = '回復'; }
             else if (item.type === 'friendship_machinegun') { newItemType = 'machinegun'; itemName = 'マシンガン'; }
-            else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = 'エナジーサークル'; }
-            else if (item.type === 'friendship_normal') { newItemType = 'normal_shot'; itemName = '豆粒化学反応'; }
+            else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = '水面和音'; }
+            else if (item.type === 'friendship_normal') { newItemType = 'normal_shot'; itemName = '胞子'; }
             else if (item.type === 'friendship_sixteen_ring') { newItemType = 'sixteen_ring'; itemName = '十六輪'; }
             else if (item.type === 'friendship_white_light') { newItemType = 'white_light'; itemName = '白い光'; }
             else if (item.type === 'friendship_glow_homing') { newItemType = 'glow_homing'; itemName = '発光群'; }
@@ -4080,15 +4111,15 @@
                         marble.subFriendshipLevel++;
                         if (marble.subFriendshipLevel === 5) marble.everSubLv5 = true;
                         playLevelUpSound();
-                        showMessage(`🆙 努力${itemName}がLv.${marble.subFriendshipLevel}に強化！`, 'combo-effect');
+                        showMessage(`🆙 覚醒${itemName}がLv.${marble.subFriendshipLevel}に強化！`, 'combo-effect');
                     } else {
-                        showMessage(`⚠️ 努力${itemName}は既に最大レベルです！`, 'info');
+                        showMessage(`⚠️ 覚醒${itemName}は既に最大レベルです！`, 'info');
                     }
                 } else {
                     marble.subFriendshipType = newItemType;
                     marble.subFriendshipLevel = 1;
                     explosions.push(new CriticalEffect(marble.x, marble.y));
-                    showMessage(`✨ 努力${itemName}を学習！(Lv.1 / 威力1/2)`, 'success');
+                    showMessage(`✨ 覚醒${itemName}を習得！(Lv.1 / 威力100%)`, 'success');
                 }
             } else {
                 // メイン友情に装備
@@ -4164,7 +4195,22 @@
                     updateSpecialShotUI();
                 } else {
                     const marble = playerMarbles[currentTurn];
-                    if (marble.isUsed) { isDragging = false; return; } 
+                    if (marble.isUsed) { isDragging = false; return; }
+                    // 一回休みチェック
+                    if (marble.skipNextTurn) {
+                        marble.skipNextTurn = false;
+                        marble.isUsed = true; // このターンをスキップ
+                        isDragging = false;
+                        showMessage(`😔 ${CHAR_NAMES[marble.characterIndex]}は恐怖で動けない！`, 'danger');
+                        updateFriendshipStatusBar();
+                        // 強制的に次のターンへ（スキップマーブルをstopped扱いにして進める）
+                        marble.isStopped = true; stoppedMarbles.push(marble);
+                        // 全員使用済みなら敵ターンへ
+                        if (playerMarbles.every(m => m.isUsed)) {
+                            setTimeout(() => executeEnemyAttack(), 400);
+                        }
+                        return;
+                    }
                     const launchMult = marble.debuffHalfPower ? 0.5 : 1.0;
                     const chaosAngle = marble.debuffChaosArrow ? Math.random() * Math.PI * 2 : null;
                     const ldx = chaosAngle !== null ? Math.cos(chaosAngle) : dx / distance;
@@ -4268,7 +4314,7 @@
         document.getElementById('specialShotBtn').addEventListener('click', () => {
             if (isSpecialShotReady && !isEnemyTurn && !isGameOver && !isStageClear && !isPaused) {
                 isSpecialShotActive = !isSpecialShotActive; updateSpecialShotUI();
-                if (isSpecialShotActive) { playSpecialShotSound(); showMessage('🔥 大号令ショットモード！全員で攻撃します！', 'combo-effect'); }
+                if (isSpecialShotActive) { playSpecialShotSound(); showMessage('🔥 みんな一緒だよ！全員で攻撃します！', 'combo-effect'); }
                 else showMessage('通常モードに戻しました', 'info');
             }
         });
