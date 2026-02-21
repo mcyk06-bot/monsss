@@ -4175,9 +4175,12 @@
                                 explosions.push(new HealEffect(item.x, item.y));
                                 showMessage(`❤️ HP上限+4！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
                             } else if (item.type === 'hourglass') {
+                                const wasAlreadyFull = specialShotCount >= SPECIAL_SHOT_MAX; // ★ 拾う前にMAXだったか記録
                                 specialShotCount = Math.min(specialShotCount + 4, SPECIAL_SHOT_MAX);
                                 explosions.push(new CriticalEffect(item.x, item.y));
-                                if (specialShotCount >= SPECIAL_SHOT_MAX) {
+                                if (wasAlreadyFull) {
+                                    // すでにMAXだったので何も表示しない
+                                } else if (specialShotCount >= SPECIAL_SHOT_MAX) {
                                     showMessage('⏳ 砂時計！みんな一緒だよ準備完了！', 'combo-effect');
                                 } else {
                                     showMessage(`⏳ 砂時計！みんな一緒だよカウント+4 (${specialShotCount}/${SPECIAL_SHOT_MAX})`, 'success');
@@ -4201,11 +4204,13 @@
                             } else if (item.type === 'friendship_up_self') {
                                 // 自分の友情レベルを1上げる
                                 let leveled = false;
+                                let justUnlocked = false;
                                 if (marble.friendshipType !== 'normal' && marble.friendshipLevel < 5) {
                                     marble.friendshipLevel++; marble.friendshipPower += 0.5; marble.friendshipCount += 2;
                                     leveled = true;
                                     if (marble.friendshipLevel === 5 && !marble.subFriendshipUnlocked) {
                                         marble.subFriendshipUnlocked = true;
+                                        justUnlocked = true; // ★ 今初めて解放された
                                     }
                                 }
                                 if (marble.subFriendshipUnlocked && marble.subFriendshipType !== 'normal' && marble.subFriendshipLevel < 5) {
@@ -4213,8 +4218,8 @@
                                     if (marble.subFriendshipLevel === 5) marble.everSubLv5 = true;
                                     leveled = true;
                                 }
-                                // friendship_up_self でサブが解放された場合はバナーを表示
-                                if (marble.subFriendshipUnlocked) {
+                                // ★ バグ修正: 今初めて解放された時だけ通知（既解放時は出さない）
+                                if (justUnlocked) {
                                     notifySubUnlock(marble);
                                 }
                                 if (leveled) {
