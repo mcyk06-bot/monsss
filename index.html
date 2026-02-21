@@ -955,7 +955,7 @@
             transition: opacity 0.12s;
         }
 
-        /* ラベル（下帯の上端に貼りつく） */
+        /* メインラベル（帯の下端直下） */
         .cutin-label {
             position: absolute;
             left: 50%; transform: translateX(-50%);
@@ -968,7 +968,21 @@
             z-index: 9005;
             white-space: nowrap;
             letter-spacing: 1px;
-            top: 50%; /* JSで動的に調整 */
+            top: 50%;
+        }
+        /* サブラベル（効果説明） */
+        .cutin-sublabel {
+            position: absolute;
+            left: 50%; transform: translateX(-50%);
+            font-size: 13px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.85);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+            opacity: 0;
+            transition: opacity 0.18s;
+            z-index: 9005;
+            white-space: nowrap;
+            top: 50%;
         }
 
         /* ===== 一回休みオーバーレイ ===== */
@@ -1220,6 +1234,7 @@
         </div>
         <!-- ラベル -->
         <div id="cutinLabel" class="cutin-label"></div>
+        <div id="cutinSubLabel" class="cutin-sublabel"></div>
     </div>
 
     <!-- 一回休みオーバーレイ -->
@@ -3831,11 +3846,9 @@
                 if (rand < 0.004 + 0.01) { // 才能への憧れ
                     reactionMult = 1.2;
                     showCutinAnimation(activeMarble, hitMarble, 'admire');
-                    showMessage('✨ 才能への憧れ！化学反応が1.2倍！', 'combo-effect');
                 } else if (rand < 0.004 + 0.02) { // 才能への嫉妬
                     reactionMult = 0.8;
                     showCutinAnimation(activeMarble, hitMarble, 'jealousy');
-                    showMessage('😠 才能への嫉妬…化学反応が0.8倍に', 'info');
                 }
             }
 
@@ -4282,7 +4295,7 @@
                 const gaugeColor = power < 3 ? '#4caf50' : power < 7 ? '#ff9800' : '#f44336';
                 ctx.fillStyle = gaugeColor; ctx.fillRect(gaugeX, gaugeY, (power / 10) * gaugeWidth, gaugeHeight);
                 ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.strokeRect(gaugeX, gaugeY, gaugeWidth, gaugeHeight);
-                if (distance > 50) { ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.fillText('🚀', marbleX, marbleY - currentMarble.radius - 25); }
+                
             }
             
             // 以前の衝突判定ループは削除済み（サブステップ内に統合）
@@ -6489,6 +6502,7 @@
             const rightEl   = document.getElementById('cutinCharRight');
             const divider   = document.getElementById('cutinDivider');
             const label     = document.getElementById('cutinLabel');
+            const subLabel  = document.getElementById('cutinSubLabel');
             if (!overlay || !stageTop) return;
 
             const isJealousy = type === 'jealousy';
@@ -6504,8 +6518,14 @@
             const rightBg = isJealousy ? '#1a0000' : '#1a0a2e';
             stageTop.querySelector('.cutin-panel-left').style.background  = leftBg;
             stageTop.querySelector('.cutin-panel-right').style.background = rightBg;
-            label.textContent = isJealousy ? '😠 才能への嫉妬！' : '✨ 才能への憧れ！';
+            // メインラベル（タイトル）
+            label.textContent = isJealousy ? '😠 才能への嫉妬' : '✨ 才能への憧れ';
             label.style.color = isJealousy ? '#ffaaaa' : '#ffffaa';
+            // サブラベル（効果説明）
+            if (subLabel) {
+                subLabel.textContent = isJealousy ? '化学反応が 0.8倍に…' : '化学反応が 1.2倍に！';
+                subLabel.style.color = isJealousy ? 'rgba(255,180,180,0.9)' : 'rgba(255,255,180,0.9)';
+            }
 
             // SVG仕切り色
             if (divider) {
@@ -6516,21 +6536,21 @@
             }
 
             // ── 初期状態リセット ──
-            // 帯は画面中央（top:50%）に隠れている
             stageTop.style.transition = 'none';
             stageTop.style.top = '50%';
             stageTop.classList.remove('slide-in');
-            // キャラは左右に飛んでいる
             leftEl.style.transition  = 'none';
             rightEl.style.transition = 'none';
             leftEl.style.transform   = 'translateX(-220px)';
             rightEl.style.transform  = 'translateX(220px)';
-            // 仕切りとラベル非表示
             if (divider) divider.style.opacity = '0';
             label.style.opacity = '0';
+            if (subLabel) subLabel.style.opacity = '0';
 
-            // 帯の位置をラベルにも合わせる（帯の上端 = top: 31%）
-            label.style.top = 'calc(31% - 24px)';
+            // ラベルを帯の直下に配置
+            // 帯: top=31%, height=38% → 下端 = 69%
+            label.style.top    = 'calc(69% + 6px)';
+            if (subLabel) subLabel.style.top = 'calc(69% + 25px)';
 
             overlay.classList.add('active');
 
@@ -6553,6 +6573,7 @@
                 playCutinSound();
                 if (divider) divider.style.opacity = '1';
                 label.style.opacity = '1';
+                if (subLabel) subLabel.style.opacity = '1';
             }, 400);
 
             // ── Step4: フェードアウト ──
