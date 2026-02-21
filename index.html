@@ -4038,33 +4038,36 @@
             if (psychoEffect) {
                 const pe = psychoEffect;
                 pe.frame++;
-                const progress = pe.frame / pe.maxFrame; // 0→1
-                // 強さ: sin カーブで出て引く (最大 frame=60 あたりでピーク)
+                const progress = pe.frame / pe.maxFrame;
                 const intensity = Math.sin(progress * Math.PI) * 28;
 
                 if (intensity > 0.5) {
-                    const w = canvasSize.width, h = canvasSize.height;
-                    // 現フレームの画面を取得
-                    const snapshot = ctx.getImageData(0, 0, w, h);
-                    const dst = ctx.createImageData(w, h);
+                    // 物理ピクセルサイズで操作（DPRスケール済みの実ピクセル）
+                    const pw = canvas.width, ph = canvas.height;
+                    const dpr = pw / canvasSize.width;
+                    // 中心座標を物理ピクセルに変換
+                    const pcx = pe.cx * dpr, pcy = pe.cy * dpr;
+
+                    const snapshot = ctx.getImageData(0, 0, pw, ph);
                     const src = snapshot.data;
+                    const dst = new ImageData(pw, ph);
                     const dstData = dst.data;
 
-                    for (let y = 0; y < h; y++) {
-                        // 中心からの距離に応じた波
-                        const dy = (y - pe.cy) / h;
-                        const dist = Math.abs(dy);
-                        // 横方向シフト量（中心ほど大、周辺ほど小）
-                        const wave = Math.sin(dy * Math.PI * 5 + pe.frame * 0.22) * intensity * Math.max(0, 1 - dist * 1.8);
-                        // 縦方向シフト量（軽め）
-                        const waveY = Math.sin(dy * Math.PI * 3 + pe.frame * 0.18) * intensity * 0.35 * Math.max(0, 1 - dist * 2);
-                        const shiftX = Math.round(wave);
-                        const srcY = Math.min(h - 1, Math.max(0, Math.round(y + waveY)));
+                    // 歪み強度をDPRでスケール
+                    const iScale = intensity * dpr;
 
-                        for (let x = 0; x < w; x++) {
-                            const srcX = Math.min(w - 1, Math.max(0, x - shiftX));
-                            const si = (srcY * w + srcX) * 4;
-                            const di = (y * w + x) * 4;
+                    for (let y = 0; y < ph; y++) {
+                        const dy = (y - pcy) / ph;
+                        const dist = Math.abs(dy);
+                        const wave  = Math.sin(dy * Math.PI * 5 + pe.frame * 0.22) * iScale * Math.max(0, 1 - dist * 1.8);
+                        const waveY = Math.sin(dy * Math.PI * 3 + pe.frame * 0.18) * iScale * 0.35 * Math.max(0, 1 - dist * 2);
+                        const shiftX = Math.round(wave);
+                        const srcY = Math.min(ph - 1, Math.max(0, Math.round(y + waveY)));
+
+                        for (let x = 0; x < pw; x++) {
+                            const srcX = Math.min(pw - 1, Math.max(0, x - shiftX));
+                            const si = (srcY * pw + srcX) * 4;
+                            const di = (y * pw + x) * 4;
                             dstData[di]     = src[si];
                             dstData[di + 1] = src[si + 1];
                             dstData[di + 2] = src[si + 2];
@@ -4073,27 +4076,37 @@
                     }
                     ctx.putImageData(dst, 0, 0);
 
-                    // 色収差（chromatic aberration）: 赤をわずかにずらす
-                    ctx.save();
-                    ctx.globalCompositeOperation = 'screen';
-                    ctx.globalAlpha = Math.min(0.18, intensity / 150);
-                    const aberr = Math.round(intensity * 0.4);
-                    ctx.drawImage(canvas, aberr, 0);
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.globalAlpha = 1;
-                    ctx.restore();
+                    // 色収差：別ImageDataでRチャンネルをシフト（自己参照を避ける）
+                    const aberrShift = Math.round(intensity * dpr * 0.45);
+                    if (aberrShift > 0) {
+                        const aberrData = ctx.getImageData(0, 0, pw, ph);
+                        const ad = aberrData.data;
+                        const aberrOut = new ImageData(pw, ph);
+                        const ao = aberrOut.data;
+                        for (let y = 0; y < ph; y++) {
+                            for (let x = 0; x < pw; x++) {
+                                const di = (y * pw + x) * 4;
+                                const si = (y * pw + Math.max(0, x - aberrShift)) * 4;
+                                // R: シフトしたピクセルを加算合成
+                                ao[di]     = Math.min(255, ad[di] + ad[si] * 0.15);
+                                ao[di + 1] = ad[di + 1];
+                                ao[di + 2] = ad[di + 2];
+                                ao[di + 3] = ad[di + 3];
+                            }
+                        }
+                        ctx.putImageData(aberrOut, 0, 0);
+                    }
 
-                    // 中心に渦のオーバーレイ
-                    const alpha = Math.sin(progress * Math.PI) * 0.3;
-                    const grad = ctx.createRadialGradient(pe.cx, pe.cy, 10, pe.cx, pe.cy, 120);
-                    grad.addColorStop(0, `rgba(180,0,255,${alpha})`);
-                    grad.addColorStop(0.5, `rgba(80,0,180,${alpha * 0.5})`);
-                    grad.addColorStop(1, `rgba(0,0,0,0)`);
-                    ctx.beginPath(); ctx.arc(pe.cx, pe.cy, 120, 0, Math.PI * 2);
+                    // 中心に紫の渦オーバーレイ（論理座標で描画）
+                    const alpha = Math.sin(progress * Math.PI) * 0.35;
+                    const grad = ctx.createRadialGradient(pe.cx, pe.cy, 5, pe.cx, pe.cy, 110);
+                    grad.addColorStop(0,   `rgba(200,0,255,${alpha})`);
+                    grad.addColorStop(0.4, `rgba(100,0,200,${alpha * 0.6})`);
+                    grad.addColorStop(1,   `rgba(0,0,0,0)`);
+                    ctx.beginPath(); ctx.arc(pe.cx, pe.cy, 110, 0, Math.PI * 2);
                     ctx.fillStyle = grad; ctx.fill();
                 }
 
-                // エフェクト完了
                 if (pe.frame >= pe.maxFrame) {
                     psychoEffect = null;
                     if (pe.onComplete) pe.onComplete();
