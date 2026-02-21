@@ -885,6 +885,120 @@
             cursor: pointer;
             display: none;
         }
+
+        /* ===== カットインオーバーレイ ===== */
+        /* 上下はバトルフィールドが透けて見える。中央帯だけが上下からスライドイン */
+        #cutinOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9000;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        #cutinOverlay.active { display: block; }
+
+        /* 中央ステージ帯（上下からスライドイン） */
+        .cutin-stage {
+            position: absolute;
+            left: 0; width: 100%;
+            height: 38%;
+            z-index: 9001;
+            overflow: hidden;
+            display: flex;
+            align-items: stretch;
+        }
+        /* 上帯：下からスライドアップ、top:50%から始まりtop:31%へ */
+        .cutin-stage-top {
+            top: 50%;
+            transition: top 0.3s cubic-bezier(0.2,0.8,0.3,1.1);
+        }
+        /* 下帯：上からスライドダウン、top:50%から始まりtop:69%へ（帯の分がちょうど届く） */
+        .cutin-stage-bottom {
+            top: 50%;
+            transition: top 0.3s cubic-bezier(0.2,0.8,0.3,1.1);
+        }
+        /* slide-in: JSでtopを直接制御 */
+
+        /* キャラパネル（左右半分） */
+        .cutin-panel {
+            position: absolute;
+            top: 0; height: 100%;
+            width: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+        .cutin-panel-left  { left: 0;  justify-content: flex-end;   padding-right: 22px; background: #1a1a2e; }
+        .cutin-panel-right { right: 0; justify-content: flex-start;  padding-left: 22px;  background: #2e1a1a; }
+
+        .cutin-char {
+            width: 86px; height: 86px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.92);
+            box-shadow: 0 0 18px rgba(255,255,255,0.4);
+            flex-shrink: 0;
+            transform: translateX(0);
+        }
+        .cutin-char-left  { transform: translateX(-220px); transition: transform 0.3s cubic-bezier(0.2,0.8,0.3,1.1); }
+        .cutin-char-right { transform: translateX( 220px); transition: transform 0.3s cubic-bezier(0.2,0.8,0.3,1.1); }
+
+        /* 斜め仕切りSVG（中央ステージ内） */
+        #cutinDivider {
+            position: absolute;
+            top: 0; height: 100%;
+            left: 50%; transform: translateX(-50%);
+            width: 52px;
+            z-index: 9004;
+            opacity: 0;
+            transition: opacity 0.12s;
+        }
+
+        /* ラベル（下帯の上端に貼りつく） */
+        .cutin-label {
+            position: absolute;
+            left: 50%; transform: translateX(-50%);
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.95);
+            opacity: 0;
+            transition: opacity 0.18s;
+            z-index: 9005;
+            white-space: nowrap;
+            letter-spacing: 1px;
+            top: 50%; /* JSで動的に調整 */
+        }
+
+        /* ===== 一回休みオーバーレイ ===== */
+        #skipTurnOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 8000;
+            pointer-events: none;
+            align-items: center;
+            justify-content: center;
+        }
+        #skipTurnOverlay.active {
+            display: flex;
+        }
+        .skip-box {
+            background: rgba(40,0,60,0.92);
+            border: 2px solid #9b59b6;
+            border-radius: 16px;
+            padding: 20px 32px;
+            text-align: center;
+            animation: skipBoxIn 0.3s ease-out;
+        }
+        @keyframes skipBoxIn {
+            from { transform: scale(0.7); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        .skip-box-icon { font-size: 40px; }
+        .skip-box-name { font-size: 20px; font-weight: bold; color: #fff; margin: 6px 0 4px; }
+        .skip-box-msg  { font-size: 15px; color: #e0b0ff; }
     </style>
 </head>
 <body>
@@ -969,6 +1083,7 @@
         <button id="lotteryAnimBtn" class="active-btn">🎰 抽選演出</button>
     </div>
     <div class="message" id="message"></div>
+
     
     <div class="instructions-modal" id="instructionsModal">
         <div class="instructions-content">
@@ -1044,8 +1159,8 @@
                 </div>
             </div>
             <div class="item-modal-buttons" id="itemModalButtons">
-                <button class="item-btn item-btn-equip" id="itemEquipBtn">学習する ✓</button>
-                <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">覚醒を習得 ⚡</button>
+                <button class="item-btn item-btn-equip" id="itemEquipBtn">才能にセット ✓</button>
+                <button class="item-btn" id="itemEquipSubBtn" style="display:none; background:linear-gradient(135deg,#ff9800,#f57c00); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">覚醒にセット ⚡</button>
                 <button class="item-btn" id="itemGiveBtn" style="display:none; background:linear-gradient(135deg,#00bcd4,#0097a7); color:white; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:bold; cursor:pointer;">仲間に教育する 🤝</button>
                 <button class="item-btn item-btn-cancel" id="itemCancelBtn">学習しない ✗</button>
             </div>
@@ -1085,6 +1200,36 @@
 
     <!-- 状態異常ステータスパネル -->
     <div id="debuffStatusPanel"></div>
+
+    <!-- カットインオーバーレイ -->
+    <div id="cutinOverlay">
+        <!-- 上帯（下からせり上がる） -->
+        <div class="cutin-stage cutin-stage-top" id="cutinStageTop">
+            <div class="cutin-panel cutin-panel-left">
+                <img id="cutinCharLeft" class="cutin-char cutin-char-left" src="" alt="">
+            </div>
+            <div class="cutin-panel cutin-panel-right">
+                <img id="cutinCharRight" class="cutin-char cutin-char-right" src="" alt="">
+            </div>
+            <!-- 斜め仕切りSVG -->
+            <svg id="cutinDivider" viewBox="0 0 52 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="30,0 52,0 22,200 0,200" fill="#111"/>
+                <line x1="30" y1="0" x2="22" y2="200" stroke="white" stroke-width="2.5" opacity="0.85"/>
+                <line x1="35" y1="0" x2="27" y2="200" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"/>
+            </svg>
+        </div>
+        <!-- ラベル -->
+        <div id="cutinLabel" class="cutin-label"></div>
+    </div>
+
+    <!-- 一回休みオーバーレイ -->
+    <div id="skipTurnOverlay">
+        <div class="skip-box">
+            <div class="skip-box-icon">😔</div>
+            <div class="skip-box-name" id="skipTurnName">キャラ名</div>
+            <div class="skip-box-msg">恐怖で動けない…<br>一回休み</div>
+        </div>
+    </div>
 
     <!-- 上書き確認モーダル -->
     <div id="overwriteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:3500; justify-content:center; align-items:center;">
@@ -1241,10 +1386,10 @@
             emojiCache[emoji + '_stroke'] = cvs;
         }
         // ゲーム内で使われる全絵文字をキャッシュ
-        ['💀','❤️','⬆️','🚀','⚡','🔫','⭕','🐿️','◎','◉','⚕','✚','✨','💪','🏃','⏳','💝','💊','🛡','💉','🔓'].forEach(e => cacheEmoji(e));
-        ['🚀','⚡','❤️','🔫','⭕','🐿️','◎','◉','⚕','✚'].forEach(e => cacheEmojiWithStroke(e));
+        ['💀','❤️','⬆️','🚀','⚡','🔫','⭕','🍄‍🟫','◎','◉','⚕','✚','✨','💪','🏃','⏳','💝','💊','🛡','💉','🔓'].forEach(e => cacheEmoji(e));
+        ['🚀','⚡','❤️','🔫','⭕','🍄‍🟫','◎','◉','⚕','✚'].forEach(e => cacheEmojiWithStroke(e));
         // アイテム用大きめキャッシュ
-        ['❤️','⏳','💪','🏃','💀','💊','🛡','✨','💉','🐿️','◎','◉','⚕','✚','🚀','⚡','💝','🔫','⭕'].forEach(e => cacheEmoji(e, 40));
+        ['❤️','⏳','💪','🏃','💀','💊','🛡','✨','💉','🍄‍🟫','◎','◉','⚕','✚','🚀','⚡','💝','🔫','⭕'].forEach(e => cacheEmoji(e, 40));
 
         // ═══════════════════════════════════════════════
         // 🔊 最適化: ノイズバッファプリキャッシュ
@@ -2153,7 +2298,7 @@
                 else if (type === 'barrier') { this.emoji = '🛡'; this.color = '#ff69b4'; this.name = '愛情'; this.description = '仲間キャラが愛情に包まれ、敵の攻撃を1回だけ無効にする！'; }
                 else if (type === 'friendship_boost') { this.emoji = '✨'; this.color = '#7b1fa2'; this.name = '化学反応アップ'; this.description = '仲間の化学反応の威力が4行動分1.25倍になる！'; }
                 else if (type === 'friendship_up_all') { this.emoji = '💉'; this.color = '#9c27b0'; this.name = '全体才能覚醒注射'; this.description = '仲間全員の化学反応のレベルが1上がる！激レア！'; }
-                else if (type === 'friendship_normal') { this.emoji = '🐿️'; this.color = '#607d8b'; this.name = '胞子'; this.description = '胞子を8発放つ基本の化学反応！'; }
+                else if (type === 'friendship_normal') { this.emoji = '🍄‍🟫'; this.color = '#607d8b'; this.name = '胞子'; this.description = '胞子を8発放つ基本の化学反応！'; }
                 else if (type === 'friendship_sixteen_ring') { this.emoji = '◎'; this.color = '#ffe066'; this.name = '十六輪'; this.description = '光のリングが16個飛び回り壁を3回反射する！'; }
                 else if (type === 'friendship_white_light') { this.emoji = '◉'; this.color = '#e0f0ff'; this.name = '白い光'; this.description = '自身の周りに白い光ゾーンが広がり範囲にダメージ！'; }
                 else if (type === 'friendship_glow_homing') { this.emoji = '⚕'; this.color = '#aaddff'; this.name = '発光群'; this.description = '高速の白い光ホーミングビームが敵を追う！'; }
@@ -2722,14 +2867,7 @@
                         ctx.lineWidth = 3; ctx.stroke();
                     }
                 }
-                if (isCurrentTurn) {
-                    ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'; ctx.font = 'bold 20px Arial';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    // ★ 絵文字キャッシュ使用
-                    const arrowCvs = emojiCache['⬆️'];
-                    if (arrowCvs) ctx.drawImage(arrowCvs, this.x - 16, this.y - this.radius - 36, 32, 32);
-                    else ctx.fillText('⬆️', this.x, this.y - this.radius - 20);
-                }
+                // 手番矢印は黄色い円で示されているので不要（削除）
                 if (this.isPlayer) {
                     let icon = '';
                     if (this.friendshipType === 'homing') icon = '🚀';
@@ -2737,7 +2875,7 @@
                     else if (this.friendshipType === 'heal') icon = '❤️';
                     else if (this.friendshipType === 'machinegun') icon = '🔫';
                     else if (this.friendshipType === 'energy') icon = '⭕';
-                    else if (this.friendshipType === 'normal_shot') icon = '🐿️';
+                    else if (this.friendshipType === 'normal_shot') icon = '🍄‍🟫';
                     else if (this.friendshipType === 'sixteen_ring') icon = '◎';
                     else if (this.friendshipType === 'white_light') icon = '◉';
                     else if (this.friendshipType === 'glow_homing') icon = '⚕';
@@ -2979,8 +3117,9 @@
                 const hpPercent = this.hp / this.maxHp;
                 ctx.fillStyle = hpPercent > 0.6 ? '#4caf50' : hpPercent > 0.3 ? '#ff9800' : '#f44336';
                 ctx.fillRect(barX, barY, hpWidth, barHeight);
-                ctx.fillStyle = 'black'; ctx.font = '10px Arial'; ctx.textAlign = 'center';
+                ctx.fillStyle = 'white'; ctx.shadowColor = 'black'; ctx.shadowBlur = 3; ctx.font = '10px Arial'; ctx.textAlign = 'center';
                 ctx.fillText(`${this.hp.toFixed(1)}/${this.maxHp}`, this.x, barY - 2);
+                ctx.shadowBlur = 0;
                 
                 const now = Date.now();
                 const timeSinceHit = now - this.lastHitTime;
@@ -3117,6 +3256,7 @@
             defeated = 0; currentTurn = nextStageTurn; nextStageTurn = 0; friendshipAttackHistory = new Set(); globalFriendshipBoost = 0;
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false;
             stageEnemyTurnsCount = 0; pendingStageClear = false;
+
             
             const isBossStage = currentStage % 5 === 0;
             const isDarkStage = currentStage >= 50; // 50ステージ以降
@@ -3274,7 +3414,8 @@
             const hpText = document.getElementById('hpText');
             const hpPercent = (teamHP / MAX_TEAM_HP) * 100;
             hpBarFill.style.width = hpPercent + '%';
-            hpText.textContent = `${Math.max(0, teamHP).toFixed(2)} / ${MAX_TEAM_HP}`;
+            const hpVal = Math.max(0, teamHP);
+            hpText.textContent = `${Number.isInteger(hpVal) ? hpVal : hpVal.toFixed(1)} / ${MAX_TEAM_HP}`;
             hpBarFill.classList.remove('low', 'critical');
             if (hpPercent <= 30) hpBarFill.classList.add('critical');
             else if (hpPercent <= 60) hpBarFill.classList.add('low');
@@ -3434,11 +3575,12 @@
                             setTimeout(() => clearInterval(domeInterval), 2000);
                             setTimeout(resolve, 2200);
                         } else if (type === 'chaos_arrow') {
-                            // ささやかな反抗：精神攻撃エフェクト＋矢印ランダム
+                            // ささやかな反抗：精神攻撃エフェクト＋矢印異常
                             playEnemyAttackSound('poison_dome');
                             const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                             target.debuffChaosArrow = true;
-                            showMessage(`🌀 ささやかな反抗！${CHAR_NAMES[playerMarbles.indexOf(target)]}の矢印がランダムに！`, 'danger');
+                            showMessage('⚠️ 精神攻撃！', 'danger');
+                            setTimeout(() => showMessage(`🌀 ささやかな反抗！${CHAR_NAMES[playerMarbles.indexOf(target)]}の矢印が異常に！`, 'danger'), 1200);
                             updateFriendshipStatusBar(); updateDebuffStatusPanel();
                             psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 90, onComplete: resolve };
                         } else if (type === 'half_power') {
@@ -3446,7 +3588,8 @@
                             playEnemyAttackSound('dark_flame');
                             const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                             target.debuffHalfPower = true;
-                            showMessage(`📉 秩序の乱れ！${CHAR_NAMES[playerMarbles.indexOf(target)]}の次の攻撃が半減！`, 'danger');
+                            showMessage('⚠️ 精神攻撃！', 'danger');
+                            setTimeout(() => showMessage(`📉 秩序の乱れ！${CHAR_NAMES[playerMarbles.indexOf(target)]}の次の攻撃が半減！`, 'danger'), 1200);
                             updateFriendshipStatusBar(); updateDebuffStatusPanel();
                             psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 90, onComplete: resolve };
                         } else if (type === 'have_not') {
@@ -3459,7 +3602,8 @@
                             }
                             if (poorTarget) {
                                 poorTarget.skipNextTurn = true;
-                                showMessage(`😔 持たざる者！${CHAR_NAMES[playerMarbles.indexOf(poorTarget)]}は恐怖で一回休み！`, 'danger');
+                                showMessage('⚠️ 精神攻撃！', 'danger');
+                                setTimeout(() => showMessage(`😔 持たざる者！${CHAR_NAMES[playerMarbles.indexOf(poorTarget)]}は恐怖で一回休み！`, 'danger'), 1200);
                                 explosions.push(new CriticalEffect(poorTarget.x, poorTarget.y));
                                 updateFriendshipStatusBar(); updateDebuffStatusPanel();
                                 psychoEffect = { cx: poorTarget.x, cy: poorTarget.y, frame: 0, maxFrame: 90, onComplete: resolve };
@@ -3604,6 +3748,8 @@
                 nextStageTurn = currentTurn % MAX_MARBLES; // currentTurn already incremented
                 setTimeout(() => showStageClear(), 50);
             }
+            // 一回休みチェック（次のプレイヤーが恐怖状態なら自動スキップ）
+            setTimeout(() => checkAutoSkip(), 200);
         }
         
         function checkCollision(m1, m2) {
@@ -3684,9 +3830,11 @@
             if (hitTalent > activeTalent) {
                 if (rand < 0.004 + 0.01) { // 才能への憧れ
                     reactionMult = 1.2;
+                    showCutinAnimation(activeMarble, hitMarble, 'admire');
                     showMessage('✨ 才能への憧れ！化学反応が1.2倍！', 'combo-effect');
                 } else if (rand < 0.004 + 0.02) { // 才能への嫉妬
                     reactionMult = 0.8;
+                    showCutinAnimation(activeMarble, hitMarble, 'jealousy');
                     showMessage('😠 才能への嫉妬…化学反応が0.8倍に', 'info');
                 }
             }
@@ -4415,7 +4563,7 @@
                 if (m.debuffChaosArrow) {
                     const b = document.createElement('div');
                     b.className = 'debuff-badge chaos';
-                    b.innerHTML = `<span class="debuff-badge-icon">🌀</span><span class="debuff-badge-text">${name}<br>矢印ランダム</span>`;
+                    b.innerHTML = `<span class="debuff-badge-icon">🌀</span><span class="debuff-badge-text">${name}<br>矢印異常</span>`;
                     panel.appendChild(b);
                 }
                 if (m.skipNextTurn) {
@@ -4457,7 +4605,7 @@
             setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
         }
         
-        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'⭕', normal_shot:'🐿️', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
+        const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'⭕', normal_shot:'🍄‍🟫', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
         const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'回復の化学反応', machinegun:'マシンガン', energy:'水面和音', normal_shot:'胞子', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
 
         function iconBar(type, level) {
@@ -4666,34 +4814,17 @@
                 } else {
                     const marble = playerMarbles[currentTurn];
                     if (marble.isUsed) { isDragging = false; return; }
-                    // 一回休みチェック
+                    // 一回休みチェック（通常はendEnemyTurnで自動処理されるが、念のためフォールバック）
                     if (marble.skipNextTurn) {
-                        marble.skipNextTurn = false;
-                        marble.isUsed = true;
-                        marble.isStopped = true;
-                        if (!stoppedMarbles.includes(marble)) stoppedMarbles.push(marble);
                         isDragging = false;
-                        showMessage(`😔 ${CHAR_NAMES[marble.characterIndex]}は恐怖で動けない！一回休み`, 'danger');
-                        updateFriendshipStatusBar();
-                        // currentTurnを次へ進める
-                        currentTurn++;
-                        if (currentTurn >= MAX_MARBLES) {
-                            // 全員終わり→敵ターン
-                            currentTurn = 0;
-                            friendshipAttackHistory = new Set();
-                            for (let m of playerMarbles) { m.isUsed = false; m.isActive = false; m.hitEnemies = new Set(); }
-                            stoppedMarbles = [];
-                            if (globalFriendshipBoost > 0) { globalFriendshipBoost--; }
-                            setTimeout(() => executeEnemyAttack(), 500);
-                        }
-                        updateTurnIndicator(); updateUI();
+                        checkAutoSkip();
                         return;
                     }
                     const launchMult = marble.debuffHalfPower ? 0.5 : 1.0;
                     const chaosAngle = marble.debuffChaosArrow ? Math.random() * Math.PI * 2 : null;
                     const ldx = chaosAngle !== null ? Math.cos(chaosAngle) : dx / distance;
                     const ldy = chaosAngle !== null ? Math.sin(chaosAngle) : dy / distance;
-                    if (marble.debuffChaosArrow) showMessage('🌀 ささやかな反抗！矢印がランダムに！', 'danger');
+                    if (marble.debuffChaosArrow) showMessage('🌀 ささやかな反抗！矢印が異常に！', 'danger');
                     marble.vx = ldx * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * launchMult;
                     marble.vy = ldy * power * (1.6 + playerSpeedBonus) * marble.type.speedMult * launchMult;
                     marble.launchEaseFrame = 0;
@@ -6290,6 +6421,198 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
                 osc.start(t); osc.stop(t + 0.13);
             }
+        }
+
+        // ===== 恐怖音（一回休み） =====
+        function playFearSound() {
+            if (!seEnabled || !audioCtx) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+            // 低音トレモロ＋不安なサウンド
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            const lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+            lfo.frequency.value = 7;
+            lfoGain.gain.value = 0.08;
+            lfo.connect(lfoGain);
+            lfoGain.connect(gainNode.gain);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(110, t);
+            osc.frequency.linearRampToValueAtTime(75, t + 0.9);
+            gainNode.gain.setValueAtTime(0.18, t);
+            gainNode.gain.linearRampToValueAtTime(0, t + 1.1);
+            osc.connect(gainNode);
+            gainNode.connect(masterGain);
+            osc.start(t); osc.stop(t + 1.1);
+            lfo.start(t); lfo.stop(t + 1.1);
+            // 高域ざわざわ
+            const nSz = audioCtx.sampleRate * 0.8;
+            const nBuf = audioCtx.createBuffer(1, nSz, audioCtx.sampleRate);
+            const nDat = nBuf.getChannelData(0); for (let j=0; j<nSz; j++) nDat[j] = (Math.random()*2-1)*0.3;
+            const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+            const nFlt = audioCtx.createBiquadFilter(); nFlt.type = 'highpass'; nFlt.frequency.value = 2000;
+            const nGain = audioCtx.createGain();
+            nSrc.connect(nFlt); nFlt.connect(nGain); nGain.connect(masterGain);
+            nGain.gain.setValueAtTime(0, t); nGain.gain.linearRampToValueAtTime(0.05, t+0.2); nGain.gain.linearRampToValueAtTime(0, t+0.8);
+            nSrc.start(t); nSrc.stop(t + 0.81);
+        }
+
+        // ===== カチーン音（カットイン衝突） =====
+        function playCutinSound() {
+            if (!seEnabled || !audioCtx) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+            [880, 1320, 1760].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(masterGain); osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, t + i*0.02);
+                gain.gain.setValueAtTime(0.15 - i*0.03, t + i*0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3 + i*0.02);
+                osc.start(t + i*0.02); osc.stop(t + 0.35);
+            });
+            // 金属っぽいノイズ
+            const mSz = audioCtx.sampleRate * 0.15; const mBuf = audioCtx.createBuffer(1, mSz, audioCtx.sampleRate);
+            const mDat = mBuf.getChannelData(0); for (let j=0; j<mSz; j++) mDat[j] = (Math.random()*2-1);
+            const mSrc = audioCtx.createBufferSource(); mSrc.buffer = mBuf;
+            const mFlt = audioCtx.createBiquadFilter(); mFlt.type = 'bandpass'; mFlt.frequency.value = 4000; mFlt.Q.value = 5;
+            const mGain = audioCtx.createGain(); mSrc.connect(mFlt); mFlt.connect(mGain); mGain.connect(masterGain);
+            mGain.gain.setValueAtTime(0.3, t); mGain.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+            mSrc.start(t); mSrc.stop(t+0.13);
+        }
+
+        // ===== カットインアニメーション（才能の嫉妬・あこがれ） =====
+        function showCutinAnimation(activeMarble, hitMarble, type) {
+            const overlay   = document.getElementById('cutinOverlay');
+            const stageTop  = document.getElementById('cutinStageTop');
+            const leftEl    = document.getElementById('cutinCharLeft');
+            const rightEl   = document.getElementById('cutinCharRight');
+            const divider   = document.getElementById('cutinDivider');
+            const label     = document.getElementById('cutinLabel');
+            if (!overlay || !stageTop) return;
+
+            const isJealousy = type === 'jealousy';
+
+            // キャラ画像
+            const activeIdx = activeMarble ? activeMarble.characterIndex : 0;
+            const hitIdx    = hitMarble    ? hitMarble.characterIndex    : 1;
+            leftEl.src  = charImages[activeIdx] ? charImages[activeIdx].src : '';
+            rightEl.src = charImages[hitIdx]    ? charImages[hitIdx].src    : '';
+
+            // 色テーマ
+            const leftBg  = isJealousy ? '#2e0a0a' : '#0a1a2e';
+            const rightBg = isJealousy ? '#1a0000' : '#1a0a2e';
+            stageTop.querySelector('.cutin-panel-left').style.background  = leftBg;
+            stageTop.querySelector('.cutin-panel-right').style.background = rightBg;
+            label.textContent = isJealousy ? '😠 才能への嫉妬！' : '✨ 才能への憧れ！';
+            label.style.color = isJealousy ? '#ffaaaa' : '#ffffaa';
+
+            // SVG仕切り色
+            if (divider) {
+                const poly  = divider.querySelector('polygon');
+                const line1 = divider.querySelectorAll('line')[0];
+                if (poly)  poly.setAttribute('fill', '#111');
+                if (line1) line1.setAttribute('stroke', isJealousy ? '#ff8888' : 'white');
+            }
+
+            // ── 初期状態リセット ──
+            // 帯は画面中央（top:50%）に隠れている
+            stageTop.style.transition = 'none';
+            stageTop.style.top = '50%';
+            stageTop.classList.remove('slide-in');
+            // キャラは左右に飛んでいる
+            leftEl.style.transition  = 'none';
+            rightEl.style.transition = 'none';
+            leftEl.style.transform   = 'translateX(-220px)';
+            rightEl.style.transform  = 'translateX(220px)';
+            // 仕切りとラベル非表示
+            if (divider) divider.style.opacity = '0';
+            label.style.opacity = '0';
+
+            // 帯の位置をラベルにも合わせる（帯の上端 = top: 31%）
+            label.style.top = 'calc(31% - 24px)';
+
+            overlay.classList.add('active');
+
+            // ── Step1: 帯がスライドイン（上下から中央へ） ──
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                stageTop.style.transition = 'top 0.28s cubic-bezier(0.2,0.8,0.3,1.1)';
+                stageTop.style.top = '31%';
+            }));
+
+            // ── Step2: キャラがスライドイン ──
+            setTimeout(() => {
+                leftEl.style.transition  = 'transform 0.28s cubic-bezier(0.2,0.8,0.3,1.1)';
+                rightEl.style.transition = 'transform 0.28s cubic-bezier(0.2,0.8,0.3,1.1)';
+                leftEl.style.transform   = 'translateX(0)';
+                rightEl.style.transform  = 'translateX(0)';
+            }, 120);
+
+            // ── Step3: 衝突・仕切り＋ラベル表示 ──
+            setTimeout(() => {
+                playCutinSound();
+                if (divider) divider.style.opacity = '1';
+                label.style.opacity = '1';
+            }, 400);
+
+            // ── Step4: フェードアウト ──
+            setTimeout(() => {
+                overlay.style.transition = 'opacity 0.35s';
+                overlay.style.opacity = '0';
+            }, 1500);
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                overlay.style.opacity = '';
+                overlay.style.transition = '';
+                stageTop.style.top = '50%';
+            }, 1860);
+        }
+
+                // ===== 一回休み自動処理 =====
+        function checkAutoSkip() {
+            if (isEnemyTurn || isGameOver || isStageClear || activeMarbles.length > 0) return;
+            const marble = playerMarbles[currentTurn];
+            if (!marble || !marble.skipNextTurn) return;
+
+            // スキップ処理
+            marble.skipNextTurn = false;
+            marble.isUsed = true;
+            marble.isStopped = true;
+            if (!stoppedMarbles.includes(marble)) stoppedMarbles.push(marble);
+
+            // 恐怖音
+            playFearSound();
+
+            // 一回休みオーバーレイ表示
+            const skipOverlay = document.getElementById('skipTurnOverlay');
+            const skipName    = document.getElementById('skipTurnName');
+            if (skipOverlay && skipName) {
+                skipName.textContent = CHAR_NAMES[marble.characterIndex] || 'キャラ';
+                skipOverlay.classList.add('active');
+                setTimeout(() => skipOverlay.classList.remove('active'), 1800);
+            }
+
+            updateFriendshipStatusBar();
+            updateDebuffStatusPanel();
+            updateTurnIndicator();
+            updateUI();
+
+            // 次のターンへ
+            setTimeout(() => {
+                currentTurn++;
+                if (currentTurn >= MAX_MARBLES) {
+                    currentTurn = 0;
+                    friendshipAttackHistory = new Set();
+                    for (let m of playerMarbles) { m.isUsed = false; m.isActive = false; m.hitEnemies = new Set(); }
+                    stoppedMarbles = [];
+                    if (globalFriendshipBoost > 0) { globalFriendshipBoost--; }
+                    updateTurnIndicator(); updateUI();
+                    setTimeout(() => executeEnemyAttack(), 500);
+                } else {
+                    updateTurnIndicator(); updateUI();
+                    setTimeout(() => checkAutoSkip(), 200); // 連続スキップ対応
+                }
+            }, 1600);
         }
 
         // ─────────────────────────────────────────────
