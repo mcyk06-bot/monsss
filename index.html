@@ -274,6 +274,7 @@
             background: transparent;
             position: relative;
             z-index: 1;
+            will-change: transform;
         }
         
         .controls {
@@ -1210,6 +1211,87 @@
         charImages[2].onerror = () => console.error('❌ 003.png(イレブン)が読み込めません');
         charImages[3].onerror = () => console.error('❌ 001.png(ダスティン)が読み込めません');
 
+        // ═══════════════════════════════════════════════
+        // 🎯 最適化: 絵文字プリレンダリングキャッシュ
+        //   iOS Safari で fillText(emoji) は毎回ラスタライズが走り非常に重い
+        //   起動時に OffscreenCanvas に焼いて drawImage で使い回す
+        // ═══════════════════════════════════════════════
+        const emojiCache = {};
+        function cacheEmoji(emoji, size = 64) {
+            const cvs = document.createElement('canvas');
+            cvs.width = size; cvs.height = size;
+            const c = cvs.getContext('2d');
+            c.font = `${Math.floor(size * 0.75)}px Arial`;
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(emoji, size / 2, size / 2);
+            emojiCache[emoji] = cvs;
+        }
+        function cacheEmojiWithStroke(emoji, size = 64) {
+            const cvs = document.createElement('canvas');
+            cvs.width = size; cvs.height = size;
+            const c = cvs.getContext('2d');
+            c.font = `${Math.floor(size * 0.6)}px Arial`;
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.strokeStyle = 'black'; c.lineWidth = 2;
+            c.strokeText(emoji, size / 2, size / 2);
+            c.fillStyle = 'white';
+            c.fillText(emoji, size / 2, size / 2);
+            emojiCache[emoji + '_stroke'] = cvs;
+        }
+        // ゲーム内で使われる全絵文字をキャッシュ
+        ['💀','❤️','⬆️','🚀','⚡','🔫','⭕','🐿️','◎','◉','⚕','✚','✨','💪','🏃','⏳','💝','💊','🛡','💉','🔓'].forEach(e => cacheEmoji(e));
+        ['🚀','⚡','❤️','🔫','⭕','🐿️','◎','◉','⚕','✚'].forEach(e => cacheEmojiWithStroke(e));
+        // アイテム用大きめキャッシュ
+        ['❤️','⏳','💪','🏃','💀','💊','🛡','✨','💉','🐿️','◎','◉','⚕','✚','🚀','⚡','💝','🔫','⭕'].forEach(e => cacheEmoji(e, 40));
+
+        // ═══════════════════════════════════════════════
+        // 🔊 最適化: ノイズバッファプリキャッシュ
+        //   音を鳴らすたびに createBuffer + ループでノイズ生成は重い
+        //   起動時に数種類のノイズバッファを生成して使い回す
+        // ═══════════════════════════════════════════════
+        const noiseBufferCache = {};
+        function initNoiseBuffers(audioCtx) {
+            const sr = audioCtx.sampleRate;
+            // 短いノイズ (キック/ハイハットアタック用: ~25-70ms)
+            [0.025, 0.04, 0.045, 0.07, 0.12, 0.15, 0.5, 0.55, 0.6].forEach(dur => {
+                const key = `noise_${dur}`;
+                if (noiseBufferCache[key]) return;
+                const len = Math.ceil(sr * dur);
+                const buf = audioCtx.createBuffer(1, len, sr);
+                const data = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+                noiseBufferCache[key] = buf;
+            });
+        }
+        function getCachedNoise(dur) {
+            const key = `noise_${dur}`;
+            return noiseBufferCache[key] || null;
+        }
+
+        // ═══════════════════════════════════════════════
+        // 📌 最適化: DOM参照キャッシュ
+        //   getElementById を毎フレーム・毎呼び出しで使わない
+        // ═══════════════════════════════════════════════
+        const DOM = {};
+        function cacheDOMRefs() {
+            const ids = ['message','hpBarFill','hpText','defeated','totalDefeated',
+                'currentTurn','attackBonus','speedBonus','specialShotText',
+                'specialShotBtn','specialShotBtnText','turnIndicator',
+                'stageCircle','stageDisplay','friendshipStatusBar',
+                'debuffStatusPanel','itemModal','itemEmoji','itemName',
+                'itemDescription','itemFriendshipName','itemFriendshipDetail',
+                'itemStatusLabel','mainFriendshipInfo','subFriendshipInfo',
+                'subUnlockBanner','itemEquipSubBtn','itemGiveBtn',
+                'itemModalButtons','lotteryPanel','lotteryResult',
+                'lotteryOkBtn','lotterySlot','overwriteModal',
+                'overwriteDetail','overwriteConfirmBtn','overwriteCancelBtn',
+                'gearPanel','gearBtn','instructionsModal',
+                'seBtn','bgmBtn','lotteryAnimBtn','seVolSlider','bgmVolSlider'];
+            ids.forEach(id => { DOM[id] = document.getElementById(id); });
+        }
+
         const BASE_WIDTH = 400;
         const BASE_HEIGHT = 450;
         
@@ -1820,22 +1902,24 @@
                     const [r2,g2,b2] = ring.color2;
                     const lineW = Math.max(18 - p * 12, 4);
 
+                    // ★ shadowBlur排除: 手動グロー（太い半透明リングを重ねる）
+                    // 外側グロー（太い半透明で発光感を出す）
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(${r2},${g2},${b2},${alpha * 0.2})`;
+                    ctx.lineWidth = lineW * 4;
+                    ctx.stroke();
+
+                    // 中間グロー
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(${r2},${g2},${b2},${alpha * 0.4})`;
+                    ctx.lineWidth = lineW * 2.5;
+                    ctx.stroke();
+
                     // 輝くリング本体
                     ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
                     ctx.strokeStyle = `rgba(${r1},${g1},${b1},${alpha * 0.9})`;
                     ctx.lineWidth = lineW;
-                    ctx.shadowColor = `rgba(${r1},${g1},${b1},1)`;
-                    ctx.shadowBlur = 28;
                     ctx.stroke();
-
-                    // 外側グロー
-                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(${r2},${g2},${b2},${alpha * 0.6})`;
-                    ctx.lineWidth = lineW * 2.5;
-                    ctx.shadowColor = `rgba(${r2},${g2},${b2},0.8)`;
-                    ctx.shadowBlur = 40;
-                    ctx.stroke();
-                    ctx.shadowBlur = 0;
                 }
                 // 中心フラッシュ
                 if (this.frame < 20) {
@@ -1900,8 +1984,10 @@
                 const shakeY = (Math.random() - 0.5) * 10 * alpha;
                 const scale = 1 + Math.sin(this.frame * 0.2) * 0.1;
                 ctx.translate(centerX + shakeX, centerY + shakeY); ctx.scale(scale, scale);
-                ctx.font = '150px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText('💀', 0, 0);
+                // ★ 絵文字キャッシュ使用
+                const skullCvs = emojiCache['💀'];
+                if (skullCvs) ctx.drawImage(skullCvs, -48, -48, 96, 96);
+                else { ctx.font = '150px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('💀', 0, 0); }
                 if (this.frame > 10) {
                     ctx.font = 'bold 60px Arial'; ctx.strokeStyle = 'white'; ctx.lineWidth = 4;
                     ctx.strokeText('DEATH', 0, 120); ctx.fillStyle = '#ff0000'; ctx.fillText('DEATH', 0, 120);
@@ -1930,13 +2016,18 @@
                     if (particle.life > 0) {
                         ctx.save(); ctx.globalAlpha = particle.life;
                         if (particle.type === 'heart') {
-                            ctx.fillStyle = '#ff69b4'; ctx.font = `${particle.radius * 2}px Arial`;
-                            ctx.fillText('❤️', particle.x, particle.y);
+                            // ★ 絵文字キャッシュ使用
+                            const heartCvs = emojiCache['❤️'];
+                            const sz = particle.radius * 2;
+                            if (heartCvs) ctx.drawImage(heartCvs, particle.x - sz/2, particle.y - sz/2, sz, sz);
+                            else { ctx.fillStyle = '#ff69b4'; ctx.font = `${sz}px Arial`; ctx.fillText('❤️', particle.x, particle.y); }
                         } else {
-                            const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, particle.radius);
-                            const alpha = Math.floor(particle.life * 255).toString(16).padStart(2, '0');
-                            gradient.addColorStop(0, '#ffb6c1' + alpha); gradient.addColorStop(0.5, '#ff69b4' + alpha); gradient.addColorStop(1, 'rgba(255, 105, 180, 0)');
-                            ctx.beginPath(); ctx.arc(particle.x, particle.y, particle.radius * particle.life, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
+                            // ★ Gradient削減: 単色＋半透明で近似
+                            const r = particle.radius * particle.life;
+                            ctx.beginPath(); ctx.arc(particle.x, particle.y, r, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255, 105, 180, ${particle.life * 0.7})`; ctx.fill();
+                            ctx.beginPath(); ctx.arc(particle.x, particle.y, r * 0.5, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255, 182, 193, ${particle.life})`; ctx.fill();
                         }
                         ctx.restore();
                     }
@@ -1974,12 +2065,18 @@
                 for (let particle of this.particles) {
                     particle.x += particle.vx; particle.y += particle.vy; particle.vx *= 0.97; particle.vy *= 0.97; particle.life = 1 - progress;
                     if (particle.life > 0) {
-                        const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, particle.radius);
-                        const alpha = Math.floor(particle.life * 255).toString(16).padStart(2, '0');
-                        if (particle.isYellow) { gradient.addColorStop(0, '#FFFF00' + alpha); gradient.addColorStop(0.5, '#FF8800' + alpha); }
-                        else { gradient.addColorStop(0, '#FF0000' + alpha); gradient.addColorStop(0.5, '#FF8800' + alpha); }
-                        gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                        ctx.beginPath(); ctx.arc(particle.x, particle.y, particle.radius * particle.life, 0, Math.PI * 2); ctx.fillStyle = gradient; ctx.fill();
+                        // ★ Gradient削減: 2段階の円で近似
+                        const r = particle.radius * particle.life;
+                        ctx.beginPath(); ctx.arc(particle.x, particle.y, r, 0, Math.PI * 2);
+                        ctx.fillStyle = particle.isYellow
+                            ? `rgba(255, 200, 0, ${particle.life * 0.8})`
+                            : `rgba(255, 50, 0, ${particle.life * 0.8})`;
+                        ctx.fill();
+                        ctx.beginPath(); ctx.arc(particle.x, particle.y, r * 0.4, 0, Math.PI * 2);
+                        ctx.fillStyle = particle.isYellow
+                            ? `rgba(255, 255, 100, ${particle.life})`
+                            : `rgba(255, 150, 50, ${particle.life})`;
+                        ctx.fill();
                     }
                 }
                 if (this.frame < 40) {
@@ -2019,12 +2116,18 @@
                 for (let p of this.particles) {
                     p.x += p.vx; p.y += p.vy; p.vx *= 0.97; p.vy *= 0.97; p.life = 1 - progress; p.size *= 0.96;
                     if (p.life > 0 && p.size > 0.5) {
-                        ctx.save();
-                        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-                        gradient.addColorStop(0, p.color === '#ff6b00' ? `rgba(255, 107, 0, ${p.life})` : `rgba(255, 215, 0, ${p.life})`);
-                        gradient.addColorStop(0.5, p.color === '#ff6b00' ? `rgba(255, 140, 0, ${p.life * 0.8})` : `rgba(255, 237, 78, ${p.life * 0.8})`);
-                        gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
-                        ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+                        ctx.save(); ctx.globalAlpha = p.life;
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fillStyle = p.color === '#ff6b00'
+                            ? `rgba(255, 140, 0, ${p.life * 0.8})`
+                            : `rgba(255, 237, 78, ${p.life * 0.8})`;
+                        ctx.fill();
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
+                        ctx.fillStyle = p.color === '#ff6b00'
+                            ? `rgba(255, 200, 100, ${p.life})`
+                            : `rgba(255, 255, 200, ${p.life})`;
+                        ctx.fill();
+                        ctx.restore();
                     }
                 }
                 if (this.frame < 45) {
@@ -2067,15 +2170,30 @@
                 const floatOffset = Math.sin(this.frame * 0.05) * 5;
                 const currentY = this.y + floatOffset;
                 const pulseSize = 1 + Math.sin(this.frame * 0.1) * 0.2;
-                const gradient = ctx.createRadialGradient(this.x, currentY, 0, this.x, currentY, this.radius * pulseSize * 1.5);
-                gradient.addColorStop(0, this.color + 'aa'); gradient.addColorStop(0.5, this.color + '44'); gradient.addColorStop(1, this.color + '00');
-                ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize * 1.5, 0, Math.PI * 2); ctx.fill();
+                // ★ Gradient削減: 半透明の円2段で近似
+                ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize * 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + '22'; ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize * 1.0, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + '55'; ctx.fill();
                 ctx.fillStyle = this.color + 'dd'; ctx.beginPath(); ctx.arc(this.x, currentY, this.radius * pulseSize, 0, Math.PI * 2); ctx.fill();
-                ctx.font = 'bold 28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'white';
-                ctx.fillText(this.emoji, this.x, currentY);
+                // ★ 絵文字キャッシュ使用
+                const eCvs = emojiCache[this.emoji];
+                if (eCvs) {
+                    ctx.drawImage(eCvs, this.x - 16, currentY - 16, 32, 32);
+                } else {
+                    ctx.font = 'bold 28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'white';
+                    ctx.fillText(this.emoji, this.x, currentY);
+                }
                 if (this.frame % 20 < 10) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = 'bold 12px Arial';
-                    ctx.fillText('✨', this.x - 20, currentY - 20); ctx.fillText('✨', this.x + 20, currentY - 20);
+                    // ★ 絵文字キャッシュ使用（✨）
+                    const sparkCvs = emojiCache['✨'];
+                    if (sparkCvs) {
+                        ctx.drawImage(sparkCvs, this.x - 32, currentY - 32, 24, 24);
+                        ctx.drawImage(sparkCvs, this.x + 8, currentY - 32, 24, 24);
+                    } else {
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.font = 'bold 12px Arial';
+                        ctx.fillText('✨', this.x - 20, currentY - 20); ctx.fillText('✨', this.x + 20, currentY - 20);
+                    }
                 }
                 ctx.restore();
             }
@@ -2089,12 +2207,13 @@
             }
             draw() {
                 if (this.delay > 0) return;
-                const alpha = this.life < 20 ? this.life / 20 : 1; // ふわっとフェード
+                const alpha = this.life < 20 ? this.life / 20 : 1;
                 ctx.save(); ctx.globalAlpha = alpha;
+                // ★ Gradient削減: 白コア+色付き円で近似
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                const gradient = ctx.createRadialGradient(this.x - 1, this.y - 1, 0, this.x, this.y, this.radius);
-                gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(1, this.color);
-                ctx.fillStyle = gradient; ctx.fill();
+                ctx.fillStyle = this.color; ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff'; ctx.fill();
                 const speed = Math.sqrt(this.vx ** 2 + this.vy ** 2);
                 if (speed > 1) {
                     ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 1, 0, Math.PI * 2);
@@ -2136,12 +2255,10 @@
             draw() {
                 const alpha = this.bounces >= this.maxBounces ? Math.max(0, this.life / 60) : 1;
                 ctx.save();
-                // 外側グロー
-                const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 2.5);
-                glow.addColorStop(0, `hsla(${this.hue},100%,95%,${alpha * 0.6})`);
-                glow.addColorStop(1, 'rgba(0,0,0,0)');
+                // ★ Gradient削減: 単色グローで近似
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
-                ctx.fillStyle = glow; ctx.fill();
+                ctx.fillStyle = `hsla(${this.hue},100%,95%,${alpha * 0.15})`;
+                ctx.fill();
                 // リング本体
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.strokeStyle = `hsla(${this.hue},100%,95%,${alpha})`; ctx.lineWidth = 3; ctx.stroke();
@@ -2302,13 +2419,13 @@
                     ctx.strokeStyle = `rgba(255,255,255,${t * 0.6})`;
                     ctx.lineWidth = t * 2; ctx.stroke();
                 }
-                // 本体グロー
-                const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 14);
-                g.addColorStop(0, 'rgba(255,255,255,1)');
-                g.addColorStop(0.4, 'rgba(180,220,255,0.9)');
-                g.addColorStop(1, 'rgba(100,180,255,0)');
+                // 本体グロー ★ Gradient削減
                 ctx.beginPath(); ctx.arc(this.x, this.y, 14, 0, Math.PI * 2);
-                ctx.fillStyle = g; ctx.fill();
+                ctx.fillStyle = 'rgba(100,180,255,0.3)'; ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(180,220,255,0.7)'; ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fill();
                 ctx.restore();
             }
             isAlive() { return this.life > 0; }
@@ -2551,9 +2668,12 @@
                 if (this.barrier) {
                     const pulse = Math.sin(Date.now() / 200) * 0.2 + 0.8;
                     ctx.save();
+                    // ★ shadowBlur排除: 手動グロー
+                    ctx.strokeStyle = `rgba(255,105,180,${0.2 * pulse})`;
+                    ctx.lineWidth = 12;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2); ctx.stroke();
                     ctx.strokeStyle = `rgba(255,105,180,${0.7 * pulse})`;
                     ctx.lineWidth = 4;
-                    ctx.shadowColor = '#ff69b4'; ctx.shadowBlur = 10;
                     ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2); ctx.stroke();
                     ctx.restore();
                 }
@@ -2605,7 +2725,10 @@
                 if (isCurrentTurn) {
                     ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'; ctx.font = 'bold 20px Arial';
                     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText('⬆️', this.x, this.y - this.radius - 20);
+                    // ★ 絵文字キャッシュ使用
+                    const arrowCvs = emojiCache['⬆️'];
+                    if (arrowCvs) ctx.drawImage(arrowCvs, this.x - 16, this.y - this.radius - 36, 32, 32);
+                    else ctx.fillText('⬆️', this.x, this.y - this.radius - 20);
                 }
                 if (this.isPlayer) {
                     let icon = '';
@@ -2620,9 +2743,15 @@
                     else if (this.friendshipType === 'glow_homing') icon = '⚕';
                     else if (this.friendshipType === 'light_thread') icon = '✚';
                     if (icon) {
-                        ctx.font = '14px Arial'; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 2;
                         const iconX = this.x + this.radius * 0.5; const iconY = this.y + this.radius * 0.5;
-                        ctx.strokeText(icon, iconX, iconY); ctx.fillText(icon, iconX, iconY);
+                        // ★ 絵文字キャッシュ使用（ストローク付き）
+                        const cached = emojiCache[icon + '_stroke'];
+                        if (cached) {
+                            ctx.drawImage(cached, iconX - 16, iconY - 16, 32, 32);
+                        } else {
+                            ctx.font = '14px Arial'; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 2;
+                            ctx.strokeText(icon, iconX, iconY); ctx.fillText(icon, iconX, iconY);
+                        }
                         if (this.friendshipLevel > 1) {
                             ctx.font = 'bold 12px Arial'; ctx.fillStyle = '#ffeb3b';
                             ctx.fillText(`Lv${this.friendshipLevel}`, iconX + 10, iconY - 10);
@@ -3051,6 +3180,8 @@
             for (let _bi = 0; _bi < nextStageBonusItems; _bi++) spawnItems(999);
             nextStageBonusItems = 0;
             updateUI(); updateStageDisplay(); updateHPBar(); updateTurnIndicator();
+            // ★ ステージ変更時に六角形背景を再描画
+            if (window._redrawHexBg) window._redrawHexBg();
         }
         
         function updateStageDisplay() {
@@ -3592,8 +3723,33 @@
             else { const marble = playerMarbles[currentTurn]; indicator.textContent = `ターン ${currentTurn + 1}: ${marble.type.name}を発射`; indicator.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; }
         }
 
-        function update() {
-            if (isPaused) { requestAnimationFrame(update); return; }
+        let _lastFrameTime = 0;
+        let _animFrameId = null;
+        let _updateRunning = false;
+
+        function startUpdateLoop() {
+            if (_updateRunning) return;
+            _updateRunning = true;
+            _lastFrameTime = performance.now();
+            _animFrameId = requestAnimationFrame(update);
+        }
+        function stopUpdateLoop() {
+            _updateRunning = false;
+            if (_animFrameId) { cancelAnimationFrame(_animFrameId); _animFrameId = null; }
+        }
+
+        function update(nowTime) {
+            if (isPaused) {
+                // ★ 一時停止中はrAFを最低限に（バッテリー対策）
+                _animFrameId = requestAnimationFrame(update);
+                return;
+            }
+
+            // デルタタイム計算（60fps基準）
+            if (!nowTime) nowTime = performance.now();
+            const rawDt = (nowTime - _lastFrameTime) / 16.667;
+            const dt = Math.min(rawDt, 3); // 最大3倍速までに制限（タブ復帰時の暴走防止）
+            _lastFrameTime = nowTime;
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
             ctx.fillStyle = 'rgba(0,0,0,0.18)'; // 六角形を透かすため半透明オーバーレイ
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
@@ -3626,7 +3782,16 @@
                     if (ef.isComplete()) explosions.splice(i, 1);
                 }
             }
-            if (explosions.length > 50) explosions.splice(0, explosions.length - 30);
+            if (explosions.length > 40) {
+                // ★ 改善: WhiteLightZone以外の古いエフェクトから優先的に削除
+                let removed = 0;
+                for (let i = 0; i < explosions.length && removed < 15; i++) {
+                    if (!(explosions[i] instanceof WhiteLightZone)) {
+                        explosions.splice(i, 1);
+                        removed++; i--;
+                    }
+                }
+            }
             for (let i = enemies.length - 1; i >= 0; i--) enemies[i].draw();
             for (let i = items.length - 1; i >= 0; i--) { items[i].update(); items[i].draw(); }
             
@@ -3931,9 +4096,9 @@
                 
                 ctx.globalAlpha = 0.3;
                 ctx.beginPath(); ctx.arc(marbleX, marbleY, currentMarble.radius, 0, Math.PI * 2);
-                const gradient = ctx.createRadialGradient(marbleX - currentMarble.radius/3, marbleY - currentMarble.radius/3, 0, marbleX, marbleY, currentMarble.radius);
-                gradient.addColorStop(0, currentMarble.secondaryColor); gradient.addColorStop(1, currentMarble.color);
-                ctx.fillStyle = gradient; ctx.fill(); ctx.globalAlpha = 1;
+                // ★ Gradient削減: 単色で近似
+                ctx.fillStyle = currentMarble.color;
+                ctx.fill(); ctx.globalAlpha = 1;
                 
                 const lineWidth = Math.min(3 + distance / 30, 8);
                 const colorStr = currentMarble.type === MARBLE_TYPES.POWER ? '244, 67, 54' : currentMarble.type === MARBLE_TYPES.SPEED ? '33, 150, 243' : '76, 175, 80';
@@ -4152,7 +4317,7 @@
                 }
             }
 
-            requestAnimationFrame(update);
+            _animFrameId = requestAnimationFrame(update);
         }
         
         function updateFriendshipStatusBar() {
@@ -4263,19 +4428,19 @@
         }
 
         function updateUI() {
-            document.getElementById('defeated').textContent = defeated;
-            document.getElementById('totalDefeated').textContent = totalDefeated;
-            document.getElementById('currentTurn').textContent = currentTurn + 1;
-            document.getElementById('attackBonus').textContent = '+' + playerAttackBonus;
-            document.getElementById('speedBonus').textContent = '+' + playerSpeedBonus.toFixed(1);
+            (DOM.defeated || document.getElementById('defeated')).textContent = defeated;
+            (DOM.totalDefeated || document.getElementById('totalDefeated')).textContent = totalDefeated;
+            (DOM.currentTurn || document.getElementById('currentTurn')).textContent = currentTurn + 1;
+            (DOM.attackBonus || document.getElementById('attackBonus')).textContent = '+' + playerAttackBonus;
+            (DOM.speedBonus || document.getElementById('speedBonus')).textContent = '+' + playerSpeedBonus.toFixed(1);
             updateSpecialShotUI();
             updateFriendshipStatusBar();
         }
         
         function updateSpecialShotUI() {
-            const text = document.getElementById('specialShotText');
-            const btn = document.getElementById('specialShotBtn');
-            const btnText = document.getElementById('specialShotBtnText');
+            const text = DOM.specialShotText || document.getElementById('specialShotText');
+            const btn = DOM.specialShotBtn || document.getElementById('specialShotBtn');
+            const btnText = DOM.specialShotBtnText || document.getElementById('specialShotBtnText');
             text.textContent = `${specialShotCount} / ${SPECIAL_SHOT_MAX}`;
             if (specialShotCount >= SPECIAL_SHOT_MAX) {
                 isSpecialShotReady = true; btn.disabled = false;
@@ -4287,7 +4452,7 @@
         }
         
         function showMessage(text, type = 'info') {
-            const messageEl = document.getElementById('message');
+            const messageEl = DOM.message || document.getElementById('message');
             messageEl.textContent = text; messageEl.className = `message ${type}`; messageEl.style.display = 'block';
             setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
         }
@@ -6289,12 +6454,10 @@
             resumeAudio();
             const t = audioCtx.currentTime;
 
-            // アタックノイズ共通（バスドラの頭のスキン感）
+            // アタックノイズ共通（バスドラの頭のスキン感）★キャッシュ利用
             function kickNoise(dur, cutoff, vol) {
-                const nLen = Math.ceil(audioCtx.sampleRate * dur);
-                const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-                const nd = nBuf.getChannelData(0);
-                for (let i = 0; i < nLen; i++) nd[i] = Math.random() * 2 - 1;
+                const nBuf = getCachedNoise(dur);
+                if (!nBuf) return; // キャッシュがない場合はスキップ
                 const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
                 const nFlt = audioCtx.createBiquadFilter();
                 nFlt.type = 'lowpass'; nFlt.frequency.value = cutoff;
@@ -6447,19 +6610,15 @@
             resizeBg();
             window.addEventListener('resize', resizeBg);
 
-            // ステージ変更を監視して背景を再描画
-            let _lastStage = currentStage;
-            setInterval(() => {
-                if (currentStage !== _lastStage) {
-                    _lastStage = currentStage;
-                    drawBg();
-                }
-            }, 1000);
+            // ★ setInterval廃止: drawBg を外部から呼べるようにする
+            window._redrawHexBg = drawBg;
         })();
 
         loadSettings(); // 保存済み設定を復元（SE/BGM ON-OFF・音量・抽選演出）
+        cacheDOMRefs(); // DOM参照キャッシュ初期化
+        initNoiseBuffers(audioCtx); // ノイズバッファ初期化
         initGame();
-        update();
+        startUpdateLoop();
     </script>
 </body>
 </html>
