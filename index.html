@@ -4038,73 +4038,78 @@
             if (psychoEffect) {
                 const pe = psychoEffect;
                 pe.frame++;
-                const progress = pe.frame / pe.maxFrame;
-                const intensity = Math.sin(progress * Math.PI) * 28;
+                const progress = pe.frame / pe.maxFrame; // 0→1
+                // sin カーブで強さが出て引く
+                const strength = Math.sin(progress * Math.PI);
+                const intensity = strength * 32;
 
-                if (intensity > 0.5) {
-                    // 物理ピクセルサイズで操作（DPRスケール済みの実ピクセル）
+                if (intensity > 0.3) {
                     const pw = canvas.width, ph = canvas.height;
                     const dpr = pw / canvasSize.width;
-                    // 中心座標を物理ピクセルに変換
-                    const pcx = pe.cx * dpr, pcy = pe.cy * dpr;
+                    const f = pe.frame;
 
                     const snapshot = ctx.getImageData(0, 0, pw, ph);
                     const src = snapshot.data;
                     const dst = new ImageData(pw, ph);
-                    const dstData = dst.data;
+                    const d = dst.data;
 
-                    // 歪み強度をDPRでスケール
-                    const iScale = intensity * dpr;
-
+                    const iS = intensity * dpr;
+                    // 複数の sin 波を重ねてフィールド全体をグニャ〜
                     for (let y = 0; y < ph; y++) {
-                        const dy = (y - pcy) / ph;
-                        const dist = Math.abs(dy);
-                        const wave  = Math.sin(dy * Math.PI * 5 + pe.frame * 0.22) * iScale * Math.max(0, 1 - dist * 1.8);
-                        const waveY = Math.sin(dy * Math.PI * 3 + pe.frame * 0.18) * iScale * 0.35 * Math.max(0, 1 - dist * 2);
-                        const shiftX = Math.round(wave);
-                        const srcY = Math.min(ph - 1, Math.max(0, Math.round(y + waveY)));
+                        const ny = y / ph; // 0〜1
+                        // 横方向歪み（縦位置と時間で変わる波）
+                        const wx =
+                            Math.sin(ny * Math.PI * 4  + f * 0.19) * iS * 0.9 +
+                            Math.sin(ny * Math.PI * 7  + f * 0.28) * iS * 0.45 +
+                            Math.sin(ny * Math.PI * 13 + f * 0.11) * iS * 0.2;
+                        // 縦方向歪み
+                        const wy =
+                            Math.sin(ny * Math.PI * 3  + f * 0.17) * iS * 0.45 +
+                            Math.sin(ny * Math.PI * 9  + f * 0.23) * iS * 0.2;
+
+                        const shiftX = Math.round(wx);
+                        const srcY   = Math.min(ph - 1, Math.max(0, Math.round(y + wy)));
+                        const rowSrc = srcY * pw;
+                        const rowDst = y * pw;
 
                         for (let x = 0; x < pw; x++) {
-                            const srcX = Math.min(pw - 1, Math.max(0, x - shiftX));
-                            const si = (srcY * pw + srcX) * 4;
-                            const di = (y * pw + x) * 4;
-                            dstData[di]     = src[si];
-                            dstData[di + 1] = src[si + 1];
-                            dstData[di + 2] = src[si + 2];
-                            dstData[di + 3] = src[si + 3];
+                            // X 方向にも縦成分を加える（渦感）
+                            const nx = x / pw;
+                            const wxExtra = Math.sin(nx * Math.PI * 6 + f * 0.21) * iS * 0.3;
+                            const srcX = Math.min(pw - 1, Math.max(0, x - shiftX + Math.round(wxExtra)));
+                            const si = (rowSrc + srcX) * 4;
+                            const di = (rowDst + x) * 4;
+                            d[di]   = src[si];
+                            d[di+1] = src[si+1];
+                            d[di+2] = src[si+2];
+                            d[di+3] = src[si+3];
                         }
                     }
                     ctx.putImageData(dst, 0, 0);
 
-                    // 色収差：別ImageDataでRチャンネルをシフト（自己参照を避ける）
-                    const aberrShift = Math.round(intensity * dpr * 0.45);
-                    if (aberrShift > 0) {
-                        const aberrData = ctx.getImageData(0, 0, pw, ph);
-                        const ad = aberrData.data;
-                        const aberrOut = new ImageData(pw, ph);
-                        const ao = aberrOut.data;
-                        for (let y = 0; y < ph; y++) {
-                            for (let x = 0; x < pw; x++) {
-                                const di = (y * pw + x) * 4;
-                                const si = (y * pw + Math.max(0, x - aberrShift)) * 4;
-                                // R: シフトしたピクセルを加算合成
-                                ao[di]     = Math.min(255, ad[di] + ad[si] * 0.15);
-                                ao[di + 1] = ad[di + 1];
-                                ao[di + 2] = ad[di + 2];
-                                ao[di + 3] = ad[di + 3];
-                            }
+                    // 色収差（R/B チャンネルを逆方向にズラす）
+                    const aberr = Math.round(iS * 0.5);
+                    if (aberr > 0) {
+                        const frame2 = ctx.getImageData(0, 0, pw, ph);
+                        const f2 = frame2.data;
+                        const out = new ImageData(pw, ph);
+                        const o = out.data;
+                        for (let i = 0; i < ph * pw; i++) {
+                            const x = i % pw, y = Math.floor(i / pw);
+                            const di = i * 4;
+                            const siR = (y * pw + Math.min(pw-1, x + aberr)) * 4;
+                            const siB = (y * pw + Math.max(0,   x - aberr)) * 4;
+                            o[di]   = f2[siR];      // R: 右にシフト
+                            o[di+1] = f2[di+1];     // G: そのまま
+                            o[di+2] = f2[siB+2];    // B: 左にシフト
+                            o[di+3] = f2[di+3];
                         }
-                        ctx.putImageData(aberrOut, 0, 0);
+                        ctx.putImageData(out, 0, 0);
                     }
 
-                    // 中心に紫の渦オーバーレイ（論理座標で描画）
-                    const alpha = Math.sin(progress * Math.PI) * 0.35;
-                    const grad = ctx.createRadialGradient(pe.cx, pe.cy, 5, pe.cx, pe.cy, 110);
-                    grad.addColorStop(0,   `rgba(200,0,255,${alpha})`);
-                    grad.addColorStop(0.4, `rgba(100,0,200,${alpha * 0.6})`);
-                    grad.addColorStop(1,   `rgba(0,0,0,0)`);
-                    ctx.beginPath(); ctx.arc(pe.cx, pe.cy, 110, 0, Math.PI * 2);
-                    ctx.fillStyle = grad; ctx.fill();
+                    // 全体に薄い紫フィルム
+                    ctx.fillStyle = `rgba(80,0,120,${strength * 0.12})`;
+                    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
                 }
 
                 if (pe.frame >= pe.maxFrame) {
