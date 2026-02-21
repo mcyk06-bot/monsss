@@ -3783,10 +3783,9 @@
             }
         }
         
-        // 覚醒解放通知（自力解放以外）
-        function notifySubUnlock(marble) {
+        // 覚醒解放通知（自力解放以外）onComplete: 次の処理があれば渡す
+        function notifySubUnlock(marble, onComplete) {
             const charName = CHAR_NAMES[marble.characterIndex] || 'キャラ';
-            // モーダル表示
             document.getElementById('subUnlockCharName').textContent = `✨ ${charName} の覚醒が目覚めた！`;
             const modal = document.getElementById('subUnlockModal');
             modal.style.display = 'flex';
@@ -3807,11 +3806,15 @@
                     }, 3500);
                 }
             }, 100);
-            // OKボタン
+            // OKボタン: 次がある場合はisPausedを維持したまま次へ
             document.getElementById('subUnlockOkBtn').onclick = () => {
                 modal.style.display = 'none';
                 updateFriendshipStatusBar();
-                setTimeout(() => { isPaused = false; }, 100);
+                if (onComplete) {
+                    setTimeout(onComplete, 200); // isPausedはtrueのまま次へ
+                } else {
+                    setTimeout(() => { isPaused = false; }, 100);
+                }
             };
         }
 
@@ -4173,7 +4176,12 @@
                                 // 解放者がいれば順番にモーダル表示
                                 if (newlyUnlocked.length > 0) {
                                     let qi = 0;
-                                    const showNext = () => { if (qi < newlyUnlocked.length) { notifySubUnlock(newlyUnlocked[qi++]); document.getElementById('subUnlockOkBtn').onclick = () => { document.getElementById('subUnlockModal').style.display='none'; updateFriendshipStatusBar(); if (qi < newlyUnlocked.length) { setTimeout(showNext, 200); } else { setTimeout(()=>{isPaused=false;},100); } }; } };
+                                    const showNext = () => {
+                                        if (qi < newlyUnlocked.length) {
+                                            const hasMore = qi + 1 < newlyUnlocked.length;
+                                            notifySubUnlock(newlyUnlocked[qi++], hasMore ? showNext : null);
+                                        }
+                                    };
                                     setTimeout(showNext, 400);
                                 }
                             } else if (item.type === 'barrier') {
@@ -4325,14 +4333,11 @@
                         nextStageTurn = (currentTurn + 1) % MAX_MARBLES;
                         setTimeout(() => showStageClear(), 50);
                     } else {
-                        // ホーミング系弾が飛んでいる間は敵ターンを待機
+                        // 弾・マーブルが全部止まるまで敵ターンを待機
                         const waitAndAttack = () => {
-                            const hasHoming = bullets.some(b =>
-                                b instanceof HomingBullet ||
-                                b instanceof GlowHomingBullet ||
-                                b instanceof SixteenRingBullet
-                            );
-                            if (hasHoming) { setTimeout(waitAndAttack, 120); }
+                            const hasBullets = bullets.some(b => b && b.life > 0);
+                            const hasMoving  = activeMarbles.some(m => m.isMoving());
+                            if (hasBullets || hasMoving) { setTimeout(waitAndAttack, 120); }
                             else { setTimeout(() => executeEnemyAttack(), 400); }
                         };
                         waitAndAttack();
@@ -6580,13 +6585,13 @@
             setTimeout(() => {
                 overlay.style.transition = 'opacity 0.35s';
                 overlay.style.opacity = '0';
-            }, 1500);
+            }, 2000);
             setTimeout(() => {
                 overlay.classList.remove('active');
                 overlay.style.opacity = '';
                 overlay.style.transition = '';
                 stageTop.style.top = '50%';
-            }, 1860);
+            }, 2360);
         }
 
                 // ===== 一回休み自動処理 =====
