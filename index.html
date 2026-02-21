@@ -1330,6 +1330,8 @@
         let isPaused = false;
         
         let stageEnemyTurnsCount = 0; // このステージで敵ターンが何回起きたか
+        let nextStageTurn = 0;        // 次ステージの開始手番を引き継ぐ
+        let psychoEffect = null;       // 精神攻撃エフェクト { cx,cy,frame,maxFrame,onComplete }
         let nextStageBonusItems = 0;  // 次ステージで追加スポーンするアイテム数
         
         let friendshipAttackHistory = new Set();
@@ -2964,7 +2966,7 @@
             }
 
             stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; enemyBeams = []; items = [];
-            defeated = 0; currentTurn = 0; friendshipAttackHistory = new Set(); globalFriendshipBoost = 0;
+            defeated = 0; currentTurn = nextStageTurn; nextStageTurn = 0; friendshipAttackHistory = new Set(); globalFriendshipBoost = 0;
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false;
             stageEnemyTurnsCount = 0; pendingStageClear = false;
             
@@ -3052,7 +3054,7 @@
             isStageClear = true;
             playStageClearSound();
             const hpRecovery = Math.floor(MAX_TEAM_HP * 0.3);
-            teamHP = Math.min(MAX_TEAM_HP, teamHP + hpRecovery); updateHPBar();
+            teamHP = Math.min(MAX_TEAM_HP, roundHP(teamHP + hpRecovery)); updateHPBar();
             const oneShotClear = stageEnemyTurnsCount === 0;
             if (oneShotClear) nextStageBonusItems = 3;
             if (specialShotCount < SPECIAL_SHOT_MAX) {
@@ -3100,12 +3102,15 @@
             startClearAnimWhenReady();
         }
         
+        // HP値を小数点2桁に丸める
+        function roundHP(v) { return Math.round(v * 100) / 100; }
+
         function updateHPBar() {
             const hpBarFill = document.getElementById('hpBarFill');
             const hpText = document.getElementById('hpText');
             const hpPercent = (teamHP / MAX_TEAM_HP) * 100;
             hpBarFill.style.width = hpPercent + '%';
-            hpText.textContent = `${Math.max(0, teamHP.toFixed(1))} / ${MAX_TEAM_HP}`;
+            hpText.textContent = `${Math.max(0, teamHP).toFixed(2)} / ${MAX_TEAM_HP}`;
             hpBarFill.classList.remove('low', 'critical');
             if (hpPercent <= 30) hpBarFill.classList.add('critical');
             else if (hpPercent <= 60) hpBarFill.classList.add('low');
@@ -3181,7 +3186,7 @@
                                         proj.hit = true;
                                         proj.hitX = proj.x; proj.hitY = proj.y;
                                         if (consumeBarrier(m)) { updateHPBar(); continue; }
-                                teamHP -= enemyDamage * 1.2; m.takeDamage();
+                                teamHP -= roundHP(enemyDamage * 1.2); m.takeDamage();
                                         updateHPBar(); triggerGameOver();
                                         clearInterval(checkFlame);
                                     }
@@ -3198,7 +3203,7 @@
                                 const thornDmg = enemyDamage * 0.5;
                                 for (const m of playerMarbles) {
                                     if (consumeBarrier(m)) { updateHPBar(); continue; }
-                                teamHP -= thornDmg; m.takeDamage();
+                                teamHP -= roundHP(thornDmg); m.takeDamage();
                                     explosions.push(new Explosion(m.x, m.y, m.radius * 0.4, '#204000'));
                                 }
                                 updateHPBar(); triggerGameOver();
@@ -3211,7 +3216,7 @@
                             enemyBeams.push(laser);
                             setTimeout(() => {
                                 // 着弾点ダメージ
-                                if (consumeBarrier(target)) { updateHPBar(); triggerGameOver(); } else { teamHP -= enemyDamage * 1.5; target.takeDamage();
+                                if (consumeBarrier(target)) { updateHPBar(); triggerGameOver(); } else { teamHP -= roundHP(enemyDamage * 1.5); target.takeDamage();
                                 explosions.push(new Explosion(target.x, target.y, target.radius * 0.5, '#ff0000')); updateHPBar(); triggerGameOver(); }
                                 explosions.push(new Explosion(target.x, target.y, target.radius, '#aaddff'));
                                 // 十字ビームの当たり判定
@@ -3224,7 +3229,7 @@
                                         const dist = Math.sqrt(dx*dx+dy*dy);
                                         const dot = (dx * Math.cos(ca) + dy * Math.sin(ca)) / dist;
                                         if (dot > 0.85 && dist < 200) {
-                                            if (!consumeBarrier(m)) { teamHP -= enemyDamage * 0.8; m.takeDamage(); }
+                                            if (!consumeBarrier(m)) { teamHP -= roundHP(enemyDamage * 0.8); m.takeDamage(); }
                                             explosions.push(new Explosion(m.x, m.y, m.radius * 0.6, '#ffffff'));
                                         }
                                     }
@@ -3247,7 +3252,7 @@
                                     const dx = m.x - attacker.x, dy = m.y - attacker.y;
                                     if (Math.sqrt(dx*dx+dy*dy) < dome.maxRadius) {
                                         if (consumeBarrier(m)) { updateHPBar(); continue; }
-                                teamHP -= domeDmg; m.takeDamage();
+                                teamHP -= roundHP(domeDmg); m.takeDamage();
                                         absorbed += domeDmg;
                                         explosions.push(new Explosion(m.x, m.y, m.radius * 0.3, '#660088'));
                                     }
@@ -3262,25 +3267,24 @@
                             setTimeout(() => clearInterval(domeInterval), 2000);
                             setTimeout(resolve, 2200);
                         } else if (type === 'chaos_arrow') {
-                            // ささやかな反抗：ランダムターゲットの次の行動の矢印をランダムにする
-                            playEnemyAttackSound('poison_dome'); // 既存音を流用
+                            // ささやかな反抗：精神攻撃エフェクト＋矢印ランダム
+                            playEnemyAttackSound('poison_dome');
                             const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                             target.debuffChaosArrow = true;
                             showMessage(`🌀 ささやかな反抗！${CHAR_NAMES[playerMarbles.indexOf(target)]}の矢印がランダムに！`, 'danger');
                             updateFriendshipStatusBar(); updateDebuffStatusPanel();
-                            setTimeout(resolve, 800);
+                            psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 120, onComplete: resolve };
                         } else if (type === 'half_power') {
-                            // 秩序の乱れ：ランダムターゲットの次の行動の攻撃/化学反応を半減
-                            playEnemyAttackSound('dark_flame'); // 低音系
+                            // 秩序の乱れ：精神攻撃エフェクト＋攻撃半減
+                            playEnemyAttackSound('dark_flame');
                             const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                             target.debuffHalfPower = true;
                             showMessage(`📉 秩序の乱れ！${CHAR_NAMES[playerMarbles.indexOf(target)]}の次の攻撃が半減！`, 'danger');
                             updateFriendshipStatusBar(); updateDebuffStatusPanel();
-                            setTimeout(resolve, 800);
+                            psychoEffect = { cx: target.x, cy: target.y, frame: 0, maxFrame: 120, onComplete: resolve };
                         } else if (type === 'have_not') {
-                            // 持たざる者：才能の総数が最も少ないキャラを一回休みにする
+                            // 持たざる者：精神攻撃エフェクト＋一回休み
                             playEnemyAttackSound('dark_flame');
-                            // 才能合計が最小のマーブルを探す（同数なら一番若い番号）
                             let minTalent = Infinity, poorTarget = null;
                             for (const m of availableTargets) {
                                 const t = getTotalTalent(m);
@@ -3291,8 +3295,10 @@
                                 showMessage(`😔 持たざる者！${CHAR_NAMES[playerMarbles.indexOf(poorTarget)]}は恐怖で一回休み！`, 'danger');
                                 explosions.push(new CriticalEffect(poorTarget.x, poorTarget.y));
                                 updateFriendshipStatusBar(); updateDebuffStatusPanel();
+                                psychoEffect = { cx: poorTarget.x, cy: poorTarget.y, frame: 0, maxFrame: 120, onComplete: resolve };
+                            } else {
+                                resolve();
                             }
-                            setTimeout(resolve, 900);
                         } else if (type === 'beam') {
                             const beam = new EnemyBeam(attacker.x, attacker.y, target.x, target.y, attacker.color);
                             enemyBeams.push(beam);
@@ -3314,7 +3320,7 @@
                                     const dx = m.x - bx, dy = m.y - by;
                                     if (Math.sqrt(dx*dx+dy*dy) < blastR) {
                                         if (consumeBarrier(m)) { updateHPBar(); continue; }
-                                    teamHP -= bombDamage; m.takeDamage();
+                                    teamHP -= roundHP(bombDamage); m.takeDamage();
                                         explosions.push(new Explosion(m.x, m.y, m.radius*0.2, '#ff6600'));
                                     }
                                 }
@@ -3333,7 +3339,7 @@
                                     enemyBeams.push(meteor);
                                     setTimeout(() => {
                                         for (const m of playerMarbles) { const dx = m.x - meteor.targetX, dy = m.y - meteor.targetY; 
-                                        if (Math.sqrt(dx*dx+dy*dy) < 38) { if (!consumeBarrier(m)) { teamHP -= enemyDamage* 0.2; m.takeDamage(); 
+                                        if (Math.sqrt(dx*dx+dy*dy) < 38) { if (!consumeBarrier(m)) { teamHP -= roundHP(enemyDamage* 0.2); m.takeDamage(); 
                                             explosions.push(new Explosion(m.x, m.y, m.radius*0.5, '#cc2200')); } }
                                             } explosions.push(new EnemyBombEffect(meteor.targetX, meteor.targetY, 45));
                                         updateHPBar(); triggerGameOver();
@@ -3385,7 +3391,7 @@
                         showMessage('💕 愛情が攻撃を防いだ！', 'success');
                         updateFriendshipStatusBar(); continue;
                     }
-                    teamHP -= enemyDamage; marble.takeDamage();
+                    teamHP -= roundHP(enemyDamage); marble.takeDamage();
                     explosions.push(new Explosion(marble.x, marble.y, marble.radius * 0.5, '#ff0000'));
                 }
             }
@@ -3428,6 +3434,7 @@
             // 敵ターン中に全滅した場合もここでクリアを発火
             if (pendingStageClear && !isStageClear) {
                 pendingStageClear = false;
+                nextStageTurn = currentTurn % MAX_MARBLES; // currentTurn already incremented
                 setTimeout(() => showStageClear(), 50);
             }
         }
@@ -3498,7 +3505,7 @@
             // 解釈の不一致 (0.4%)：HPを20%減らす（0にはならない）
             if (rand < 0.004) {
                 const dmg = Math.floor(teamHP * 0.2);
-                teamHP = Math.max(1, teamHP - dmg);
+                teamHP = Math.max(1, roundHP(teamHP - dmg));
                 updateHPBar();
                 showMessage('😕 解釈の不一致！味方HPが20%減った…', 'danger');
                 return null;
@@ -3523,7 +3530,7 @@
             }
             if (hitMarble.friendshipType === 'heal') {
                 const healAmount = Math.floor((3 + (hitMarble.friendshipLevel - 1) * 2) * reactionMult);
-                teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
+                teamHP = Math.min(roundHP(teamHP + healAmount), MAX_TEAM_HP);
                 explosions.push(new HealEffect(hitMarble.x, hitMarble.y));
                 updateHPBar(); return null;
             }
@@ -3665,7 +3672,7 @@
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                             enemies.splice(j, 1);
                             if (Math.random() < 0.20 && teamHP < MAX_TEAM_HP) {
-                                const healAmount = 10; teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
+                                const healAmount = 10; teamHP = Math.min(roundHP(teamHP + healAmount), MAX_TEAM_HP);
                                 explosions.push(new HealEffect(enemy.x, enemy.y));
                                 showMessage(`💚 HP回復！ +${healAmount}`, 'success'); updateHPBar();
                             }
@@ -3721,7 +3728,7 @@
                             item.collected = true; items.splice(i, 1);
                             playCoinSound();
                             if (item.type === 'hp') {
-                                MAX_TEAM_HP += 4; teamHP = Math.min(teamHP + 4, MAX_TEAM_HP);
+                                MAX_TEAM_HP += 4; teamHP = Math.min(roundHP(teamHP + 4), MAX_TEAM_HP);
                                 explosions.push(new HealEffect(item.x, item.y));
                                 showMessage(`❤️ HP上限+4！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
                             } else if (item.type === 'hourglass') {
@@ -3847,7 +3854,7 @@
                                 explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
                                 enemies.splice(i, 1);
                                 if (Math.random() < 0.20 && teamHP < MAX_TEAM_HP) {
-                                    const healAmount = 10; teamHP = Math.min(teamHP + healAmount, MAX_TEAM_HP);
+                                    const healAmount = 10; teamHP = Math.min(roundHP(teamHP + healAmount), MAX_TEAM_HP);
                                     explosions.push(new HealEffect(enemy.x, enemy.y));
                                     updateHPBar();
                                 }
@@ -3945,9 +3952,20 @@
                     activeMarbles = [];
                     if (pendingStageClear) {
                         pendingStageClear = false;
+                        nextStageTurn = (currentTurn + 1) % MAX_MARBLES;
                         setTimeout(() => showStageClear(), 50);
                     } else {
-                        setTimeout(() => executeEnemyAttack(), 500);
+                        // ホーミング系弾が飛んでいる間は敵ターンを待機
+                        const waitAndAttack = () => {
+                            const hasHoming = bullets.some(b =>
+                                b instanceof HomingBullet ||
+                                b instanceof GlowHomingBullet ||
+                                b instanceof SixteenRingBullet
+                            );
+                            if (hasHoming) { setTimeout(waitAndAttack, 120); }
+                            else { setTimeout(() => executeEnemyAttack(), 400); }
+                        };
+                        waitAndAttack();
                     }
                 }
             }
@@ -4014,6 +4032,72 @@
                 }
 
                 ctx.restore();
+            }
+
+            // ====== 精神攻撃 グニャー歪みエフェクト ======
+            if (psychoEffect) {
+                const pe = psychoEffect;
+                pe.frame++;
+                const progress = pe.frame / pe.maxFrame; // 0→1
+                // 強さ: sin カーブで出て引く (最大 frame=60 あたりでピーク)
+                const intensity = Math.sin(progress * Math.PI) * 28;
+
+                if (intensity > 0.5) {
+                    const w = canvasSize.width, h = canvasSize.height;
+                    // 現フレームの画面を取得
+                    const snapshot = ctx.getImageData(0, 0, w, h);
+                    const dst = ctx.createImageData(w, h);
+                    const src = snapshot.data;
+                    const dstData = dst.data;
+
+                    for (let y = 0; y < h; y++) {
+                        // 中心からの距離に応じた波
+                        const dy = (y - pe.cy) / h;
+                        const dist = Math.abs(dy);
+                        // 横方向シフト量（中心ほど大、周辺ほど小）
+                        const wave = Math.sin(dy * Math.PI * 5 + pe.frame * 0.22) * intensity * Math.max(0, 1 - dist * 1.8);
+                        // 縦方向シフト量（軽め）
+                        const waveY = Math.sin(dy * Math.PI * 3 + pe.frame * 0.18) * intensity * 0.35 * Math.max(0, 1 - dist * 2);
+                        const shiftX = Math.round(wave);
+                        const srcY = Math.min(h - 1, Math.max(0, Math.round(y + waveY)));
+
+                        for (let x = 0; x < w; x++) {
+                            const srcX = Math.min(w - 1, Math.max(0, x - shiftX));
+                            const si = (srcY * w + srcX) * 4;
+                            const di = (y * w + x) * 4;
+                            dstData[di]     = src[si];
+                            dstData[di + 1] = src[si + 1];
+                            dstData[di + 2] = src[si + 2];
+                            dstData[di + 3] = src[si + 3];
+                        }
+                    }
+                    ctx.putImageData(dst, 0, 0);
+
+                    // 色収差（chromatic aberration）: 赤をわずかにずらす
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+                    ctx.globalAlpha = Math.min(0.18, intensity / 150);
+                    const aberr = Math.round(intensity * 0.4);
+                    ctx.drawImage(canvas, aberr, 0);
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.globalAlpha = 1;
+                    ctx.restore();
+
+                    // 中心に渦のオーバーレイ
+                    const alpha = Math.sin(progress * Math.PI) * 0.3;
+                    const grad = ctx.createRadialGradient(pe.cx, pe.cy, 10, pe.cx, pe.cy, 120);
+                    grad.addColorStop(0, `rgba(180,0,255,${alpha})`);
+                    grad.addColorStop(0.5, `rgba(80,0,180,${alpha * 0.5})`);
+                    grad.addColorStop(1, `rgba(0,0,0,0)`);
+                    ctx.beginPath(); ctx.arc(pe.cx, pe.cy, 120, 0, Math.PI * 2);
+                    ctx.fillStyle = grad; ctx.fill();
+                }
+
+                // エフェクト完了
+                if (pe.frame >= pe.maxFrame) {
+                    psychoEffect = null;
+                    if (pe.onComplete) pe.onComplete();
+                }
             }
 
             requestAnimationFrame(update);
@@ -4732,7 +4816,7 @@
                             if (savedMarble.friendshipLevel === 5 && !savedMarble.subFriendshipUnlocked) { savedMarble.subFriendshipUnlocked = true; setTimeout(() => notifySubUnlock(savedMarble), 600); }
                             playLevelUpSound(); updateFriendshipStatusBar();
                         } else {
-                            teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
+                            teamHP = Math.min(roundHP(teamHP + 10), MAX_TEAM_HP); updateHPBar();
                             explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
                         }
                     }
@@ -4773,7 +4857,7 @@
                     rarityLabel: 'NORMAL',
                     text: 'HP +10 回復',
                     apply() {
-                        teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
+                        teamHP = Math.min(roundHP(teamHP + 10), MAX_TEAM_HP); updateHPBar();
                         explosions.push(new HealEffect(canvasSize.width/2, canvasSize.height/2));
                     }
                 };
@@ -5472,44 +5556,43 @@
             const t = audioCtx.currentTime;
 
             if (type === 'beam') {
-                // アナログシンセビーム 2パターン（ランダム）
-                // パターン0: 低めダーク   パターン1: 中音アグレッシブ
-                const pattern = Math.random() < 0.5 ? 0 : 1;
-                const baseFreq   = pattern === 0 ? 55  : 87;
-                const peakFreq   = pattern === 0 ? 140 : 220;
-                const filterStart = pattern === 0 ? 180 : 300;
-                const filterPeak  = pattern === 0 ? 1800: 2800;
-
-                // デチューンドソウ×2
-                const osc1 = audioCtx.createOscillator();
-                const osc2 = audioCtx.createOscillator();
-                const lpf  = audioCtx.createBiquadFilter();
-                const env  = audioCtx.createGain();
-                lpf.type = 'lowpass'; lpf.Q.value = 6;
-                lpf.frequency.setValueAtTime(filterStart, t);
-                lpf.frequency.exponentialRampToValueAtTime(filterPeak, t + 0.12);
-                lpf.frequency.exponentialRampToValueAtTime(filterStart * 0.5, t + 0.55);
-                osc1.type = osc2.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(baseFreq, t);
-                osc1.frequency.exponentialRampToValueAtTime(peakFreq, t + 0.10);
-                osc1.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, t + 0.50);
-                osc2.frequency.setValueAtTime(baseFreq * 1.012, t);
-                osc2.frequency.exponentialRampToValueAtTime(peakFreq * 1.012, t + 0.10);
-                osc2.frequency.exponentialRampToValueAtTime(baseFreq * 0.7 * 1.012, t + 0.50);
-                env.gain.setValueAtTime(0, t);
-                env.gain.linearRampToValueAtTime(0.18, t + 0.03);
-                env.gain.exponentialRampToValueAtTime(0.001, t + 0.58);
-                osc1.connect(lpf); osc2.connect(lpf); lpf.connect(env); env.connect(masterGain);
-                osc1.start(t); osc1.stop(t + 0.60);
-                osc2.start(t); osc2.stop(t + 0.60);
-                // サブシン
-                const sub = audioCtx.createOscillator(); const subG = audioCtx.createGain();
-                sub.type = 'sine';
-                sub.frequency.setValueAtTime(baseFreq * 0.5, t);
-                sub.frequency.exponentialRampToValueAtTime(baseFreq * 0.35, t + 0.40);
-                subG.gain.setValueAtTime(0.22, t); subG.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-                sub.connect(subG); subG.connect(masterGain);
-                sub.start(t); sub.stop(t + 0.47);
+                // ── 敵レーザー音（OSC1: sawtooth slide + OSC2: noise ──
+                const p = {"mix":0.5,"type":"sawtooth","freq":440,"slide":-516,"atk":0.01,"dec":0.39,"sus":0.3,"rel":0.5,"type2":"noise","freq2":624,"slide2":0,"atk2":0.01,"dec2":0.08,"sus2":0.25,"rel2":0.5,"filter":15000,"filter2":15000};
+                const now = t;
+                // OSC1
+                if (p.mix < 1) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    const filter = audioCtx.createBiquadFilter();
+                    osc.type = p.type;
+                    osc.frequency.setValueAtTime(p.freq, now);
+                    osc.frequency.exponentialRampToValueAtTime(Math.max(1, p.freq + p.slide), now + p.atk + p.rel);
+                    filter.frequency.setValueAtTime(p.filter, now);
+                    const vol = (1 - p.mix) * 0.5;
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(vol, now + p.atk);
+                    gain.gain.linearRampToValueAtTime(p.sus * vol, now + p.atk + p.dec);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + p.atk + p.dec + p.rel);
+                    osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+                    osc.start(now); osc.stop(now + p.atk + p.dec + p.rel + 0.1);
+                }
+                // OSC2
+                if (p.mix > 0) {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    const filter2 = audioCtx.createBiquadFilter();
+                    osc2.type = p.type2;
+                    osc2.frequency.setValueAtTime(p.freq2, now);
+                    osc2.frequency.exponentialRampToValueAtTime(Math.max(1, p.freq2 + p.slide2), now + p.atk2 + p.rel2);
+                    filter2.frequency.setValueAtTime(p.filter2, now);
+                    const vol2 = p.mix * 0.5;
+                    gain2.gain.setValueAtTime(0, now);
+                    gain2.gain.linearRampToValueAtTime(vol2, now + p.atk2);
+                    gain2.gain.linearRampToValueAtTime(p.sus2 * vol2, now + p.atk2 + p.dec2);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, now + p.atk2 + p.dec2 + p.rel2);
+                    osc2.connect(filter2); filter2.connect(gain2); gain2.connect(masterGain);
+                    osc2.start(now); osc2.stop(now + p.atk2 + p.dec2 + p.rel2 + 0.1);
+                }
 
             } else if (type === 'bomb') {
                 // ヒュッ→ドカン（投擲→爆発）
