@@ -676,6 +676,98 @@
             from { transform: scale(0.5); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        @keyframes bounceCard {
+            0%   { transform: translateY(0); }
+            20%  { transform: translateY(-12px); }
+            40%  { transform: translateY(0); }
+            55%  { transform: translateY(-7px); }
+            70%  { transform: translateY(0); }
+            82%  { transform: translateY(-3px); }
+            100% { transform: translateY(0); }
+        }
+        @keyframes unlockGlow {
+            0%, 100% { box-shadow: 0 0 0px rgba(255,180,0,0); }
+            50%       { box-shadow: 0 0 16px 4px rgba(255,180,0,0.85); }
+        }
+        .bounce-card {
+            animation: bounceCard 0.8s ease forwards;
+        }
+        /* 覚醒解放 お知らせモーダル */
+        #subUnlockModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 5000;
+            justify-content: center;
+            align-items: center;
+        }
+        #subUnlockModal .unlock-box {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid #f7c948;
+            border-radius: 20px;
+            padding: 24px 20px 20px;
+            max-width: 300px;
+            width: 88%;
+            text-align: center;
+            animation: scaleIn 0.3s ease;
+        }
+        #subUnlockModal .unlock-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #f7c948;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(247,201,72,0.7);
+        }
+        #subUnlockModal .unlock-name {
+            font-size: 16px;
+            color: #fff;
+            margin-bottom: 14px;
+        }
+        #subUnlockModal .unlock-desc {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+        #subUnlockModal .unlock-ok {
+            background: linear-gradient(135deg, #f7c948, #ff6b35);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 32px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        /* 状態異常パネル */
+        #debuffStatusPanel {
+            position: fixed;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 4000;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            pointer-events: none;
+        }
+        .debuff-badge {
+            background: rgba(20,20,40,0.92);
+            border-radius: 10px;
+            padding: 4px 8px 4px 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border-left: 3px solid #f44336;
+            pointer-events: none;
+            animation: scaleIn 0.2s ease;
+        }
+        .debuff-badge.chaos { border-color: #ff9800; }
+        .debuff-badge.skip  { border-color: #9c27b0; }
+        .debuff-badge-icon { font-size: 14px; line-height: 1; }
+        .debuff-badge-text { font-size: 10px; color: #fff; font-weight: bold; line-height: 1.3; }
         /* モーダル内の新しいスタイル */
         .item-badge {
             display: inline-block;
@@ -979,6 +1071,19 @@
             <button onclick="document.getElementById('giveModal').style.display='none'; document.getElementById('itemModal').classList.add('active');" style="background:#aaa; color:white; border:none; border-radius:8px; padding:10px 24px; font-size:13px; font-weight:bold; cursor:pointer;">キャンセル</button>
         </div>
     </div>
+
+    <!-- 覚醒解放お知らせモーダル -->
+    <div id="subUnlockModal">
+        <div class="unlock-box">
+            <div class="unlock-title">🔓 覚醒 解放！</div>
+            <div class="unlock-name" id="subUnlockCharName"></div>
+            <div class="unlock-desc">仲間に才能が伝わり、<br>新たな覚醒能力が目覚めた！<br>才能アイテムを覚醒に習得できるよ！</div>
+            <button class="unlock-ok" id="subUnlockOkBtn">✓ わかった！</button>
+        </div>
+    </div>
+
+    <!-- 状態異常ステータスパネル -->
+    <div id="debuffStatusPanel"></div>
 
     <!-- 上書き確認モーダル -->
     <div id="overwriteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:3500; justify-content:center; align-items:center;">
@@ -3162,7 +3267,7 @@
                             const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                             target.debuffChaosArrow = true;
                             showMessage(`🌀 ささやかな反抗！${CHAR_NAMES[playerMarbles.indexOf(target)]}の矢印がランダムに！`, 'danger');
-                            updateFriendshipStatusBar();
+                            updateFriendshipStatusBar(); updateDebuffStatusPanel();
                             setTimeout(resolve, 800);
                         } else if (type === 'half_power') {
                             // 秩序の乱れ：ランダムターゲットの次の行動の攻撃/化学反応を半減
@@ -3170,7 +3275,7 @@
                             const target = availableTargets[Math.floor(Math.random() * availableTargets.length)];
                             target.debuffHalfPower = true;
                             showMessage(`📉 秩序の乱れ！${CHAR_NAMES[playerMarbles.indexOf(target)]}の次の攻撃が半減！`, 'danger');
-                            updateFriendshipStatusBar();
+                            updateFriendshipStatusBar(); updateDebuffStatusPanel();
                             setTimeout(resolve, 800);
                         } else if (type === 'have_not') {
                             // 持たざる者：才能の総数が最も少ないキャラを一回休みにする
@@ -3185,7 +3290,7 @@
                                 poorTarget.skipNextTurn = true;
                                 showMessage(`😔 持たざる者！${CHAR_NAMES[playerMarbles.indexOf(poorTarget)]}は恐怖で一回休み！`, 'danger');
                                 explosions.push(new CriticalEffect(poorTarget.x, poorTarget.y));
-                                updateFriendshipStatusBar();
+                                updateFriendshipStatusBar(); updateDebuffStatusPanel();
                             }
                             setTimeout(resolve, 900);
                         } else if (type === 'beam') {
@@ -3343,6 +3448,38 @@
             }
         }
         
+        // 覚醒解放通知（自力解放以外）
+        function notifySubUnlock(marble) {
+            const charName = CHAR_NAMES[marble.characterIndex] || 'キャラ';
+            // モーダル表示
+            document.getElementById('subUnlockCharName').textContent = `✨ ${charName} の覚醒が目覚めた！`;
+            const modal = document.getElementById('subUnlockModal');
+            modal.style.display = 'flex';
+            isPaused = true;
+            // ステータスバーカードをぴょんぴょんさせる
+            setTimeout(() => {
+                const cards = document.querySelectorAll('#friendshipStatusBar > div');
+                const idx = playerMarbles.indexOf(marble);
+                if (cards[idx]) {
+                    cards[idx].classList.remove('bounce-card');
+                    void cards[idx].offsetWidth; // reflow
+                    cards[idx].classList.add('bounce-card');
+                    cards[idx].style.animation = 'none';
+                    cards[idx].style.border = '2px solid #f7c948';
+                    cards[idx].style.animation = 'bounceCard 0.8s ease forwards, unlockGlow 1s ease 0.2s 3';
+                    setTimeout(() => {
+                        if (cards[idx]) cards[idx].style.animation = '';
+                    }, 3500);
+                }
+            }, 100);
+            // OKボタン
+            document.getElementById('subUnlockOkBtn').onclick = () => {
+                modal.style.display = 'none';
+                updateFriendshipStatusBar();
+                setTimeout(() => { isPaused = false; }, 100);
+            };
+        }
+
         // 才能の合計レベルを返すヘルパー
         function getTotalTalent(marble) {
             const main = marble.friendshipType !== 'normal' ? marble.friendshipLevel : 0;
@@ -3628,28 +3765,26 @@
                                 }
                                 // friendship_up_self でサブが解放された場合はバナーを表示
                                 if (marble.subFriendshipUnlocked) {
-                                    setTimeout(() => {
-                                        const banner = document.getElementById('subUnlockBanner');
-                                        if (banner) { banner.style.display = 'block'; setTimeout(() => banner.style.display = 'none', 2500); }
-                                    }, 200);
-                                    showMessage('🔓 覚醒が解放された！', 'combo-effect');
+                                    notifySubUnlock(marble);
                                 }
                                 if (leveled) {
                                     playLevelUpSound();
                                     explosions.push(new HealEffect(marble.x, marble.y));
-                                    showMessage(`💊 化学反応レベルアップ！`, 'combo-effect');
+                                    showMessage(`💊 才能がレベルアップ！`, 'combo-effect');
                                 } else {
                                     showMessage(`💊 才能の覚醒薬…でも効果なし（未習得orMAX）`, 'info');
                                 }
                             } else if (item.type === 'friendship_up_all') {
                                 // 全員の友情レベルを1上げる
                                 let count = 0;
+                                const newlyUnlocked = [];
                                 for (const m of playerMarbles) {
                                     if (m.friendshipType !== 'normal' && m.friendshipLevel < 5) {
                                         m.friendshipLevel++; m.friendshipPower += 0.5; m.friendshipCount += 2;
                                         count++;
                                         if (m.friendshipLevel === 5 && !m.subFriendshipUnlocked) {
                                             m.subFriendshipUnlocked = true;
+                                            newlyUnlocked.push(m);
                                         }
                                     }
                                     if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
@@ -3661,9 +3796,15 @@
                                 if (count > 0) {
                                     playLevelUpSound();
                                     playerMarbles.forEach(m => explosions.push(new HealEffect(m.x, m.y)));
-                                    showMessage(`💉 全員の化学反応レベルアップ！`, 'combo-effect');
+                                    showMessage(`💉 全員の才能がレベルアップ！`, 'combo-effect');
                                 } else {
                                     showMessage(`💉 全体才能覚醒注射…効果なし（未習得orMAX）`, 'info');
+                                }
+                                // 解放者がいれば順番にモーダル表示
+                                if (newlyUnlocked.length > 0) {
+                                    let qi = 0;
+                                    const showNext = () => { if (qi < newlyUnlocked.length) { notifySubUnlock(newlyUnlocked[qi++]); document.getElementById('subUnlockOkBtn').onclick = () => { document.getElementById('subUnlockModal').style.display='none'; updateFriendshipStatusBar(); if (qi < newlyUnlocked.length) { setTimeout(showNext, 200); } else { setTimeout(()=>{isPaused=false;},100); } }; } };
+                                    setTimeout(showNext, 400);
                                 }
                             } else if (item.type === 'barrier') {
                                 // バリア：全仲間に貼る
@@ -3799,6 +3940,7 @@
                         marble.debuffHalfPower = false;
                         marble.debuffChaosArrow = false;
                         marble.skipNextTurn = false; // 一回休み（発動してここに来た場合のみ）
+                        updateDebuffStatusPanel();
                     }
                     activeMarbles = [];
                     if (pendingStageClear) {
@@ -3948,12 +4090,39 @@
                 const subRow = subIcon
                     ? `<div style="font-size:11px;line-height:1.4;padding:0 2px;opacity:0.85;">${subIcon}<span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
                     : (m.subFriendshipUnlocked
-                        ? `<div style="font-size:9px;color:#444;line-height:1.4;padding:0 2px;">覚醒─</div>`
+                        ? `<div style="font-size:9px;font-weight:bold;color:#f7c948;line-height:1.4;padding:0 2px;background:rgba(255,200,0,0.12);border-radius:3px;text-align:center;">❓ 覚醒未装備</div>`
                         : '');
 
                 card.appendChild(cvs);
                 card.insertAdjacentHTML('beforeend', barrierMark + boostMark + halfMark + chaosMark + skipMark + mainRow + subRow);
                 bar.appendChild(card);
+            });
+        }
+
+        function updateDebuffStatusPanel() {
+            const panel = document.getElementById('debuffStatusPanel');
+            if (!panel) return;
+            panel.innerHTML = '';
+            playerMarbles.forEach((m, i) => {
+                const name = CHAR_NAMES[m.characterIndex] || `P${i+1}`;
+                if (m.debuffHalfPower) {
+                    const b = document.createElement('div');
+                    b.className = 'debuff-badge';
+                    b.innerHTML = `<span class="debuff-badge-icon">📉</span><span class="debuff-badge-text">${name}<br>攻撃・才能 ½</span>`;
+                    panel.appendChild(b);
+                }
+                if (m.debuffChaosArrow) {
+                    const b = document.createElement('div');
+                    b.className = 'debuff-badge chaos';
+                    b.innerHTML = `<span class="debuff-badge-icon">🌀</span><span class="debuff-badge-text">${name}<br>矢印ランダム</span>`;
+                    panel.appendChild(b);
+                }
+                if (m.skipNextTurn) {
+                    const b = document.createElement('div');
+                    b.className = 'debuff-badge skip';
+                    b.innerHTML = `<span class="debuff-badge-icon">😔</span><span class="debuff-badge-text">${name}<br>一回休み</span>`;
+                    panel.appendChild(b);
+                }
             });
         }
 
@@ -4199,16 +4368,24 @@
                     // 一回休みチェック
                     if (marble.skipNextTurn) {
                         marble.skipNextTurn = false;
-                        marble.isUsed = true; // このターンをスキップ
+                        marble.isUsed = true;
+                        marble.isStopped = true;
+                        if (!stoppedMarbles.includes(marble)) stoppedMarbles.push(marble);
                         isDragging = false;
-                        showMessage(`😔 ${CHAR_NAMES[marble.characterIndex]}は恐怖で動けない！`, 'danger');
+                        showMessage(`😔 ${CHAR_NAMES[marble.characterIndex]}は恐怖で動けない！一回休み`, 'danger');
                         updateFriendshipStatusBar();
-                        // 強制的に次のターンへ（スキップマーブルをstopped扱いにして進める）
-                        marble.isStopped = true; stoppedMarbles.push(marble);
-                        // 全員使用済みなら敵ターンへ
-                        if (playerMarbles.every(m => m.isUsed)) {
-                            setTimeout(() => executeEnemyAttack(), 400);
+                        // currentTurnを次へ進める
+                        currentTurn++;
+                        if (currentTurn >= MAX_MARBLES) {
+                            // 全員終わり→敵ターン
+                            currentTurn = 0;
+                            friendshipAttackHistory = new Set();
+                            for (let m of playerMarbles) { m.isUsed = false; m.isActive = false; m.hitEnemies = new Set(); }
+                            stoppedMarbles = [];
+                            if (globalFriendshipBoost > 0) { globalFriendshipBoost--; }
+                            setTimeout(() => executeEnemyAttack(), 500);
                         }
+                        updateTurnIndicator(); updateUI();
                         return;
                     }
                     const launchMult = marble.debuffHalfPower ? 0.5 : 1.0;
@@ -4498,12 +4675,12 @@
                 result = {
                     icon: '🌟', rarity: 'miracle',
                     rarityLabel: '✨ MIRACLE',
-                    text: '全員の化学反応が\n1レベルアップ！',
+                    text: '全員の才能が\n1レベルアップ！',
                     apply() {
                         playerMarbles.forEach(m => {
                             if (m.friendshipType !== 'normal' && m.friendshipLevel < 5) {
                                 m.friendshipLevel++; m.friendshipPower += 0.5; m.friendshipCount += 2;
-                                if (m.friendshipLevel === 5 && !m.subFriendshipUnlocked) m.subFriendshipUnlocked = true;
+                                if (m.friendshipLevel === 5 && !m.subFriendshipUnlocked) { m.subFriendshipUnlocked = true; setTimeout(() => notifySubUnlock(m), 600); }
                             }
                             if (m.subFriendshipUnlocked && m.subFriendshipType !== 'normal' && m.subFriendshipLevel < 5) {
                                 m.subFriendshipLevel++;
@@ -4548,11 +4725,11 @@
                 result = {
                     icon: '🆙', rarity: 'rare',
                     rarityLabel: '★ RARE',
-                    text: canUp ? `本人の化学反応が\n1レベルアップ！` : 'HP +10 回復！',
+                    text: canUp ? `本人の才能が\n1レベルアップ！` : 'HP +10 回復！',
                     apply() {
                         if (canUp) {
                             savedMarble.friendshipLevel++; savedMarble.friendshipPower += 0.5; savedMarble.friendshipCount += 2;
-                            if (savedMarble.friendshipLevel === 5 && !savedMarble.subFriendshipUnlocked) savedMarble.subFriendshipUnlocked = true;
+                            if (savedMarble.friendshipLevel === 5 && !savedMarble.subFriendshipUnlocked) { savedMarble.subFriendshipUnlocked = true; setTimeout(() => notifySubUnlock(savedMarble), 600); }
                             playLevelUpSound(); updateFriendshipStatusBar();
                         } else {
                             teamHP = Math.min(teamHP + 10, MAX_TEAM_HP); updateHPBar();
