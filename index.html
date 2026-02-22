@@ -3346,10 +3346,7 @@
                 repositionMarbles();
                 for (let marble of playerMarbles) {
                     marble.isUsed = false; marble.isActive = false; marble.isStopped = false; marble.hitEnemies = new Set();
-                    // ★ バグ修正: ステージ間でデバフをリセット（前ステージの状態異常が持ち越されるのを防止）
-                    marble.skipNextTurn = false;
-                    marble.debuffHalfPower = false;
-                    marble.debuffChaosArrow = false;
+                    // デバフは次ステージに持ち越し（消費は発動ターンに行われる）
                 }
             }
 
