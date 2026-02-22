@@ -3337,7 +3337,13 @@
                 }
             } else {
                 repositionMarbles();
-                for (let marble of playerMarbles) { marble.isUsed = false; marble.isActive = false; marble.isStopped = false; marble.hitEnemies = new Set(); }
+                for (let marble of playerMarbles) {
+                    marble.isUsed = false; marble.isActive = false; marble.isStopped = false; marble.hitEnemies = new Set();
+                    // ★ バグ修正: ステージ間でデバフをリセット（前ステージの状態異常が持ち越されるのを防止）
+                    marble.skipNextTurn = false;
+                    marble.debuffHalfPower = false;
+                    marble.debuffChaosArrow = false;
+                }
             }
 
             stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; enemyBeams = []; items = [];
@@ -3974,7 +3980,12 @@
             const indicator = document.getElementById('turnIndicator');
             if (isGameOver) { indicator.textContent = '💀 ゲームオーバー'; indicator.style.background = 'linear-gradient(135deg, #f44336 0%, #e53935 100%)'; }
             else if (isEnemyTurn) { indicator.textContent = '⚡ 敵のターン'; indicator.style.background = 'linear-gradient(135deg, #f44336 0%, #e53935 100%)'; }
-            else { const marble = playerMarbles[currentTurn]; indicator.textContent = `ターン ${currentTurn + 1}: ${marble.type.name}を発射`; indicator.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'; }
+            else {
+                const marble = playerMarbles[currentTurn];
+                if (!marble) return; // ★ 安全チェック: 範囲外アクセス防止
+                indicator.textContent = `ターン ${currentTurn + 1}: ${marble.type.name}を発射`;
+                indicator.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            }
         }
 
         let _lastFrameTime = 0;
@@ -4345,6 +4356,7 @@
 
             if (isDragging && !isEnemyTurn && !isGameOver && !isStageClear) {
                 const currentMarble = playerMarbles[currentTurn];
+                if (currentMarble) { // ★ 安全チェック: 範囲外アクセス防止
                 const marbleX = currentMarble.x, marbleY = currentMarble.y;
                 const rawdx = dragStart.x - dragEnd.x, rawdy = dragStart.y - dragEnd.y;
                 const rawDist = Math.sqrt(rawdx*rawdx + rawdy*rawdy);
@@ -4399,6 +4411,7 @@
                 ctx.fillStyle = gaugeColor; ctx.fillRect(gaugeX, gaugeY, (power / 10) * gaugeWidth, gaugeHeight);
                 ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.strokeRect(gaugeX, gaugeY, gaugeWidth, gaugeHeight);
                 
+                } // if (currentMarble) ★ 安全チェック閉じ
             }
             
             // 以前の衝突判定ループは削除済み（サブステップ内に統合）
@@ -4431,6 +4444,8 @@
                     } else {
                         // 弾・マーブルが全部止まるまで敵ターンを待機
                         const waitAndAttack = () => {
+                            // ★ バグ修正: 弾飛行中にステージクリア/ゲームオーバーした場合は敵攻撃を中止
+                            if (pendingStageClear || isStageClear || isGameOver) return;
                             const hasBullets = bullets.some(b => b && b.life > 0);
                             const hasMoving  = activeMarbles.some(m => m.isMoving());
                             if (hasBullets || hasMoving) { setTimeout(waitAndAttack, 120); }
@@ -4930,7 +4945,7 @@
                     updateSpecialShotUI();
                 } else {
                     const marble = playerMarbles[currentTurn];
-                    if (marble.isUsed) { isDragging = false; return; }
+                    if (!marble || marble.isUsed) { isDragging = false; return; }
                     // 一回休みチェック（通常はendEnemyTurnで自動処理されるが、念のためフォールバック）
                     if (marble.skipNextTurn) {
                         isDragging = false;
@@ -6771,18 +6786,19 @@
 
             // 次のターンへ
             setTimeout(() => {
+                // ★ バグ修正: 1600ms待ちの間にゲーム状態が変わった場合は中断
+                if (isGameOver || isStageClear) return;
                 currentTurn++;
                 if (currentTurn >= MAX_MARBLES) {
-                    // ★ バグ修正: currentTurn = 0 に自分でリセットしない
-                    // endEnemyTurn() が increment してから wrap するので、
-                    // ここでは currentTurn を MAX_MARBLES のまま残し、
-                    // マーブルリセットだけ行って敵ターンに渡す
+                    // 全員終了 → 敵ターンへ移行
                     friendshipAttackHistory = new Set();
                     for (let m of playerMarbles) { m.isUsed = false; m.isActive = false; m.hitEnemies = new Set(); }
                     stoppedMarbles = [];
                     if (globalFriendshipBoost > 0) { globalFriendshipBoost--; }
+                    // ★ 修正: isEnemyTurnを先に立てる（falseのままupdateTurnIndicatorを呼ぶと
+                    //   playerMarbles[MAX_MARBLES]=undefinedでTypeError→操作不能になる）
+                    isEnemyTurn = true;
                     updateTurnIndicator(); updateUI();
-                    // currentTurn は MAX_MARBLES のまま → endEnemyTurn で ++ → wrap → 0 になる
                     setTimeout(() => executeEnemyAttack(), 500);
                 } else {
                     updateTurnIndicator(); updateUI();
