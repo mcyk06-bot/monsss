@@ -1139,7 +1139,7 @@
                 ⚡ <strong>レーザービーム</strong>　化学反応が貫通レーザーに<br>
                 💝 <strong>回復の化学反応</strong>　化学反応でHP回復<br>
                 🔫 <strong>友情・マシンガン</strong>　弱った敵に連射<br>
-                ⭕ <strong>水面和音</strong>　全敵にダメージ<br>
+                ⭕ <strong>水面</strong>　全敵にダメージ<br>
                 <small>※才能(アイテム)は同じ種類を重ねるとLv5まで強化！</small>
             </div>
 
@@ -2381,7 +2381,7 @@
                 else if (type === 'friendship_laser') { this.emoji = '⚡'; this.color = '#9c27b0'; this.name = 'レーザービーム'; this.description = '化学反応が貫通レーザーになります。敵を一直線に貫く！'; }
                 else if (type === 'friendship_heal') { this.emoji = '💝'; this.color = '#ff69b4'; this.name = '回復の化学反応'; this.description = '化学反応発動時、攻撃の代わりにHPを回復します。'; }
                 else if (type === 'friendship_machinegun') { this.emoji = '🔫'; this.color = '#607d8b'; this.name = '友情・マシンガン'; this.description = '弱った敵にめがけて高速弾を16発連射します！'; }
-                else if (type === 'friendship_energy') { this.emoji = '⭕'; this.color = '#00bcd4'; this.name = '水面和音'; this.description = '自身を中心に和音の波紋が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
+                else if (type === 'friendship_energy') { this.emoji = '⭕'; this.color = '#00bcd4'; this.name = '水面'; this.description = '自身を中心に和音の波紋が広がり、画面全ての敵にダメージ！レベルが上がるほど威力UP！'; }
             }
             update() { this.frame++; }
             draw() {
@@ -4719,7 +4719,7 @@
         }
         
         const FRIENDSHIP_ICONS = { homing:'🚀', laser:'⚡', heal:'❤️', machinegun:'🔫', energy:'⭕', normal_shot:'🍄‍🟫', sixteen_ring:'◎', white_light:'◉', glow_homing:'⚕', light_thread:'✚', normal:'　' };
-        const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'回復の化学反応', machinegun:'マシンガン', energy:'水面和音', normal_shot:'胞子', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
+        const FRIENDSHIP_NAMES = { homing:'ホーミングミサイル', laser:'レーザービーム', heal:'回復の化学反応', machinegun:'マシンガン', energy:'水面', normal_shot:'胞子', sixteen_ring:'十六輪', white_light:'白い光', glow_homing:'発光群', light_thread:'光の糸', normal:'なし' };
 
         function iconBar(type, level) {
             const icon = FRIENDSHIP_ICONS[type] || '　';
@@ -4827,7 +4827,7 @@
             else if (item.type === 'friendship_laser') { newItemType = 'laser'; itemName = 'レーザー'; }
             else if (item.type === 'friendship_heal') { newItemType = 'heal'; itemName = '回復'; }
             else if (item.type === 'friendship_machinegun') { newItemType = 'machinegun'; itemName = 'マシンガン'; }
-            else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = '水面和音'; }
+            else if (item.type === 'friendship_energy') { newItemType = 'energy'; itemName = '水面'; }
             else if (item.type === 'friendship_normal') { newItemType = 'normal_shot'; itemName = '胞子'; }
             else if (item.type === 'friendship_sixteen_ring') { newItemType = 'sixteen_ring'; itemName = '十六輪'; }
             else if (item.type === 'friendship_white_light') { newItemType = 'white_light'; itemName = '白い光'; }
