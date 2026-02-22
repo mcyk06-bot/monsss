@@ -1582,7 +1582,7 @@
         let friendshipAttackHistory = new Set();
         let globalFriendshipBoost = 0; // 友情アップ共通カウント（全員共有）
         
-        const BOUNCE = 0.8;
+        const BOUNCE = 0.85;
         const COLLISION_DAMPING = 0.88;
         const HIT_SLOWDOWN = 0.5;
         const STOP_THRESHOLD = 0.01;
@@ -3051,10 +3051,11 @@
                     }, 350);
                     return [];
                 } else if (this.friendshipType === 'normal_shot') {
-                    // 豆粒友情：8発放射
+                    // 胞子：当たり判定が小さい分、1発あたりの威力を強化（Lv上昇で意外と強い）
+                    const sporePower = this.friendshipPower * 1.2 * reactionMult * (globalFriendshipBoost > 0 ? 1.25 : 1.0) * (this.debuffHalfPower ? 0.5 : 1.0);
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
-                        const b = new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, power, 0);
+                        const b = new Bullet(this.x, this.y, Math.cos(angle) * bulletSpeed, Math.sin(angle) * bulletSpeed, this.color, sporePower, 0);
                         b.useHiHat = true;
                         newBullets.push(b);
                     }
@@ -4304,7 +4305,7 @@
                             const overlap = marble.radius + enemy.radius - dist;
                             if (overlap > 0) { marble.x += normalX * (overlap + 0.5); marble.y += normalY * (overlap + 0.5); }
                             const dotProduct = marble.vx * normalX + marble.vy * normalY;
-                            if (dotProduct < 0) { marble.vx -= 2 * dotProduct * normalX; marble.vy -= 2 * dotProduct * normalY; marble.vx *= 0.85; marble.vy *= 0.85; }
+                            if (dotProduct < 0) { marble.vx -= 2 * dotProduct * normalX; marble.vy -= 2 * dotProduct * normalY; marble.vx *= 0.90; marble.vy *= 0.90; }
                             const isCritical = Math.random() < 0.15;
                             const baseDamage = (1.5 + playerAttackBonus) * marble.type.attackMult * (marble.isSpecialShot ? 3 : 1) * (marble.debuffHalfPower ? 0.5 : 1.0);
                             const damageToApply = isCritical ? baseDamage * 7.5 : baseDamage;
