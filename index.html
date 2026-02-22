@@ -1519,14 +1519,14 @@
         };
         
         const ENEMY_SIZES = {
-            SMALL:  { name: '小', radius: 28, maxHp: 1, color: '#43a047', secondaryColor: '#66bb6a' },
-            MEDIUM: { name: '中', radius: 35, maxHp: 3, color: '#fb8c00', secondaryColor: '#ffa726' },
-            LARGE:  { name: '大', radius: 40, maxHp: 5, color: '#e53935', secondaryColor: '#ef5350' }
+            SMALL:  { name: '小', radius: 24, maxHp: 1, color: '#43a047', secondaryColor: '#66bb6a' },
+            MEDIUM: { name: '中', radius: 30, maxHp: 3, color: '#fb8c00', secondaryColor: '#ffa726' },
+            LARGE:  { name: '大', radius: 36, maxHp: 5, color: '#e53935', secondaryColor: '#ef5350' }
         };
         const DARK_ENEMY_SIZES = {
-            SMALL:  { name: '小', radius: 28, maxHp: 2,  color: '#4a0080', secondaryColor: '#9b00cc', isDark: true },
-            MEDIUM: { name: '中', radius: 35, maxHp: 5,  color: '#2a0050', secondaryColor: '#7700aa', isDark: true },
-            LARGE:  { name: '大', radius: 40, maxHp: 10, color: '#1a0040', secondaryColor: '#5500aa', isDark: true }
+            SMALL:  { name: '小', radius: 24, maxHp: 2,  color: '#4a0080', secondaryColor: '#9b00cc', isDark: true },
+            MEDIUM: { name: '中', radius: 30, maxHp: 5,  color: '#2a0050', secondaryColor: '#7700aa', isDark: true },
+            LARGE:  { name: '大', radius: 36, maxHp: 10, color: '#1a0040', secondaryColor: '#5500aa', isDark: true }
         };
         
         let playerMarbles = [];
@@ -3131,6 +3131,7 @@
                 this.radius = size.radius; this.isActive = false; this.lastHitTime = 0;
                 this.color = size.color; this.secondaryColor = size.secondaryColor;
                 this.shakeFrame = -1;
+                this.shakeOffsetX = 0; this.shakeOffsetY = 0;
                 this.floatPhase = Math.random() * Math.PI * 2; // 初期位相ランダム
             }
             
@@ -3152,12 +3153,15 @@
                     const decay = Math.pow(1 - progress, 1.2);
                     const waveX = Math.sin(this.shakeFrame * 2.2) * decay;
                     const waveY = Math.cos(this.shakeFrame * 1.8 + 0.8) * decay * 0.7;
-                    const intensity = this.isBoss ? 16 : 10;
+                    const intensity = this.isBoss ? 6 : 4;
                     shakeOffsetX = waveX * intensity;
                     shakeOffsetY = waveY * intensity;
                 } else if (this.shakeFrame >= SHAKE_DURATION) {
                     this.shakeFrame = -1; // シェイク終了
                 }
+                // ★ 当たり判定でも使えるようにオブジェクトに保存
+                this.shakeOffsetX = shakeOffsetX;
+                this.shakeOffsetY = shakeOffsetY;
 
                 ctx.save();
                 // 浮遊 + シェイクを合算してtranslate
@@ -3358,24 +3362,70 @@
                 const isBossDark = isDarkStage && Math.random() < 0.4;
                 const normalBossHp = currentStage < 30
                     ? 15 + currentStage * 1.5
-                    : 15 + 30 * 1.5 + (currentStage - 30) * 4.0; // 30以降は急増
-                const darkBossHp = Math.floor(normalBossHp * 1.5); // 通常の1.5倍
+                    : 15 + 30 * 1.5 + (currentStage - 30) * 4.0;
+                const darkBossHp = Math.floor(normalBossHp * 1.5);
                 const bossSizeBase = isBossDark
                     ? { name: 'ボス', radius: 83, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
                     : { name: 'ボス', radius: 75, maxHp: normalBossHp, color: '#8b0000', secondaryColor: '#ff0000' };
-                const boss = new Enemy(canvasSize.width / 2, 150, bossSizeBase);
+
+                // ボスもグリッドのセルにランダム配置（上65%エリア）
+                const BCOLS = 3, BROWS = 2;
+                const bareaX0 = 60, bareaX1 = canvasSize.width - 60;
+                const bareaY0 = 60, bareaY1 = canvasSize.height * 0.65;
+                const bcellW = (bareaX1 - bareaX0) / BCOLS;
+                const bcellH = (bareaY1 - bareaY0) / BROWS;
+                // ランダムなセルを選んでボスを配置
+                const bossCell = Math.floor(Math.random() * BCOLS * BROWS);
+                const bossCellX = bareaX0 + (bossCell % BCOLS) * bcellW + bcellW / 2 + (Math.random() - 0.5) * bcellW * 0.25;
+                const bossCellY = bareaY0 + Math.floor(bossCell / BCOLS) * bcellH + bcellH / 2 + (Math.random() - 0.5) * bcellH * 0.25;
+                const boss = new Enemy(
+                    Math.max(bossSizeBase.radius + 10, Math.min(canvasSize.width - bossSizeBase.radius - 10, bossCellX)),
+                    Math.max(bossSizeBase.radius + 10, Math.min(canvasSize.height * 0.65, bossCellY)),
+                    bossSizeBase
+                );
                 boss.isBoss = true; enemies.push(boss);
+
+                // 雑魚もグリッドで残りのセルに配置
                 const minionCount = Math.min(2 + Math.floor(currentStage / 5), 3);
                 const sizeOptions = [ENEMY_SIZES.SMALL, ENEMY_SIZES.MEDIUM];
                 for (let i = 0; i < minionCount; i++) {
-                    let x, y, valid, attempts = 0;
                     const size = sizeOptions[i % sizeOptions.length];
-                    do {
-                        valid = true; x = 50 + Math.random() * (canvasSize.width - 100); y = 250 + Math.random() * 150;
-                        for (let enemy of enemies) { const dx = x-enemy.x, dy = y-enemy.y; if (Math.sqrt(dx*dx+dy*dy) < size.radius+enemy.radius+15) { valid = false; break; } }
-                        attempts++;
-                    } while (!valid && attempts < 200);
-                    enemies.push(new Enemy(x, y, size));
+                    const stageMult = currentStage < 30 ? currentStage : 30 + (currentStage - 30) * 2.2;
+                    size.maxHp = size.maxHp + Math.floor(stageMult / 2);
+                    // ボスと離れたセルを探す（通常ステージと同じグリッドロジック）
+                    const COLS = 4, ROWS = 3;
+                    const areaX0 = 50, areaX1 = canvasSize.width - 50;
+                    const areaY0 = 55, areaY1 = canvasSize.height * 0.65;
+                    const cellW = (areaX1 - areaX0) / COLS;
+                    const cellH = (areaY1 - areaY0) / ROWS;
+                    const freeCells = [];
+                    for (let r = 0; r < ROWS; r++) {
+                        for (let c = 0; c < COLS; c++) {
+                            const cx = areaX0 + cellW * c + cellW / 2;
+                            const cy = areaY0 + cellH * r + cellH / 2;
+                            let cellFree = true;
+                            for (const e of enemies) {
+                                if (Math.hypot(e.x - cx, e.y - cy) < cellW * 0.75) { cellFree = false; break; }
+                            }
+                            if (cellFree) freeCells.push({ cx, cy });
+                        }
+                    }
+                    for (let k = freeCells.length - 1; k > 0; k--) {
+                        const j = Math.floor(Math.random() * (k + 1));
+                        [freeCells[k], freeCells[j]] = [freeCells[j], freeCells[k]];
+                    }
+                    let mplaced = false;
+                    for (const cell of freeCells) {
+                        const jx = (Math.random() - 0.5) * cellW * 0.4;
+                        const jy = (Math.random() - 0.5) * cellH * 0.4;
+                        const x = cell.cx + jx, y = cell.cy + jy;
+                        let ok = true;
+                        for (const e of enemies) {
+                            if (Math.hypot(x - e.x, y - e.y) < size.radius + e.radius + 10) { ok = false; break; }
+                        }
+                        if (ok) { enemies.push(new Enemy(x, y, size)); mplaced = true; break; }
+                    }
+                    if (!mplaced && freeCells.length > 0) enemies.push(new Enemy(freeCells[0].cx, freeCells[0].cy, size));
                 }
             } else {
                 const baseEnemyCount = 5;
@@ -3388,24 +3438,65 @@
                 const darkRate = isDarkStage ? 0.4 : 0;
                 const darkSizePool = [DARK_ENEMY_SIZES.SMALL, DARK_ENEMY_SIZES.MEDIUM, DARK_ENEMY_SIZES.LARGE];
                 for (let i = 0; i < enemyCount; i++) {
-                    let x, y, valid, attempts = 0;
                     const useDark = isDarkStage && Math.random() < darkRate;
                     const baseSize = useDark
                         ? darkSizePool[Math.floor(Math.random() * darkSizePool.length)]
                         : sizeOptions[i % sizeOptions.length];
                     const size = { ...baseSize };
-                    // 通常敵HP: baseHp + stage/2 + cycle*2
-                    // ダーク敵HP: 同計算の1.5倍（ステージ1基準で計算）
-                    // ステージ30以降はHP上昇率を急峻にする
                     const stageMult = currentStage < 30 ? currentStage : 30 + (currentStage - 30) * 2.2;
                     const normalHp = size.maxHp + Math.floor(stageMult / 2) + cycleNumber * 3;
                     size.maxHp = useDark ? Math.floor(normalHp * 1.5) : normalHp;
-                    do {
-                        valid = true; x = 50 + Math.random() * (canvasSize.width - 100); y = 50 + Math.random() * (canvasSize.height * 0.4);
-                        for (let enemy of enemies) { const dx = x-enemy.x, dy = y-enemy.y; if (Math.sqrt(dx*dx+dy*dy) < size.radius+enemy.radius+15) { valid = false; break; } }
-                        attempts++;
-                    } while (!valid && attempts < 200);
-                    enemies.push(new Enemy(x, y, size));
+
+                    // ── ゆるいグリッド配置 ──
+                    // 敵エリアを4列×3行のセルに分割、未使用セルにランダム配置
+                    // エリアは上65%（y:50〜340）まで使ってゆったり配置
+                    const COLS = 4, ROWS = 3;
+                    const areaX0 = 50, areaX1 = canvasSize.width - 50;
+                    const areaY0 = 55, areaY1 = canvasSize.height * 0.65;
+                    const cellW = (areaX1 - areaX0) / COLS;
+                    const cellH = (areaY1 - areaY0) / ROWS;
+
+                    // 全セルのうち既存の敵が使っていないセルをリストアップ
+                    const freeCells = [];
+                    for (let r = 0; r < ROWS; r++) {
+                        for (let c = 0; c < COLS; c++) {
+                            const cx = areaX0 + cellW * c + cellW / 2;
+                            const cy = areaY0 + cellH * r + cellH / 2;
+                            let cellFree = true;
+                            for (const e of enemies) {
+                                if (Math.hypot(e.x - cx, e.y - cy) < cellW * 0.75) { cellFree = false; break; }
+                            }
+                            if (cellFree) freeCells.push({ cx, cy, c, r });
+                        }
+                    }
+                    // シャッフル
+                    for (let k = freeCells.length - 1; k > 0; k--) {
+                        const j = Math.floor(Math.random() * (k + 1));
+                        [freeCells[k], freeCells[j]] = [freeCells[j], freeCells[k]];
+                    }
+
+                    let placed = false;
+                    // セル中心から±20%のジッターで自然な見た目に
+                    for (const cell of freeCells) {
+                        const jx = (Math.random() - 0.5) * cellW * 0.4;
+                        const jy = (Math.random() - 0.5) * cellH * 0.4;
+                        const x = cell.cx + jx, y = cell.cy + jy;
+                        let ok = true;
+                        for (const e of enemies) {
+                            if (Math.hypot(x - e.x, y - e.y) < size.radius + e.radius + 10) { ok = false; break; }
+                        }
+                        if (ok) { enemies.push(new Enemy(x, y, size)); placed = true; break; }
+                    }
+                    // 第二候補：どうしても入らない場合はセル中心にそのまま置く
+                    if (!placed && freeCells.length > 0) {
+                        const cell = freeCells[0];
+                        enemies.push(new Enemy(cell.cx, cell.cy, size));
+                    } else if (!placed) {
+                        // 全セル埋まっていたら適当に配置
+                        const x = areaX0 + Math.random() * (areaX1 - areaX0);
+                        const y = areaY0 + Math.random() * (areaY1 - areaY0);
+                        enemies.push(new Enemy(x, y, size));
+                    }
                 }
             }
             
@@ -4310,12 +4401,17 @@
                         }
                     }
 
-                    // 敵衝突判定 (サブステップ毎にチェック)
+                    // 敵衝突判定 (サブステップ毎にチェック) ★シェイク中は当たり判定もブルっとする
                     for (let i = enemies.length - 1; i >= 0; i--) {
                         const enemy = enemies[i];
-                        if (checkCollision(marble, enemy)) {
-                            let normalX = marble.x - enemy.x, normalY = marble.y - enemy.y;
-                            const dist = Math.sqrt(normalX*normalX + normalY*normalY);
+                        // シェイク中は見た目と同じずれた座標で判定
+                        const ex = enemy.x + (enemy.shakeOffsetX || 0);
+                        const ey = enemy.y + (enemy.shakeOffsetY || 0);
+                        const cdx = marble.x - ex, cdy = marble.y - ey;
+                        const cdist = Math.sqrt(cdx*cdx + cdy*cdy);
+                        if (cdist < marble.radius + enemy.radius) {
+                            let normalX = cdx, normalY = cdy;
+                            const dist = cdist;
                             if (dist > 0) { normalX /= dist; normalY /= dist; }
                             const overlap = marble.radius + enemy.radius - dist;
                             if (overlap > 0) { marble.x += normalX * (overlap + 0.5); marble.y += normalY * (overlap + 0.5); }
