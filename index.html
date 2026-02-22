@@ -1095,16 +1095,6 @@
             <input type="range" id="bgmVolSlider" min="0" max="100" value="40">
         </div>
         <button id="lotteryAnimBtn" class="active-btn">🎰 抽選演出</button>
-        <div style="border-top:1px solid #555; margin-top:4px; padding-top:6px;">
-            <div style="color:#aaa; font-size:10px; margin-bottom:4px;">🔧 デバッグ：マシンガン</div>
-            <div class="gear-row" style="flex-wrap:wrap; gap:4px;">
-                <button id="dbgMg1" style="font-size:11px; padding:4px 6px; min-width:0; flex:1;">Lv1<br><span style="font-size:9px;color:#aaa">16発 8f</span></button>
-                <button id="dbgMg2" style="font-size:11px; padding:4px 6px; min-width:0; flex:1;">Lv2<br><span style="font-size:9px;color:#aaa">20発 6f</span></button>
-                <button id="dbgMg3" style="font-size:11px; padding:4px 6px; min-width:0; flex:1;">Lv3<br><span style="font-size:9px;color:#aaa">24発 5f</span></button>
-                <button id="dbgMg4" style="font-size:11px; padding:4px 6px; min-width:0; flex:1;">Lv4<br><span style="font-size:9px;color:#aaa">28発 4f</span></button>
-                <button id="dbgMg5" style="font-size:11px; padding:4px 6px; min-width:0; flex:1;">Lv5<br><span style="font-size:9px;color:#aaa">32発 4f</span></button>
-            </div>
-        </div>
     </div>
     <div class="message" id="message"></div>
 
@@ -5162,29 +5152,6 @@
             saveSettings();
         });
         
-        // デバッグ：マシンガン各レベルを即発射
-        [1,2,3,4,5].forEach(lv => {
-            document.getElementById('dbgMg' + lv).addEventListener('click', () => {
-                const numShots = 16 + (lv - 1) * 4;
-                const totalDuration = 15 * 8;
-                const interval = numShots > 1 ? Math.max(2, Math.round(totalDuration / (numShots - 1))) : 8;
-                const cx = canvasSize.width / 2;
-                const cy = canvasSize.height / 2;
-                // 敵が居ればそちらへ、居なければ上方向にバラマキ
-                const target = enemies.length > 0 ? enemies[0] : null;
-                const baseAngle = target ? Math.atan2(target.y - cy, target.x - cx) : -Math.PI / 2;
-                const spread = 0.2;
-                for (let i = 0; i < numShots; i++) {
-                    const angle = baseAngle + (Math.random() - 0.5) * spread;
-                    const speed = 7;
-                    const b = new Bullet(cx, cy, Math.cos(angle) * speed, Math.sin(angle) * speed, '#607d8b', 0.1, i * interval);
-                    b.useHiHat = true;
-                    bullets.push(b);
-                }
-                showMessage(`🔫 Lv${lv}：${numShots}発 / ${interval}f間隔 / 総${(numShots-1)*interval}f`, 'info');
-            });
-        });
-
         document.getElementById('specialShotBtn').addEventListener('click', () => {
             if (isSpecialShotReady && !isEnemyTurn && !isGameOver && !isStageClear && !isPaused) {
                 isSpecialShotActive = !isSpecialShotActive; updateSpecialShotUI();
