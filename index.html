@@ -3362,8 +3362,8 @@
             if (isBossStage) {
                 const isBossDark = isDarkStage && Math.random() < 0.4;
                 const normalBossHp = currentStage < 30
-                    ? 15 + currentStage * 1.5
-                    : 15 + 30 * 1.5 + (currentStage - 30) * 4.0;
+                    ? (15 + currentStage * 1.5) * 2
+                    : (15 + 30 * 1.5 + (currentStage - 30) * 4.0) * 2;
                 const darkBossHp = Math.floor(normalBossHp * 1.5);
                 const bossSizeBase = isBossDark
                     ? { name: 'ボス', radius: 83, maxHp: darkBossHp, color: '#2a0050', secondaryColor: '#9900ff', isDark: true }
