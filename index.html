@@ -755,7 +755,7 @@
             pointer-events: none;
         }
         .debuff-badge {
-            background: rgba(20,20,40,0.92);
+            background: rgba(20,20,40,0.55);
             border-radius: 10px;
             padding: 4px 8px 4px 6px;
             display: flex;
@@ -3078,7 +3078,11 @@
                     for (let i = 0; i < glowCount; i++) {
                         const angle = (Math.PI * 2 / glowCount) * i - Math.PI / 2; // 真上から時計回り
                         const delay = i * glowInterval;
-                        newBullets.push(new GlowHomingBullet(this.x, this.y, glowPower, angle, delay));
+                        // ホーミングと同じように発射位置を角度方向へ少しオフセット
+                        const spawnOffset = 18;
+                        const spawnX = this.x + Math.cos(angle) * spawnOffset;
+                        const spawnY = this.y + Math.sin(angle) * spawnOffset;
+                        newBullets.push(new GlowHomingBullet(spawnX, spawnY, glowPower, angle, delay));
                     }
                 } else if (this.friendshipType === 'light_thread') {
                     // 光の糸：仲間3人に順次ビームを発射
@@ -4646,11 +4650,11 @@
 
                 // メイン友情行
                 const mainRow = m.friendshipType !== 'normal'
-                    ? `<div style="font-size:11px;line-height:1.5;padding:0 2px;">${FRIENDSHIP_ICONS[m.friendshipType]}<span style="color:#ffd700;font-size:10px;">Lv${mainLv}</span></div>`
+                    ? `<div style="font-size:11px;line-height:1.5;padding:0 2px;"><span style="text-shadow:0 0 3px #fff,0 0 6px rgba(255,255,255,0.7);">${FRIENDSHIP_ICONS[m.friendshipType]}</span><span style="color:#ffd700;font-size:10px;">Lv${mainLv}</span></div>`
                     : `<div style="font-size:9px;color:#555;line-height:1.5;padding:0 2px;">─</div>`;
 
                 const subRow = subIcon
-                    ? `<div style="font-size:11px;line-height:1.4;padding:0 2px;opacity:0.85;">${subIcon}<span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
+                    ? `<div style="font-size:11px;line-height:1.4;padding:0 2px;opacity:0.85;"><span style="text-shadow:0 0 3px #fff,0 0 6px rgba(255,255,255,0.7);">${subIcon}</span><span style="color:#ff9800;font-size:10px;">Lv${subLv}</span></div>`
                     : (m.subFriendshipUnlocked
                         ? `<div style="font-size:9px;font-weight:bold;color:#f7c948;line-height:1.4;padding:0 2px;background:rgba(255,200,0,0.12);border-radius:3px;text-align:center;">❓ 覚醒未装備</div>`
                         : '');
