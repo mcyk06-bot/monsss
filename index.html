@@ -1536,6 +1536,7 @@
         let enemies = [];
         let bullets = [];
         let explosions = [];
+        let hitEffects = []; // StarHitEffect専用（敵より上のレイヤー）
         let enemyBeams = [];
         let isDragging = false;
         let dragStart = { x: 0, y: 0 };
@@ -1588,6 +1589,7 @@
         const HIT_SLOWDOWN = 0.5;
         const STOP_THRESHOLD = 0.01;
         const VELOCITY_SCALE = 18.0;
+        let slowMotionFrames = 0; // 自身が敵に直接当たった時の一時スロー
 
         // ★ 敵のビームクラス
         class EnemyBeam {
@@ -2310,6 +2312,149 @@
             isComplete() { return this.frame >= this.maxFrames; }
         }
         
+        // ★ 細長い三角形4本・十字ヒットエフェクト（味方が直接敵に当たった時）
+        class StarHitEffect {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 18;
+            }
+            draw() {
+                this.frame++;
+                const t = this.frame / this.maxFrames;
+                // 素早く出て、ゆっくり消える
+                const alpha = t < 0.2 ? t / 0.2 : 1 - (t - 0.2) / 0.8;
+                if (alpha <= 0) return;
+                // 展開しながら伸びる
+                const length = 14 * (0.4 + t * 0.9);
+                const baseWidth = 3.5 * (1 - t * 0.7);
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, alpha);
+                // 上下左右の4本
+                const dirs = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
+                for (const a of dirs) {
+                    const tipX = this.x + Math.cos(a) * length;
+                    const tipY = this.y + Math.sin(a) * length;
+                    // 底辺の両端（中心から垂直方向にbaseWidth分）
+                    const perpA = a + Math.PI / 2;
+                    const b1x = this.x + Math.cos(perpA) * baseWidth;
+                    const b1y = this.y + Math.sin(perpA) * baseWidth;
+                    const b2x = this.x - Math.cos(perpA) * baseWidth;
+                    const b2y = this.y - Math.sin(perpA) * baseWidth;
+                    // 白コアの細長い三角形
+                    ctx.beginPath();
+                    ctx.moveTo(tipX, tipY);
+                    ctx.lineTo(b1x, b1y);
+                    ctx.lineTo(b2x, b2y);
+                    ctx.closePath();
+                    ctx.fillStyle = `rgba(255, 255, 230, ${alpha})`;
+                    ctx.fill();
+                    // 外側に薄い黄色グロー
+                    ctx.beginPath();
+                    ctx.moveTo(tipX + Math.cos(a) * 3, tipY + Math.sin(a) * 3);
+                    ctx.lineTo(b1x, b1y);
+                    ctx.lineTo(b2x, b2y);
+                    ctx.closePath();
+                    ctx.fillStyle = `rgba(255, 230, 80, ${alpha * 0.45})`;
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
+
+        // ★ 弱点ヒット専用の派手なエフェクト
+        class WeakPointHitEffect {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 50;
+                // 外に飛び散るスパーク
+                this.sparks = [];
+                for (let i = 0; i < 20; i++) {
+                    const a = (Math.PI * 2 / 20) * i + Math.random() * 0.2;
+                    const spd = 3.5 + Math.random() * 4;
+                    this.sparks.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 1 });
+                }
+            }
+            draw() {
+                this.frame++;
+                const t = this.frame / this.maxFrames;
+                const alpha = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+                if (alpha <= 0) return;
+                ctx.save();
+
+                // ── 中心フラッシュ（白→金）
+                if (t < 0.3) {
+                    const fa = (1 - t / 0.3);
+                    ctx.globalAlpha = fa * 0.9;
+                    const r = 28 * (t / 0.3);
+                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff'; ctx.fill();
+                }
+
+                // ── 8本の大きい三角形（星型）
+                const length = 38 * (0.3 + t * 1.1);
+                const baseW = 7 * (1 - t * 0.75);
+                const dirs8 = [0, Math.PI/4, Math.PI/2, Math.PI*3/4, Math.PI, Math.PI*5/4, Math.PI*3/2, Math.PI*7/4];
+                ctx.globalAlpha = Math.max(0, alpha);
+                for (const a of dirs8) {
+                    const tipX = this.x + Math.cos(a) * length;
+                    const tipY = this.y + Math.sin(a) * length;
+                    const pa = a + Math.PI / 2;
+                    const b1x = this.x + Math.cos(pa) * baseW;
+                    const b1y = this.y + Math.sin(pa) * baseW;
+                    const b2x = this.x - Math.cos(pa) * baseW;
+                    const b2y = this.y - Math.sin(pa) * baseW;
+                    // コア（白）
+                    ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(b1x, b1y); ctx.lineTo(b2x, b2y); ctx.closePath();
+                    ctx.fillStyle = `rgba(255, 255, 200, ${alpha})`;
+                    ctx.fill();
+                    // グロー（金色）
+                    ctx.beginPath(); ctx.moveTo(tipX + Math.cos(a) * 6, tipY + Math.sin(a) * 6);
+                    ctx.lineTo(b1x, b1y); ctx.lineTo(b2x, b2y); ctx.closePath();
+                    ctx.fillStyle = `rgba(255, 200, 0, ${alpha * 0.6})`;
+                    ctx.fill();
+                }
+
+                // ── 拡張リング2本
+                for (let r = 0; r < 2; r++) {
+                    const delay = r * 0.12;
+                    const tp = Math.max(0, t - delay);
+                    const rAlpha = tp < 0.5 ? tp / 0.5 : 1 - (tp - 0.5) / 0.5;
+                    if (rAlpha <= 0) continue;
+                    const rad = 18 + tp * 55;
+                    ctx.globalAlpha = rAlpha * 0.85;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, rad, 0, Math.PI * 2);
+                    ctx.strokeStyle = r === 0 ? '#ffe050' : '#ff8c00';
+                    ctx.lineWidth = 4 - r * 1.5; ctx.stroke();
+                }
+
+                // ── スパーク
+                ctx.globalAlpha = 1;
+                for (const sp of this.sparks) {
+                    sp.x += sp.vx; sp.y += sp.vy;
+                    sp.vx *= 0.93; sp.vy *= 0.93;
+                    sp.life = 1 - t;
+                    if (sp.life > 0) {
+                        ctx.beginPath(); ctx.arc(sp.x, sp.y, 2.5 * sp.life, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 220, 60, ${sp.life})`;
+                        ctx.fill();
+                    }
+                }
+
+                // ── 「弱点！」テキスト
+                if (this.frame < 30) {
+                    const ta = 1 - this.frame / 30;
+                    const ty = this.y - 18 - this.frame * 1.2;
+                    ctx.globalAlpha = ta;
+                    ctx.font = 'bold 18px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.strokeStyle = '#7a3a00'; ctx.lineWidth = 4; ctx.strokeText('⭐ 弱点！', this.x, ty);
+                    ctx.fillStyle = '#ffe050'; ctx.fillText('⭐ 弱点！', this.x, ty);
+                }
+
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
+
         class SpecialShotEffect {
             constructor(x, y) {
                 this.x = x; this.y = y; this.frame = 0; this.maxFrames = 60; this.rings = []; this.particles = [];
@@ -3137,10 +3282,18 @@
                 this.shakeFrame = -1;
                 this.shakeOffsetX = 0; this.shakeOffsetY = 0;
                 this.floatPhase = Math.random() * Math.PI * 2; // 初期位相ランダム
+                this.weakPointAngle = null; // ボスのみ使用（boss.isBoss=trueセット後に初期化）
+                this._weakPointInitialized = false;
             }
             
             draw() {
                 this.animationFrame++;
+
+                // ボス弱点の遅延初期化（isBoss はコンストラクタ後に設定されるため）
+                if (this.isBoss && !this._weakPointInitialized) {
+                    this.weakPointAngle = Math.random() * Math.PI * 2;
+                    this._weakPointInitialized = true;
+                }
 
                 // 浮遊モーション（サイズ別周期）
                 const floatSpeed = this.isBoss ? 0.022 : (this.size.name === '小' ? 0.052 : this.size.name === '中' ? 0.038 : 0.028);
@@ -3199,6 +3352,19 @@
                     ctx.fillStyle = 'white'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
                     ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
                     ctx.strokeText('BOSS', this.x, this.y - this.radius - 25); ctx.fillText('BOSS', this.x, this.y - this.radius - 25);
+                    // ★ 弱点マーカー（⭐）をボス外周に表示
+                    if (this.weakPointAngle !== null) {
+                        const wpX = this.x + Math.cos(this.weakPointAngle) * (this.radius + 2);
+                        const wpY = this.y + Math.sin(this.weakPointAngle) * (this.radius + 2);
+                        const pulse = 0.82 + Math.sin(this.animationFrame * 0.18) * 0.18;
+                        const starSize = Math.round(16 * pulse);
+                        ctx.font = `${starSize}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillStyle = 'white';
+                        ctx.fillText('⭐', wpX, wpY);
+                        ctx.textBaseline = 'alphabetic';
+                    }
                 } else {
                     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2;
                     ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.stroke();
@@ -3248,6 +3414,17 @@
                 if (this.hp <= 0) return true;
                 return false;
             }
+
+            // 弱点ヒット判定：攻撃側の座標からボスの弱点に当たったか判定
+            hitWeakPoint(hx, hy) {
+                if (!this.isBoss || this.weakPointAngle === null) return false;
+                const angle = Math.atan2(hy - this.y, hx - this.x);
+                const diff = Math.abs(Math.atan2(
+                    Math.sin(angle - this.weakPointAngle),
+                    Math.cos(angle - this.weakPointAngle)
+                ));
+                return diff < 0.42; // ±24度以内
+            }
         }
 
         function repositionMarbles() {
@@ -3266,6 +3443,7 @@
             MAX_TEAM_HP = 10; teamHP = MAX_TEAM_HP; playerAttackBonus = 0; playerSpeedBonus = 0;
             specialShotCount = 0; isSpecialShotReady = false; isSpecialShotActive = false;
             stageEnemyTurnsCount = 0; nextStageBonusItems = 0;
+            slowMotionFrames = 0;
             playerMarbles = [];
             startStage();
         }
@@ -3351,7 +3529,7 @@
                 }
             }
 
-            stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; enemyBeams = []; items = [];
+            stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; hitEffects = []; enemyBeams = []; items = [];
             defeated = 0; currentTurn = nextStageTurn; nextStageTurn = 0; friendshipAttackHistory = new Set(); globalFriendshipBoost = 0;
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false; resumeBeatClock();
             stageEnemyTurnsCount = 0; pendingStageClear = false;
@@ -4110,6 +4288,8 @@
             ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
             ctx.fillStyle = 'rgba(0,0,0,0.18)'; // 六角形を透かすため半透明オーバーレイ
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+            // スローモーションカウントダウン
+            if (slowMotionFrames > 0) slowMotionFrames--;
             
             for (let i = enemyBeams.length - 1; i >= 0; i--) { enemyBeams[i].draw(); if (enemyBeams[i].isComplete()) enemyBeams.splice(i, 1); }
             for (let i = explosions.length - 1; i >= 0; i--) {
@@ -4150,6 +4330,8 @@
                 }
             }
             for (let i = enemies.length - 1; i >= 0; i--) enemies[i].draw();
+            // ★ ヒットエフェクトは敵より上のレイヤーで描画
+            for (let i = hitEffects.length - 1; i >= 0; i--) { hitEffects[i].draw(); if (hitEffects[i].isComplete()) hitEffects.splice(i, 1); }
             for (let i = items.length - 1; i >= 0; i--) { items[i].update(); items[i].draw(); }
             
             bulletLoop: for (let i = bullets.length - 1; i >= 0; i--) {
@@ -4199,7 +4381,9 @@
                         const enemy = enemies[j];
                         if (Math.hypot(b.x - enemy.x, b.y - enemy.y) < b.radius + enemy.radius) {
                             playTriangle(); // 十六輪ヒット音
-                            const dmg = (0.3 + playerAttackBonus * 0.07) * b.power;
+                            const isWeakHit = enemy.hitWeakPoint(b.x, b.y);
+                            const dmg = (0.3 + playerAttackBonus * 0.07) * b.power * (isWeakHit ? 2.0 : 1.0);
+                            if (isWeakHit) hitEffects.push(new WeakPointHitEffect(b.x, b.y));
                             if (enemy.takeDamage(dmg)) {
                                 defeated++; totalDefeated++;
                                 explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
@@ -4221,11 +4405,13 @@
                         if (b.useHiHat) playHiHat(); // 豆粒・ホーミング・マシンガン着弾音
                         const isBulletCritical = Math.random() < 0.15;
                         const bonusCoeff = b instanceof LaserBeam ? 0.09 : 0.07;
+                        const isWeakHit = enemy.hitWeakPoint(b.x, b.y);
                         const bulletDamage = (0.3 + playerAttackBonus * bonusCoeff) * b.power;
-                        const finalBulletDamage = isBulletCritical ? bulletDamage * 3 : bulletDamage;
+                        const finalBulletDamage = (isBulletCritical ? bulletDamage * 3 : bulletDamage) * (isWeakHit ? 2.0 : 1.0);
                         if (isBulletCritical && !(b instanceof HomingBullet) && b.power >= 0.5) {
                             explosions.push(new CriticalEffect(enemy.x, enemy.y));
                         }
+                        if (isWeakHit) hitEffects.push(new WeakPointHitEffect(b.x, b.y));
                         if (enemy.takeDamage(finalBulletDamage)) {
                             defeated++; totalDefeated++;
                             explosions.push(new Explosion(enemy.x, enemy.y, enemy.radius, enemy.color));
@@ -4260,8 +4446,9 @@
                     if (!marble.isActive || !marble.isMoving()) continue;
 
                     // 移動 (1ステップ分)
-                    marble.x += (marble.vx * VELOCITY_SCALE) / SUBSTEPS;
-                    marble.y += (marble.vy * VELOCITY_SCALE) / SUBSTEPS;
+                    const _velScale = slowMotionFrames > 0 ? VELOCITY_SCALE * 0.18 : VELOCITY_SCALE;
+                    marble.x += (marble.vx * _velScale) / SUBSTEPS;
+                    marble.y += (marble.vy * _velScale) / SUBSTEPS;
 
                     // 壁判定 (サブステップ毎にチェック)
                     if (marble.x - marble.radius < 0) { marble.x = marble.radius; marble.vx *= -BOUNCE; playBounceSound('h'); }
@@ -4420,8 +4607,23 @@
                             if (dotProduct < 0) { marble.vx -= 2 * dotProduct * normalX; marble.vy -= 2 * dotProduct * normalY; marble.vx *= 0.90; marble.vy *= 0.90; }
                             const isCritical = Math.random() < 0.15;
                             const baseDamage = (1.5 + playerAttackBonus) * marble.type.attackMult * (marble.isSpecialShot ? 3 : 1) * (marble.debuffHalfPower ? 0.5 : 1.0);
-                            const damageToApply = isCritical ? baseDamage * 7.5 : baseDamage;
+                            // 弱点ヒット判定（ボスのみ）
+                            const isWeakHit = enemy.hitWeakPoint(marble.x, marble.y);
+                            const weakMult = isWeakHit ? 2.0 : 1.0;
+                            const damageToApply = (isCritical ? baseDamage * 7.5 : baseDamage) * weakMult;
                             if (isCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
+                            if (isWeakHit) {
+                                showMessage('💥 弱点ヒット！ダメージ2倍！', 'combo-effect');
+                                hitEffects.push(new WeakPointHitEffect(enemy.x, enemy.y));
+                            }
+                            // 非クリティカル時：小さいスター十字ヒットエフェクト
+                            if (!isCritical) {
+                                const hitX = marble.x - normalX * marble.radius;
+                                const hitY = marble.y - normalY * marble.radius;
+                                hitEffects.push(new StarHitEffect(hitX, hitY));
+                            }
+                            // 直接ヒット時：数フレームゆっくりにする
+                            slowMotionFrames = Math.max(slowMotionFrames, 3);
                             playHitSound(isCritical);
                             if (enemy.takeDamage(damageToApply)) {
                                 defeated++; totalDefeated++;
