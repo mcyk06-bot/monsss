@@ -1060,6 +1060,45 @@
         .skip-box-icon { font-size: 40px; }
         .skip-box-name { font-size: 20px; font-weight: bold; color: #fff; margin: 6px 0 4px; }
         .skip-box-msg  { font-size: 15px; color: #e0b0ff; }
+        /* ★ キャラステータスポップアップ（長押し） */
+        #charStatusPopup {
+            display: none;
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 30, 0.96);
+            border: 1.5px solid rgba(255, 215, 0, 0.6);
+            border-radius: 16px;
+            padding: 14px 18px 12px;
+            min-width: 220px;
+            max-width: 300px;
+            z-index: 4000;
+            color: white;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 16px rgba(255,215,0,0.15);
+            animation: popupFadeIn 0.15s ease-out;
+            pointer-events: none;
+        }
+        #charStatusPopup.visible { display: block; }
+        @keyframes popupFadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        #charStatusPopup .sp-name {
+            font-size: 15px; font-weight: bold; color: #ffd700;
+            text-align: center; margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255,215,0,0.3); padding-bottom: 6px;
+        }
+        #charStatusPopup .sp-row {
+            display: flex; justify-content: space-between;
+            font-size: 12px; margin-bottom: 4px; color: #ddd;
+        }
+        #charStatusPopup .sp-label { color: #aaa; }
+        #charStatusPopup .sp-val { font-weight: bold; color: #fff; }
+        #charStatusPopup .sp-section {
+            margin-top: 8px; padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
@@ -1193,6 +1232,9 @@
             <button class="close-btn" id="closeBtn">閉じる</button>
         </div>
     </div>
+
+    <!-- ★ キャラステータスポップアップ（長押し表示） -->
+    <div id="charStatusPopup"></div>
 
     <!-- ★ アイテム通知ポップアップ（非装備アイテム用） -->
     <div id="itemNotif">
@@ -4990,6 +5032,65 @@
             _animFrameId = requestAnimationFrame(update);
         }
         
+        let _charStatusTimer = null;
+
+        function showCharStatus(m, name) {
+            const popup = document.getElementById('charStatusPopup');
+            if (!popup) return;
+            const atk = ((1.5 + playerAttackBonus) * m.type.attackMult * (m.debuffHalfPower ? 0.5 : 1)).toFixed(2);
+            const spd = (m.type.speedMult * (1 + playerSpeedBonus)).toFixed(2);
+            const mainName = m.friendshipType !== 'normal' ? (FRIENDSHIP_NAMES[m.friendshipType] || m.friendshipType) : '未習得';
+            const mainLvTxt = m.friendshipType !== 'normal' ? `Lv${m.friendshipLevel}` : '─';
+            const friendshipAtk = m.friendshipType !== 'normal'
+                ? ((m.friendshipPower * (m.debuffHalfPower ? 0.5 : 1)) * (globalFriendshipBoost > 0 ? 1.25 : 1)).toFixed(2)
+                : '─';
+
+            const subSection = m.subFriendshipUnlocked ? (() => {
+                const subName = m.subFriendshipType !== 'normal' ? (FRIENDSHIP_NAMES[m.subFriendshipType] || m.subFriendshipType) : '未装備';
+                const subLvTxt = m.subFriendshipType !== 'normal' ? `Lv${m.subFriendshipLevel}` : '─';
+                const subAtk = m.subFriendshipType !== 'normal'
+                    ? (m.friendshipPower * (m.debuffHalfPower ? 0.5 : 1) * (globalFriendshipBoost > 0 ? 1.25 : 1)).toFixed(2)
+                    : '─';
+                return `
+                <div class="sp-section">
+                <div class="sp-row"><span class="sp-label">⚡ 覚醒</span><span class="sp-val">${subName}</span></div>
+                <div class="sp-row"><span class="sp-label">　レベル</span><span class="sp-val">${subLvTxt}</span></div>
+                <div class="sp-row"><span class="sp-label">　友情攻撃力</span><span class="sp-val">${subAtk}</span></div>
+                </div>`;
+            })() : '';
+
+            const debuffs = [
+                m.debuffHalfPower ? '📉 攻撃半減' : '',
+                m.debuffChaosArrow ? '🌀 矢印異常' : '',
+                m.skipNextTurn ? '😔 一回休み' : '',
+                m.barrier ? '💕 バリアあり' : '',
+            ].filter(Boolean).join('　') || 'なし';
+
+            popup.innerHTML = `
+                <div class="sp-name">${name}</div>
+                <div class="sp-row"><span class="sp-label">タイプ</span><span class="sp-val">${m.type.name || '通常'}</span></div>
+                <div class="sp-row"><span class="sp-label">攻撃力</span><span class="sp-val">${atk}</span></div>
+                <div class="sp-row"><span class="sp-label">スピード</span><span class="sp-val">${spd}</span></div>
+                <div class="sp-section">
+                <div class="sp-row"><span class="sp-label">✨ 才能</span><span class="sp-val">${mainName}</span></div>
+                <div class="sp-row"><span class="sp-label">　レベル</span><span class="sp-val">${mainLvTxt}</span></div>
+                <div class="sp-row"><span class="sp-label">　友情攻撃力</span><span class="sp-val">${friendshipAtk}</span></div>
+                </div>
+                ${subSection}
+                <div class="sp-section">
+                <div class="sp-row"><span class="sp-label">状態</span><span class="sp-val" style="font-size:11px;">${debuffs}</span></div>
+                </div>
+            `;
+            popup.classList.add('visible');
+        }
+
+        function hideCharStatus() {
+            clearTimeout(_charStatusTimer);
+            _charStatusTimer = null;
+            const popup = document.getElementById('charStatusPopup');
+            if (popup) popup.classList.remove('visible');
+        }
+
         function updateFriendshipStatusBar() {
             const bar = document.getElementById('friendshipStatusBar');
             if (!bar || !playerMarbles || playerMarbles.length === 0) return;
@@ -5017,6 +5118,9 @@
                     display: flex;
                     flex-direction: column;
                     margin: 0;
+                    -webkit-user-select: none;
+                    user-select: none;
+                    -webkit-touch-callout: none;
                 `;
 
                 // キャラ画像：キャッシュcanvasから描画（DPR対応で高画質）
@@ -5074,6 +5178,21 @@
 
                 card.appendChild(cvs);
                 card.insertAdjacentHTML('beforeend', barrierMark + boostMark + halfMark + chaosMark + skipMark + mainRow + subRow);
+
+                // ★ 長押し0.5秒でステータス表示
+                const startPress = (e) => {
+                    e.preventDefault();
+                    clearTimeout(_charStatusTimer);
+                    _charStatusTimer = setTimeout(() => showCharStatus(m, name), 500);
+                };
+                const endPress = () => hideCharStatus();
+                card.addEventListener('touchstart', startPress);
+                card.addEventListener('touchend', endPress);
+                card.addEventListener('touchcancel', endPress);
+                card.addEventListener('mousedown', startPress);
+                card.addEventListener('mouseup', endPress);
+                card.addEventListener('mouseleave', endPress);
+
                 bar.appendChild(card);
             });
         }
