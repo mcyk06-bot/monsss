@@ -578,6 +578,52 @@
             from { transform: scale(0.8); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+
+        /* ★ アイテム通知ポップアップ */
+        #itemNotif {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+        #itemNotif.active { display: flex; }
+        #itemNotif-content {
+            background: white;
+            border-radius: 20px;
+            padding: 20px 24px 18px;
+            width: 88%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+            animation: itemModalIn 0.25s ease-out;
+            position: relative;
+        }
+        #itemNotif-glow {
+            position: absolute;
+            inset: -3px;
+            border-radius: 23px;
+            background: transparent;
+            border: 3px solid transparent;
+            pointer-events: none;
+        }
+        #itemNotif-emoji { font-size: 54px; line-height: 1.1; margin-bottom: 6px; }
+        #itemNotif-title { font-size: 20px; font-weight: bold; color: #1a1a2e; margin-bottom: 6px; }
+        #itemNotif-effect { font-size: 14px; color: #555; margin-bottom: 14px; line-height: 1.5; }
+        #itemNotif-ok {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 11px 0;
+            width: 100%;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
         
         .item-modal-header {
             text-align: center;
@@ -1145,6 +1191,17 @@
             </div>
 
             <button class="close-btn" id="closeBtn">閉じる</button>
+        </div>
+    </div>
+
+    <!-- ★ アイテム通知ポップアップ（非装備アイテム用） -->
+    <div id="itemNotif">
+        <div id="itemNotif-content">
+            <div id="itemNotif-glow"></div>
+            <div id="itemNotif-emoji">🎁</div>
+            <div id="itemNotif-title">アイテム取得！</div>
+            <div id="itemNotif-effect">効果の説明</div>
+            <button id="itemNotif-ok">OK ✓</button>
         </div>
     </div>
 
@@ -2312,6 +2369,40 @@
             isComplete() { return this.frame >= this.maxFrames; }
         }
         
+        // ★ アイテム取得エフェクト（8フレームでほわーっと拡大フェード）
+        class ItemPickupEffect {
+            constructor(x, y, emoji, color) {
+                this.x = x; this.y = y; this.emoji = emoji; this.color = color;
+                this.frame = 0; this.maxFrames = 10;
+            }
+            draw() {
+                this.frame++;
+                const t = this.frame / this.maxFrames;
+                const alpha = 1 - t;
+                const scale = 1 + t * 0.5;
+                const size = Math.round(40 * scale);
+                ctx.save();
+                ctx.globalAlpha = alpha * 0.9;
+                // 背景グロー（アイテムの色）
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 26 * scale, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + '55';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 18 * scale, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + '99';
+                ctx.fill();
+                // 絵文字
+                ctx.font = `${size}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, this.x, this.y);
+                ctx.textBaseline = 'alphabetic';
+                ctx.restore();
+            }
+            isComplete() { return this.frame >= this.maxFrames; }
+        }
+
         // ★ 細長い三角形4本・十字ヒットエフェクト（味方が直接敵に当たった時）
         class StarHitEffect {
             constructor(x, y) {
@@ -2364,37 +2455,39 @@
         // ★ 弱点ヒット専用の派手なエフェクト
         class WeakPointHitEffect {
             constructor(x, y) {
-                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 50;
-                // 外に飛び散るスパーク
+                this.x = x; this.y = y; this.frame = 0; this.maxFrames = 60;
                 this.sparks = [];
-                for (let i = 0; i < 20; i++) {
-                    const a = (Math.PI * 2 / 20) * i + Math.random() * 0.2;
-                    const spd = 3.5 + Math.random() * 4;
-                    this.sparks.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 1 });
+                for (let i = 0; i < 32; i++) {
+                    const a = (Math.PI * 2 / 32) * i + Math.random() * 0.15;
+                    const spd = 5 + Math.random() * 7;
+                    this.sparks.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: 3 + Math.random() * 3 });
                 }
             }
             draw() {
                 this.frame++;
                 const t = this.frame / this.maxFrames;
-                const alpha = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+                const alpha = t < 0.12 ? t / 0.12 : 1 - (t - 0.12) / 0.88;
                 if (alpha <= 0) return;
                 ctx.save();
 
-                // ── 中心フラッシュ（白→金）
-                if (t < 0.3) {
-                    const fa = (1 - t / 0.3);
-                    ctx.globalAlpha = fa * 0.9;
-                    const r = 28 * (t / 0.3);
-                    ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                // ── 中心フラッシュ（白→金、大きめ）
+                if (t < 0.35) {
+                    const fa = 1 - t / 0.35;
+                    const fr = 55 * (t / 0.35);
+                    ctx.globalAlpha = fa * 0.95;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, fr, 0, Math.PI * 2);
                     ctx.fillStyle = '#ffffff'; ctx.fill();
+                    // 金色の外リング
+                    ctx.beginPath(); ctx.arc(this.x, this.y, fr * 1.4, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 200, 0, ${fa * 0.45})`; ctx.fill();
                 }
 
-                // ── 8本の大きい三角形（星型）
-                const length = 38 * (0.3 + t * 1.1);
-                const baseW = 7 * (1 - t * 0.75);
-                const dirs8 = [0, Math.PI/4, Math.PI/2, Math.PI*3/4, Math.PI, Math.PI*5/4, Math.PI*3/2, Math.PI*7/4];
+                // ── 12本の大きい三角形（8本＋斜め4本）
                 ctx.globalAlpha = Math.max(0, alpha);
-                for (const a of dirs8) {
+                const length = 70 * (0.25 + t * 1.1);
+                const baseW = 11 * (1 - t * 0.75);
+                const dirs12 = Array.from({length: 12}, (_, i) => (Math.PI * 2 / 12) * i);
+                for (const a of dirs12) {
                     const tipX = this.x + Math.cos(a) * length;
                     const tipY = this.y + Math.sin(a) * length;
                     const pa = a + Math.PI / 2;
@@ -2402,53 +2495,47 @@
                     const b1y = this.y + Math.sin(pa) * baseW;
                     const b2x = this.x - Math.cos(pa) * baseW;
                     const b2y = this.y - Math.sin(pa) * baseW;
-                    // コア（白）
                     ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(b1x, b1y); ctx.lineTo(b2x, b2y); ctx.closePath();
-                    ctx.fillStyle = `rgba(255, 255, 200, ${alpha})`;
+                    ctx.fillStyle = `rgba(255, 255, 180, ${alpha})`;
                     ctx.fill();
-                    // グロー（金色）
-                    ctx.beginPath(); ctx.moveTo(tipX + Math.cos(a) * 6, tipY + Math.sin(a) * 6);
+                    ctx.beginPath(); ctx.moveTo(tipX + Math.cos(a) * 10, tipY + Math.sin(a) * 10);
                     ctx.lineTo(b1x, b1y); ctx.lineTo(b2x, b2y); ctx.closePath();
-                    ctx.fillStyle = `rgba(255, 200, 0, ${alpha * 0.6})`;
+                    ctx.fillStyle = `rgba(255, 180, 0, ${alpha * 0.65})`;
                     ctx.fill();
                 }
 
-                // ── 拡張リング2本
-                for (let r = 0; r < 2; r++) {
-                    const delay = r * 0.12;
+                // ── 拡張リング3本
+                for (let ri = 0; ri < 3; ri++) {
+                    const delay = ri * 0.10;
                     const tp = Math.max(0, t - delay);
-                    const rAlpha = tp < 0.5 ? tp / 0.5 : 1 - (tp - 0.5) / 0.5;
+                    const rAlpha = tp < 0.4 ? tp / 0.4 : 1 - (tp - 0.4) / 0.6;
                     if (rAlpha <= 0) continue;
-                    const rad = 18 + tp * 55;
-                    ctx.globalAlpha = rAlpha * 0.85;
+                    const rad = 22 + tp * 90;
+                    ctx.globalAlpha = rAlpha * 0.9;
                     ctx.beginPath(); ctx.arc(this.x, this.y, rad, 0, Math.PI * 2);
-                    ctx.strokeStyle = r === 0 ? '#ffe050' : '#ff8c00';
-                    ctx.lineWidth = 4 - r * 1.5; ctx.stroke();
+                    ctx.strokeStyle = ri === 0 ? '#ffffff' : ri === 1 ? '#ffe050' : '#ff8c00';
+                    ctx.lineWidth = 6 - ri * 1.5; ctx.stroke();
                 }
 
                 // ── スパーク
                 ctx.globalAlpha = 1;
                 for (const sp of this.sparks) {
                     sp.x += sp.vx; sp.y += sp.vy;
-                    sp.vx *= 0.93; sp.vy *= 0.93;
-                    sp.life = 1 - t;
-                    if (sp.life > 0) {
-                        ctx.beginPath(); ctx.arc(sp.x, sp.y, 2.5 * sp.life, 0, Math.PI * 2);
-                        ctx.fillStyle = `rgba(255, 220, 60, ${sp.life})`;
+                    sp.vx *= 0.91; sp.vy *= 0.91;
+                    const sl = 1 - t;
+                    if (sl > 0) {
+                        ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r * sl, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 230, 60, ${sl * 0.9})`;
                         ctx.fill();
+                        // 尾を描く
+                        ctx.beginPath(); ctx.moveTo(sp.x, sp.y);
+                        ctx.lineTo(sp.x - sp.vx * 3, sp.y - sp.vy * 3);
+                        ctx.strokeStyle = `rgba(255, 200, 0, ${sl * 0.5})`;
+                        ctx.lineWidth = sp.r * sl * 0.8; ctx.lineCap = 'round'; ctx.stroke();
                     }
                 }
 
-                // ── 「弱点！」テキスト
-                if (this.frame < 30) {
-                    const ta = 1 - this.frame / 30;
-                    const ty = this.y - 18 - this.frame * 1.2;
-                    ctx.globalAlpha = ta;
-                    ctx.font = 'bold 18px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.strokeStyle = '#7a3a00'; ctx.lineWidth = 4; ctx.strokeText('⭐ 弱点！', this.x, ty);
-                    ctx.fillStyle = '#ffe050'; ctx.fillText('⭐ 弱点！', this.x, ty);
-                }
+                // ── 「弱点！」テキスト削除済み
 
                 ctx.restore();
             }
@@ -3357,7 +3444,7 @@
                         const wpX = this.x + Math.cos(this.weakPointAngle) * (this.radius + 2);
                         const wpY = this.y + Math.sin(this.weakPointAngle) * (this.radius + 2);
                         const pulse = 0.82 + Math.sin(this.animationFrame * 0.18) * 0.18;
-                        const starSize = Math.round(16 * pulse);
+                        const starSize = Math.round(24 * pulse);
                         ctx.font = `${starSize}px Arial`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
@@ -3529,7 +3616,7 @@
                 }
             }
 
-            stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; hitEffects = []; enemyBeams = []; items = [];
+            stoppedMarbles = []; activeMarbles = []; enemies = []; bullets = []; explosions = []; hitEffects = []; enemyBeams = []; items = []; itemModalQueue = []; _itemModalPending = false;
             defeated = 0; currentTurn = nextStageTurn; nextStageTurn = 0; friendshipAttackHistory = new Set(); globalFriendshipBoost = 0;
             isGameOver = false; isEnemyTurn = false; isStageClear = false; isPaused = false; resumeBeatClock();
             stageEnemyTurnsCount = 0; pendingStageClear = false;
@@ -4275,8 +4362,12 @@
 
         function update(nowTime) {
             if (isPaused) {
-                // ★ 一時停止中はrAFを最低限に（バッテリー対策）
                 _animFrameId = requestAnimationFrame(update);
+                // ★ ポーズ中：画面はそのまま（凍結）、hitEffectsだけ上から描く
+                for (let i = hitEffects.length - 1; i >= 0; i--) {
+                    hitEffects[i].draw();
+                    if (hitEffects[i].isComplete()) hitEffects.splice(i, 1);
+                }
                 return;
             }
 
@@ -4441,6 +4532,8 @@
             // ★ 友情判定をサブステップ内に移動：高速通過によるすり抜けバグを修正
             const SUBSTEPS = 4;
             let pendingItemModal = null;
+            let itemModalQueue = []; // 装備アイテム連続取得キュー
+            let _itemModalPending = false; // エフェクト中フラグ（二重起動防止）
             for (let s = 0; s < SUBSTEPS; s++) {
                 for (let marble of activeMarbles) {
                     if (!marble.isActive || !marble.isMoving()) continue;
@@ -4478,11 +4571,10 @@
                                 explosions.push(new HealEffect(item.x, item.y));
                                 showMessage(`❤️ HP上限+4！ (${MAX_TEAM_HP})`, 'success'); updateHPBar();
                             } else if (item.type === 'hourglass') {
-                                const wasAlreadyFull = specialShotCount >= SPECIAL_SHOT_MAX; // ★ 拾う前にMAXだったか記録
+                                const wasAlreadyFull = specialShotCount >= SPECIAL_SHOT_MAX;
                                 specialShotCount = Math.min(specialShotCount + 4, SPECIAL_SHOT_MAX);
-                                explosions.push(new CriticalEffect(item.x, item.y));
+                                hitEffects.push(new ItemPickupEffect(item.x, item.y, item.emoji, item.color));
                                 if (wasAlreadyFull) {
-                                    // すでにMAXだったので何も表示しない
                                 } else if (specialShotCount >= SPECIAL_SHOT_MAX) {
                                     showMessage('⏳ 砂時計！みんな一緒だよ準備完了！', 'combo-effect');
                                 } else {
@@ -4490,22 +4582,24 @@
                                 }
                                 updateSpecialShotUI();
                             } else if (item.type === 'speedup') {
-                                playerSpeedBonus = Math.min(playerSpeedBonus + 0.1, 2.0); explosions.push(new CriticalEffect(item.x, item.y));
+                                playerSpeedBonus = Math.min(playerSpeedBonus + 0.1, 2.0);
+                                hitEffects.push(new ItemPickupEffect(item.x, item.y, item.emoji, item.color));
                                 showMessage(`🏃 スピード+0.1！ (ボーナス:+${playerSpeedBonus.toFixed(1)})`, 'success');
                                 updateUI();
                             } else if (item.type === 'attack') {
-                                playerAttackBonus += 0.5; explosions.push(new CriticalEffect(item.x, item.y));
+                                playerAttackBonus += 0.5;
+                                hitEffects.push(new ItemPickupEffect(item.x, item.y, item.emoji, item.color));
                                 showMessage(`⚔️ 攻撃力+0.5！ (ボーナス:+${playerAttackBonus})`, 'success');
                             } else if (item.type === 'death') {
                                 playDeathSound();
                                 explosions.push(new DeathEffect());
+                                hitEffects.push(new ItemPickupEffect(item.x, item.y, item.emoji, item.color));
                                 setTimeout(() => {
                                     enemies.forEach(e => { explosions.push(new Explosion(e.x, e.y, e.radius, e.color)); defeated++; totalDefeated++; });
                                     enemies = []; showMessage('💀 デス発動！敵を全滅させました！', 'danger');
                                     pendingStageClear = true;
                                 }, 1000);
                             } else if (item.type === 'friendship_up_self') {
-                                // 自分の友情レベルを1上げる
                                 let leveled = false;
                                 let justUnlocked = false;
                                 if (marble.friendshipType !== 'normal' && marble.friendshipLevel < 5) {
@@ -4513,7 +4607,7 @@
                                     leveled = true;
                                     if (marble.friendshipLevel === 5 && !marble.subFriendshipUnlocked) {
                                         marble.subFriendshipUnlocked = true;
-                                        justUnlocked = true; // ★ 今初めて解放された
+                                        justUnlocked = true;
                                     }
                                 }
                                 if (marble.subFriendshipUnlocked && marble.subFriendshipType !== 'normal' && marble.subFriendshipLevel < 5) {
@@ -4521,10 +4615,7 @@
                                     if (marble.subFriendshipLevel === 5) marble.everSubLv5 = true;
                                     leveled = true;
                                 }
-                                // ★ バグ修正: 今初めて解放された時だけ通知（既解放時は出さない）
-                                if (justUnlocked) {
-                                    notifySubUnlock(marble);
-                                }
+                                if (justUnlocked) { notifySubUnlock(marble); }
                                 if (leveled) {
                                     playLevelUpSound();
                                     explosions.push(new HealEffect(marble.x, marble.y));
@@ -4533,7 +4624,6 @@
                                     showMessage(`💊 才能の覚醒薬…でも効果なし（未習得orMAX）`, 'info');
                                 }
                             } else if (item.type === 'friendship_up_all') {
-                                // 全員の友情レベルを1上げる
                                 let count = 0;
                                 const newlyUnlocked = [];
                                 for (const m of playerMarbles) {
@@ -4558,7 +4648,6 @@
                                 } else {
                                     showMessage(`💉 全体才能覚醒注射…効果なし（未習得orMAX）`, 'info');
                                 }
-                                // 解放者がいれば順番にモーダル表示
                                 if (newlyUnlocked.length > 0) {
                                     let qi = 0;
                                     const showNext = () => {
@@ -4570,21 +4659,20 @@
                                     setTimeout(showNext, 400);
                                 }
                             } else if (item.type === 'barrier') {
-                                // バリア：全仲間に貼る
                                 playerMarbles.forEach(m => m.barrier = true);
                                 playLevelUpSound();
                                 explosions.push(new HealEffect(marble.x, marble.y));
                                 showMessage('💕 愛情！仲間全員が包まれた！', 'combo-effect');
                                 updateFriendshipStatusBar();
                             } else if (item.type === 'friendship_boost') {
-                                // 友情アップ：全体共通4行動分ブースト
                                 globalFriendshipBoost = Math.max(globalFriendshipBoost, 4);
                                 playLevelUpSound();
-                                explosions.push(new CriticalEffect(marble.x, marble.y));
+                                hitEffects.push(new ItemPickupEffect(item.x, item.y, item.emoji, item.color));
                                 showMessage('✨ 化学反応アップ！4行動分1.25倍！', 'combo-effect');
                                 updateFriendshipStatusBar();
                             } else if (item.type.startsWith('friendship_')) {
-                                pendingItemModal = { item, marble };
+                                itemModalQueue.push({ item, marble });
+                                hitEffects.push(new ItemPickupEffect(item.x, item.y, item.emoji, item.color));
                             }
                         }
                     }
@@ -4613,7 +4701,6 @@
                             const damageToApply = (isCritical ? baseDamage * 7.5 : baseDamage) * weakMult;
                             if (isCritical) explosions.push(new CriticalEffect(enemy.x, enemy.y));
                             if (isWeakHit) {
-                                showMessage('💥 弱点ヒット！ダメージ2倍！', 'combo-effect');
                                 hitEffects.push(new WeakPointHitEffect(enemy.x, enemy.y));
                             }
                             // 非クリティカル時：小さいスター十字ヒットエフェクト
@@ -4642,9 +4729,16 @@
                 }
             }
 
-            // サブステップ完了後にアイテムモーダルを表示（描画タイミングとズレをなくす）
-            if (pendingItemModal) {
-                showItemModal(pendingItemModal.item, pendingItemModal.marble);
+            // 装備アイテムキュー処理（即ポーズ→エフェクト→モーダル）
+            if (itemModalQueue.length > 0 && !isPaused && !_itemModalPending) {
+                _itemModalPending = true;
+                const { item, marble } = itemModalQueue.shift();
+                hitEffects.push(new ItemPickupEffect(item.x, item.y, item.emoji, item.color));
+                isPaused = true; pauseBeatClock(); // ★ 即ポーズ
+                setTimeout(() => {
+                    showItemModal(item, marble); // エフェクト終了後にモーダル
+                    _itemModalPending = false;
+                }, 220); // ItemPickupEffect 10フレーム ≒ 167ms + 余裕
             }
 
             // 4. 描画
@@ -5369,7 +5463,15 @@
         // モーダルを閉じてから少し待ってポーズ解除（ガチャガチャ防止）
         const MODAL_CLOSE_DELAY = 300; // ms
         function unpauseAfterDelay() {
-            setTimeout(() => { isPaused = false; resumeBeatClock(); }, MODAL_CLOSE_DELAY);
+            setTimeout(() => {
+                if (itemModalQueue.length > 0) {
+                    // キューに残りがあれば続けてモーダルを表示
+                    const { item, marble } = itemModalQueue.shift();
+                    setTimeout(() => showItemModal(item, marble), 167);
+                } else {
+                    isPaused = false; resumeBeatClock();
+                }
+            }, MODAL_CLOSE_DELAY);
         }
 
         function doEquip(item, marble, equipToSub) {
