@@ -119,9 +119,9 @@
             overflow: hidden;
             font-family: 'Zen Maru Gothic', 'Noto Sans JP', sans-serif;
             background: #0d0520;
-            animation: op-screenIn .8s ease-out both;
+            /* フェードイン削除 → 即表示 */
         }
-        @keyframes op-screenIn { from{opacity:0;} to{opacity:1;} }
+        @keyframes op-screenIn { from{opacity:1;} to{opacity:1;} }
         .opening-screen.hidden {
             pointer-events: none;
             animation: op-screenOut 0.12s cubic-bezier(0.4,0,1,1) both;
@@ -266,6 +266,166 @@
         .op-press-hint{animation:op-fadeUp .6s 1.2s ease-out both,op-blink 1.4s step-end 1.2s infinite;}
         .op-sub-title{animation:op-fadeUp .6s .3s ease-out both;}
         @keyframes op-fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+        /* ================================================================
+           ★ GACHA SCREEN
+        ================================================================ */
+        #gachaScreen {
+            position: absolute;
+            inset: 0;
+            z-index: 9998;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-family: 'Zen Maru Gothic', 'Noto Sans JP', sans-serif;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 30%, rgba(168,240,216,.13) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 20% 80%, rgba(212,180,248,.15) 0%, transparent 60%),
+                linear-gradient(160deg, #0d0520 0%, #1a0838 50%, #0a1828 100%);
+        }
+        #gachaScreen.active { display: flex; }
+
+        /* 斜めストライプ */
+        .gacha-stripes {
+            position: absolute; inset: 0; pointer-events: none; opacity: .03;
+            background: repeating-linear-gradient(45deg,#a8f0d8 0,#a8f0d8 1px,transparent 1px,transparent 16px);
+        }
+
+        .gacha-title {
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: rgba(168,240,216,.7);
+            font-family: 'DotGothic16', monospace;
+            margin-bottom: 18px;
+            text-shadow: 0 0 10px rgba(168,240,216,.4);
+        }
+
+        /* 4枚カード列 */
+        .gacha-cards {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+
+        .gacha-card {
+            width: 72px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: rgba(26,8,56,.85);
+            border: 1.5px solid rgba(212,180,248,.25);
+            box-shadow: 0 4px 20px rgba(0,0,0,.6), 0 0 12px rgba(212,180,248,.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: border-color .3s, box-shadow .3s;
+        }
+        .gacha-card.revealed {
+            border-color: rgba(168,240,216,.7);
+            box-shadow: 0 4px 20px rgba(0,0,0,.6), 0 0 20px rgba(168,240,216,.35);
+        }
+
+        /* キャラ顔エリア */
+        .gacha-char {
+            width: 100%;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background: rgba(0,0,0,.3);
+        }
+        .gacha-char img {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,.3);
+            box-shadow: 0 0 8px rgba(168,240,216,.3);
+        }
+        .gacha-char-name {
+            position: absolute;
+            bottom: 2px; left: 0; right: 0;
+            font-size: 8px;
+            text-align: center;
+            color: rgba(255,255,255,.7);
+            font-family: 'DotGothic16', monospace;
+        }
+
+        /* ルーレットエリア */
+        .gacha-slot {
+            width: 100%;
+            height: 62px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 2px;
+            gap: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        .gacha-slot-icon {
+            font-size: 22px;
+            line-height: 1;
+            transition: transform .08s;
+        }
+        .gacha-slot-name {
+            font-size: 8px;
+            color: rgba(212,180,248,.8);
+            font-family: 'DotGothic16', monospace;
+            text-align: center;
+            line-height: 1.2;
+            padding: 0 3px;
+        }
+        .gacha-slot-lv {
+            font-size: 7px;
+            color: rgba(168,240,216,.6);
+            font-family: 'DotGothic16', monospace;
+        }
+
+        /* 決定時のキラッ */
+        .gacha-card.revealed .gacha-slot-name {
+            color: #a8f0d8;
+            text-shadow: 0 0 8px rgba(168,240,216,.7);
+        }
+
+        /* 下のメッセージ */
+        .gacha-msg {
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: rgba(255,179,217,.6);
+            font-family: 'DotGothic16', monospace;
+            animation: gacha-blink 1.2s step-end infinite;
+            opacity: 0;
+            transition: opacity .3s;
+        }
+        .gacha-msg.show { opacity: 1; }
+        @keyframes gacha-blink { 0%,100%{opacity:.6;} 50%{opacity:.15;} }
+
+        /* カード入場アニメ */
+        .gacha-card {
+            animation: gacha-cardIn .4s ease-out both;
+        }
+        .gacha-card:nth-child(1){ animation-delay: .05s; }
+        .gacha-card:nth-child(2){ animation-delay: .12s; }
+        .gacha-card:nth-child(3){ animation-delay: .19s; }
+        .gacha-card:nth-child(4){ animation-delay: .26s; }
+        @keyframes gacha-cardIn {
+            from { opacity:0; transform:translateY(24px) scale(.85); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+
+        /* 決定キラッ */
+        @keyframes gacha-pop {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(1.18); }
+            70%  { transform: scale(.95); }
+            100% { transform: scale(1); }
+        }
+        .gacha-card.pop { animation: gacha-pop .28s ease-out; }
+
 
         .header { display: none; }
         h1 { margin: 0; font-size: 18px; font-weight: bold; }
@@ -1639,6 +1799,21 @@
       <div class="op-press-hint">TAP TO START</div>
     </div>
     <!-- /OPENING SCREEN -->
+
+    <!-- ================================================================
+         ★ GACHA SCREEN
+    ================================================================ -->
+    <div id="gachaScreen">
+      <div class="gacha-stripes"></div>
+      <div class="gacha-title">✦ 才能の覚醒 ✦</div>
+      <div class="gacha-cards" id="gachaCards">
+        <!-- JS で動的生成 -->
+      </div>
+      <div class="gacha-msg" id="gachaMsg">GAME START !</div>
+    </div>
+    <!-- /GACHA SCREEN -->
+
+
 
     <div class="game-container">
         <div class="header"><h1>🎮 monsss</h1></div>
@@ -4187,6 +4362,11 @@
                 for (let i = 0; i < MAX_MARBLES; i++) {
                     const m = new Marble(startX + (i * spacing), yPos, types[i]);
                     m.characterIndex = i;
+                    // ガチャで選ばれた才能を即装備（ゲーム開始時のみ）
+                    if (window._gachaTalents && window._gachaTalents[i]) {
+                        m.friendshipType  = window._gachaTalents[i];
+                        m.friendshipLevel = 1;
+                    }
                     playerMarbles.push(m);
                 }
             } else {
@@ -8326,12 +8506,139 @@
             startBtn.addEventListener('click', function() {
                 startBtn.disabled = true;
                 burstSparkles();
-                // ビャッと即消え（バースト後すぐ）
+                // ビャッとオープニング消去 → ガチャ画面へ
                 setTimeout(() => {
                     screen.classList.add('hidden');
-                    setTimeout(() => { screen.style.display = 'none'; }, 150);
+                    setTimeout(() => {
+                        screen.style.display = 'none';
+                        // ガチャ画面スタート → 完了後ゲーム開始
+                        window.runGachaScreen(() => {
+                            // ガチャ完了後、既存のplayerMarblesに才能を直接適用
+                            if (window._gachaTalents && typeof playerMarbles !== 'undefined') {
+                                playerMarbles.forEach(function(m, i) {
+                                    if (window._gachaTalents[i]) {
+                                        m.friendshipType  = window._gachaTalents[i];
+                                        m.friendshipLevel = 1;
+                                    }
+                                });
+                                if (typeof updateFriendshipStatusBar === 'function') updateFriendshipStatusBar();
+                            }
+                        });
+                    }, 150);
                 }, 60);
             });
+        })();
+
+
+        // ================================================================
+        //  ★ GACHA SCREEN JS
+        // ================================================================
+        (function() {
+            const GACHA_TALENTS = [
+                { type:'homing',       icon:'🚀', name:'ホーミング' },
+                { type:'laser',        icon:'⚡', name:'レーザー'   },
+                { type:'heal',         icon:'❤️', name:'回復'       },
+                { type:'machinegun',   icon:'🔫', name:'マシンガン' },
+                { type:'energy',       icon:'⭕', name:'水面'       },
+                { type:'normal_shot',  icon:'🍄‍🟫', name:'胞子'     },
+                { type:'sixteen_ring', icon:'◎', name:'十六輪'     },
+                { type:'white_light',  icon:'◉', name:'白い光'     },
+                { type:'glow_homing',  icon:'⚕', name:'発光群'     },
+                { type:'light_thread', icon:'✚', name:'光の糸'     },
+            ];
+            const CHAR_IMG_SRCS = ['002.png','008.png','003.png','001.png'];
+            const CHAR_NAMES_G  = ['マイク','ホッパー','イレブン','ダスティン'];
+
+            window._gachaTalents = null; // initGameで参照
+
+            window.runGachaScreen = function(onComplete) {
+                const screen = document.getElementById('gachaScreen');
+                const cardsEl = document.getElementById('gachaCards');
+                const msgEl   = document.getElementById('gachaMsg');
+
+                // カード生成
+                cardsEl.innerHTML = '';
+                const cards = [];
+                for (let i = 0; i < 4; i++) {
+                    const card = document.createElement('div');
+                    card.className = 'gacha-card';
+                    card.innerHTML = `
+                        <div class="gacha-char">
+                            <img src="${CHAR_IMG_SRCS[i]}" alt="">
+                            <div class="gacha-char-name">${CHAR_NAMES_G[i]}</div>
+                        </div>
+                        <div class="gacha-slot">
+                            <div class="gacha-slot-icon">？</div>
+                            <div class="gacha-slot-name">？？？</div>
+                            <div class="gacha-slot-lv">Lv.1</div>
+                        </div>`;
+                    cardsEl.appendChild(card);
+                    cards.push(card);
+                }
+
+                screen.classList.add('active');
+                msgEl.classList.remove('show');
+
+                // 各キャラにランダム才能を割り当て（重複なし）
+                const shuffled = [...GACHA_TALENTS].sort(() => Math.random() - .5);
+                const picks = shuffled.slice(0, 4);
+                window._gachaTalents = picks.map(p => p.type);
+
+                // ルーレット → 順番に確定（各 350ms おき）
+                let ti = 0;
+                const intervals = [];
+
+                function startRoulette(cardIdx) {
+                    const slot  = cards[cardIdx].querySelector('.gacha-slot-icon');
+                    const name  = cards[cardIdx].querySelector('.gacha-slot-name');
+                    let   frame = 0;
+                    const iv = setInterval(() => {
+                        const t = GACHA_TALENTS[frame % GACHA_TALENTS.length];
+                        slot.textContent = t.icon;
+                        name.textContent = t.name;
+                        slot.style.transform = `scale(${1 + Math.sin(frame * 0.9) * 0.08})`;
+                        frame++;
+                    }, 60);
+                    intervals.push(iv);
+                    return iv;
+                }
+
+                function stopRoulette(cardIdx, iv) {
+                    clearInterval(iv);
+                    const pick = picks[cardIdx];
+                    const slot = cards[cardIdx].querySelector('.gacha-slot-icon');
+                    const name = cards[cardIdx].querySelector('.gacha-slot-name');
+                    slot.textContent = pick.icon;
+                    slot.style.transform = 'scale(1)';
+                    name.textContent = pick.name;
+                    cards[cardIdx].classList.add('revealed');
+                    // ポップ
+                    cards[cardIdx].classList.remove('pop');
+                    void cards[cardIdx].offsetWidth;
+                    cards[cardIdx].classList.add('pop');
+                }
+
+                // 順次スタート → 確定
+                const ROULETTE_DUR = [420, 560, 700, 840]; // ms
+                const START_DELAY  = [0,   120, 240, 360];
+
+                for (let i = 0; i < 4; i++) {
+                    setTimeout(() => {
+                        const iv = startRoulette(i);
+                        setTimeout(() => stopRoulette(i, iv), ROULETTE_DUR[i]);
+                    }, START_DELAY[i]);
+                }
+
+                // 全部確定後にメッセージ → 完了コールバック
+                const totalTime = Math.max(...START_DELAY) + Math.max(...ROULETTE_DUR);
+                setTimeout(() => {
+                    msgEl.classList.add('show');
+                    setTimeout(() => {
+                        screen.classList.remove('active');
+                        onComplete();
+                    }, 480);
+                }, totalTime + 100);
+            };
         })();
 
         loadSettings(); // 保存済み設定を復元（SE/BGM ON-OFF・音量・抽選演出）
