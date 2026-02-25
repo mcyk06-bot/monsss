@@ -8508,23 +8508,23 @@
                 burstSparkles();
                 // ビャッとオープニング消去 → ガチャ画面へ
                 setTimeout(() => {
+                    // ガチャ画面を先に起動してからオープニングをフェードアウト
+                    // （順序逆だとゲーム画面が一瞬見えてしまう）
+                    window.runGachaScreen(() => {
+                        // ガチャ完了後、既存のplayerMarblesに才能を直接適用
+                        if (window._gachaTalents && typeof playerMarbles !== 'undefined') {
+                            playerMarbles.forEach(function(m, i) {
+                                if (window._gachaTalents[i]) {
+                                    m.friendshipType  = window._gachaTalents[i];
+                                    m.friendshipLevel = 1;
+                                }
+                            });
+                            if (typeof updateFriendshipStatusBar === 'function') updateFriendshipStatusBar();
+                        }
+                    });
+                    // ガチャ起動と同時にオープニングをフェードアウト
                     screen.classList.add('hidden');
-                    setTimeout(() => {
-                        screen.style.display = 'none';
-                        // ガチャ画面スタート → 完了後ゲーム開始
-                        window.runGachaScreen(() => {
-                            // ガチャ完了後、既存のplayerMarblesに才能を直接適用
-                            if (window._gachaTalents && typeof playerMarbles !== 'undefined') {
-                                playerMarbles.forEach(function(m, i) {
-                                    if (window._gachaTalents[i]) {
-                                        m.friendshipType  = window._gachaTalents[i];
-                                        m.friendshipLevel = 1;
-                                    }
-                                });
-                                if (typeof updateFriendshipStatusBar === 'function') updateFriendshipStatusBar();
-                            }
-                        });
-                    }, 150);
+                    setTimeout(() => { screen.style.display = 'none'; }, 150);
                 }, 60);
             });
         })();
@@ -8534,17 +8534,15 @@
         //  ★ GACHA SCREEN JS
         // ================================================================
         (function() {
+            // ★ 初期ガチャはステージ1-39で登場する前半才能のみ
+            // (sixteen_ring / white_light / glow_homing / light_thread はステージ40以降)
             const GACHA_TALENTS = [
-                { type:'homing',       icon:'🚀', name:'ホーミング' },
-                { type:'laser',        icon:'⚡', name:'レーザー'   },
-                { type:'heal',         icon:'❤️', name:'回復'       },
-                { type:'machinegun',   icon:'🔫', name:'マシンガン' },
-                { type:'energy',       icon:'⭕', name:'水面'       },
-                { type:'normal_shot',  icon:'🍄‍🟫', name:'胞子'     },
-                { type:'sixteen_ring', icon:'◎', name:'十六輪'     },
-                { type:'white_light',  icon:'◉', name:'白い光'     },
-                { type:'glow_homing',  icon:'⚕', name:'発光群'     },
-                { type:'light_thread', icon:'✚', name:'光の糸'     },
+                { type:'homing',      icon:'🚀',         name:'ホーミング' },
+                { type:'laser',       icon:'⚡',         name:'レーザー'   },
+                { type:'heal',        icon:'❤️',        name:'回復'       },
+                { type:'machinegun',  icon:'🔫',         name:'マシンガン' },
+                { type:'energy',      icon:'⭕',         name:'水面'       },
+                { type:'normal_shot', icon:'🍄‍🟫', name:'胞子'       },
             ];
             const CHAR_IMG_SRCS = ['002.png','008.png','003.png','001.png'];
             const CHAR_NAMES_G  = ['マイク','ホッパー','イレブン','ダスティン'];
