@@ -275,39 +275,36 @@
             align-items: center;
             justify-content: space-between;
             flex-shrink: 0;
-            background: 
-                linear-gradient(180deg, 
-                    #fff4a0 0%, 
-                    #f5c542 8%, 
-                    #e8a800 22%, 
-                    #c97d00 38%, 
-                    #7a4400 50%, 
-                    #c97d00 62%, 
-                    #e8a800 78%, 
-                    #f5c542 92%, 
-                    #fff4a0 100%
+            background:
+                linear-gradient(180deg,
+                    #0a031a 0%,
+                    #130828 18%,
+                    #1a0838 40%,
+                    #16062e 60%,
+                    #0f0424 82%,
+                    #090218 100%
                 );
-            border-top: 4px solid #1a0a00;
-            border-bottom: 4px solid #1a0a00;
+            border-top: 2px solid rgba(168,240,216,0.35);
+            border-bottom: 2px solid rgba(168,240,216,0.2);
             padding: 6px 10px;
             position: relative;
             min-height: 68px;
-            box-shadow: 
-                0 -1px 0 rgba(255,255,180,0.6),
-                0 1px 0 rgba(255,255,180,0.6),
-                inset 0 1px 2px rgba(255,255,220,0.5),
-                inset 0 -1px 2px rgba(80,30,0,0.6),
-                0 4px 16px rgba(0,0,0,0.7),
-                0 -4px 16px rgba(0,0,0,0.5);
+            box-shadow:
+                0 -1px 0 rgba(168,240,216,0.25),
+                0 1px 0 rgba(212,180,248,0.2),
+                inset 0 1px 3px rgba(168,240,216,0.08),
+                inset 0 -1px 3px rgba(0,0,0,0.6),
+                0 4px 20px rgba(0,0,0,0.8),
+                0 0 30px rgba(168,240,216,0.06);
         }
         .monsst-bar::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
             height: 45%;
-            background: linear-gradient(180deg, 
-                rgba(255,255,220,0.55) 0%, 
-                rgba(255,220,100,0.25) 60%, 
+            background: linear-gradient(180deg,
+                rgba(168,240,216,0.10) 0%,
+                rgba(212,180,248,0.06) 60%,
                 transparent 100%
             );
             pointer-events: none;
@@ -318,9 +315,9 @@
             position: absolute;
             bottom: 0; left: 0; right: 0;
             height: 30%;
-            background: linear-gradient(180deg, 
+            background: linear-gradient(180deg,
                 transparent 0%,
-                rgba(80,30,0,0.35) 100%
+                rgba(0,0,0,0.5) 100%
             );
             pointer-events: none;
         }
@@ -338,19 +335,18 @@
         .monsst-stat-label {
             font-size: 9px;
             font-weight: bold;
-            color: #2a1000;
-            text-shadow: 0 1px 0 rgba(255,255,180,0.7), 0 -1px 0 rgba(0,0,0,0.4);
+            color: rgba(168,240,216,0.7);
+            text-shadow: 0 0 8px rgba(168,240,216,0.5), 0 1px 2px rgba(0,0,0,0.8);
             letter-spacing: 0.5px;
         }
         .monsst-stat-value {
             font-size: 17px;
             font-weight: bold;
-            color: #fff8e0;
-            text-shadow: 
-                0 1px 0 rgba(255,200,50,0.8),
-                0 2px 4px rgba(0,0,0,0.8),
-                0 0 12px rgba(255,160,0,0.5),
-                1px 1px 2px #5a2800;
+            color: #e8f8ff;
+            text-shadow:
+                0 0 10px rgba(176,232,255,0.7),
+                0 2px 4px rgba(0,0,0,0.9),
+                0 0 20px rgba(212,180,248,0.4);
             line-height: 1.1;
         }
 
@@ -369,11 +365,11 @@
                 radial-gradient(circle at 35% 30%, #8adeff 0%, #2a7fd4 25%, #0c427f 55%, #0a2f60 75%, #061a3d 100%);
             border: 3px solid transparent;
             background-clip: padding-box;
-            outline: 3px solid #b8600a;
+            outline: 3px solid rgba(168,240,216,0.6);
             outline-offset: 1px;
             box-shadow: 
                 0 0 0 1px #000,
-                0 0 0 5px rgba(184,96,10,0.3),
+                0 0 0 5px rgba(168,240,216,0.15),
                 inset 0 2px 6px rgba(255,255,255,0.45),
                 inset 0 -3px 8px rgba(0,0,80,0.7),
                 inset 2px 0 6px rgba(0,30,100,0.4),
@@ -470,17 +466,19 @@
             padding: 7px 8px 8px;
             background:
                 linear-gradient(180deg,
-                    #111 0%,
-                    #1a1a1a 40%,
-                    #141414 100%
+                    #0d0420 0%,
+                    #130828 35%,
+                    #0f0620 70%,
+                    #0a031a 100%
                 );
-            border-top: 4px solid #1a0a00;
-            border-bottom: 3px solid #000;
+            border-top: 2px solid rgba(168,240,216,0.2);
+            border-bottom: 2px solid rgba(0,0,0,0.8);
             flex-shrink: 0;
             position: relative;
             box-shadow:
-                inset 0 1px 0 rgba(255,200,80,0.18),
-                inset 0 -1px 0 rgba(0,0,0,0.7);
+                inset 0 1px 0 rgba(168,240,216,0.1),
+                inset 0 -1px 0 rgba(0,0,0,0.7),
+                0 -2px 12px rgba(168,240,216,0.05);
         }
         .hp-panel::before {
             content: '';
@@ -489,9 +487,9 @@
             height: 2px;
             background: linear-gradient(90deg,
                 transparent 0%,
-                rgba(255,200,60,0.6) 20%,
-                rgba(255,230,120,0.9) 50%,
-                rgba(255,200,60,0.6) 80%,
+                rgba(168,240,216,0.4) 20%,
+                rgba(212,180,248,0.7) 50%,
+                rgba(176,232,255,0.4) 80%,
                 transparent 100%
             );
             pointer-events: none;
@@ -500,7 +498,8 @@
         .hp-label {
             font-size: 12px;
             font-weight: bold;
-            color: #ccc;
+            color: rgba(168,240,216,0.8);
+            text-shadow: 0 0 8px rgba(168,240,216,0.4);
             margin-bottom: 5px;
             text-align: center;
         }
@@ -513,10 +512,10 @@
             border-radius: 11px;
             overflow: hidden;
             position: relative;
-            border: 1px solid rgba(255,200,60,0.25);
+            border: 1px solid rgba(168,240,216,0.2);
             box-shadow:
                 inset 0 2px 5px rgba(0,0,0,0.7),
-                0 1px 0 rgba(255,200,60,0.15);
+                0 1px 0 rgba(168,240,216,0.12);
         }
         .hp-bar-container::after {
             content: '';
@@ -605,25 +604,25 @@
             padding: 4px 4px;
             font-size: 11px;
             font-weight: 900;
-            border: 2px solid #3a3a3a;
+            border: 1.5px solid rgba(212,180,248,0.25);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
             background:
                 linear-gradient(180deg,
-                    #2a2a2a 0%,
-                    #1e1e1e 50%,
-                    #111 100%
+                    rgba(26,8,56,0.95) 0%,
+                    rgba(18,4,38,0.98) 50%,
+                    rgba(10,2,24,1) 100%
                 );
-            color: #666;
+            color: rgba(212,180,248,0.5);
             width: 100%;
             min-height: 56px;
             box-sizing: border-box;
             white-space: normal;
             line-height: 1.3;
             box-shadow:
-                inset 0 1px 0 rgba(255,255,255,0.07),
-                inset 0 -2px 4px rgba(0,0,0,0.5),
+                inset 0 1px 0 rgba(212,180,248,0.08),
+                inset 0 -2px 4px rgba(0,0,0,0.6),
                 0 3px 8px rgba(0,0,0,0.5);
             position: relative;
             overflow: hidden;
@@ -637,22 +636,23 @@
         .special-shot-btn.ready {
             background:
                 linear-gradient(180deg,
-                    #ffe066 0%,
-                    #ffb800 25%,
-                    #e07000 55%,
-                    #ff9200 80%,
-                    #ffde00 100%
+                    rgba(168,240,216,0.95) 0%,
+                    rgba(140,220,195,0.9) 25%,
+                    rgba(100,180,200,0.85) 55%,
+                    rgba(176,232,255,0.9) 80%,
+                    rgba(212,180,248,0.85) 100%
                 );
-            border-color: #1a0a00;
-            color: #fff;
+            border-color: rgba(168,240,216,0.8);
+            color: #0d0520;
+            font-weight: 900;
             animation: btnPulse 1.5s ease-in-out infinite;
             box-shadow:
-                0 0 0 1px #7a3a00,
-                0 4px 18px rgba(255,160,0,0.55),
-                0 0 28px rgba(255,180,0,0.3),
-                inset 0 1px 0 rgba(255,255,200,0.7),
-                inset 0 -2px 6px rgba(120,50,0,0.5);
-            text-shadow: 0 1px 3px rgba(100,40,0,0.8), 0 0 8px rgba(255,220,80,0.6);
+                0 0 0 1px rgba(168,240,216,0.5),
+                0 4px 18px rgba(168,240,216,0.45),
+                0 0 28px rgba(212,180,248,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.6),
+                inset 0 -2px 6px rgba(0,100,100,0.3);
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
         }
         .special-shot-btn.ready::before {
             content: '';
@@ -727,7 +727,13 @@
         .controls {
             padding: 5px 8px;
             text-align: center;
-            background: white;
+            background:
+                linear-gradient(180deg,
+                    #0f0520 0%,
+                    #130828 50%,
+                    #0a0318 100%
+                );
+            border-top: 1px solid rgba(212,180,248,0.2);
             flex-shrink: 0;
             position: relative;
         }
