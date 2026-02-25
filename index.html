@@ -124,9 +124,13 @@
         @keyframes op-screenIn { from{opacity:0;} to{opacity:1;} }
         .opening-screen.hidden {
             pointer-events: none;
-            animation: op-screenOut .5s ease-in both;
+            animation: op-screenOut 0.12s cubic-bezier(0.4,0,1,1) both;
         }
-        @keyframes op-screenOut { from{opacity:1;} to{opacity:0;} }
+        @keyframes op-screenOut {
+            0%   { opacity:1; transform:scale(1); }
+            60%  { opacity:1; transform:scale(1.06); }
+            100% { opacity:0; transform:scale(1.18); }
+        }
         .op-bg-gradient {
             position:absolute;inset:0;
             background:
@@ -8316,10 +8320,11 @@
             startBtn.addEventListener('click', function() {
                 startBtn.disabled = true;
                 burstSparkles();
+                // ビャッと即消え（バースト後すぐ）
                 setTimeout(() => {
                     screen.classList.add('hidden');
-                    setTimeout(() => { screen.style.display = 'none'; }, 600);
-                }, 350);
+                    setTimeout(() => { screen.style.display = 'none'; }, 150);
+                }, 60);
             });
         })();
 
