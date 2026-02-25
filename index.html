@@ -1973,7 +1973,7 @@
         const HIT_SLOWDOWN = 0.5;
         const STOP_THRESHOLD = 0.01;
         const VELOCITY_SCALE = 18.0;
-        let slowMotionFrames = 0; // 自身が敵に直接当たった時の一時スロー
+        let hitFreezeFrames = 0; // 自身が敵に直接当たった時の一時フリーズ（1フレーム物理停止）
 
         // ★ 敵のビームクラス
         class EnemyBeam {
@@ -2742,8 +2742,8 @@
                 const alpha = t < 0.2 ? t / 0.2 : 1 - (t - 0.2) / 0.8;
                 if (alpha <= 0) return;
                 // 展開しながら伸びる
-                const length = 14 * (0.4 + t * 0.9);
-                const baseWidth = 3.5 * (1 - t * 0.7);
+                const length = 22 * (0.4 + t * 0.9);
+                const baseWidth = 5.5 * (1 - t * 0.7);
                 ctx.save();
                 ctx.globalAlpha = Math.max(0, alpha);
                 // 上下左右の4本
@@ -3857,7 +3857,7 @@
             MAX_TEAM_HP = 10; teamHP = MAX_TEAM_HP; playerAttackBonus = 0; playerSpeedBonus = 0;
             specialShotCount = 0; isSpecialShotReady = false; isSpecialShotActive = false;
             stageEnemyTurnsCount = 0; nextStageBonusItems = 0;
-            slowMotionFrames = 0;
+            hitFreezeFrames = 0;
             playerMarbles = [];
             startStage();
         }
@@ -4707,7 +4707,7 @@
             ctx.fillStyle = 'rgba(0,0,0,0.18)'; // 六角形を透かすため半透明オーバーレイ
             ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
             // スローモーションカウントダウン
-            if (slowMotionFrames > 0) slowMotionFrames--;
+            // hitFreezeFramesはサブステップ内で管理
             
             for (let i = enemyBeams.length - 1; i >= 0; i--) { enemyBeams[i].draw(); if (enemyBeams[i].isComplete()) enemyBeams.splice(i, 1); }
             for (let i = explosions.length - 1; i >= 0; i--) {
@@ -4861,12 +4861,14 @@
             let pendingItemModal = null;
             let itemModalQueue = []; // 装備アイテム連続取得キュー
             let _itemModalPending = false; // エフェクト中フラグ（二重起動防止）
+            // ★ ヒットフリーズ中は物理更新をスキップして当たったフレームを表示する
+            if (hitFreezeFrames > 0) { hitFreezeFrames--; } else
             for (let s = 0; s < SUBSTEPS; s++) {
                 for (let marble of activeMarbles) {
                     if (!marble.isActive || !marble.isMoving()) continue;
 
                     // 移動 (1ステップ分)
-                    const _velScale = slowMotionFrames > 0 ? VELOCITY_SCALE * 0.18 : VELOCITY_SCALE;
+                    const _velScale = VELOCITY_SCALE;
                     marble.x += (marble.vx * _velScale) / SUBSTEPS;
                     marble.y += (marble.vy * _velScale) / SUBSTEPS;
 
@@ -5036,8 +5038,8 @@
                                 const hitY = marble.y - normalY * marble.radius;
                                 hitEffects.push(new StarHitEffect(hitX, hitY));
                             }
-                            // 直接ヒット時：数フレームゆっくりにする
-                            slowMotionFrames = Math.max(slowMotionFrames, 3);
+                            // 直接ヒット時：1フレームだけ物理更新を停止して当たったフレームを見せる
+                            hitFreezeFrames = 1;
                             playHitSound(isCritical);
                             if (enemy.takeDamage(damageToApply)) {
                                 defeated++; totalDefeated++;
