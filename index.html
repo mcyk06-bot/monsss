@@ -7285,6 +7285,121 @@
             }
         }
 
+        // ================================================================
+        // 🎮 スタートボタン音 ── ウォームな決定音（ドミソ短めアルペジオ）
+        // ================================================================
+        function playStartBtnSound() {
+            if (!seEnabled) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+            const notes = [261.6, 329.6, 392.0]; // C4 E4 G4
+            notes.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const g   = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.value = freq;
+                const at = t + i * 0.06;
+                g.gain.setValueAtTime(0, at);
+                g.gain.linearRampToValueAtTime(0.28, at + 0.015);
+                g.gain.exponentialRampToValueAtTime(0.001, at + 0.28);
+                osc.connect(g); g.connect(masterGain);
+                osc.start(at); osc.stop(at + 0.30);
+            });
+            // 軽いクリックノイズ（ボタン感）
+            const nLen = Math.ceil(audioCtx.sampleRate * 0.025);
+            const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+            const nd = nBuf.getChannelData(0);
+            for (let i = 0; i < nLen; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nLen);
+            const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+            const lpf = audioCtx.createBiquadFilter();
+            lpf.type = 'bandpass'; lpf.frequency.value = 2800; lpf.Q.value = 1.2;
+            const ng = audioCtx.createGain(); ng.gain.value = 0.18;
+            nSrc.connect(lpf); lpf.connect(ng); ng.connect(masterGain);
+            nSrc.start(t); nSrc.stop(t + 0.025);
+        }
+
+        // ================================================================
+        // 🎰 ガチャ音群
+        //   playGachaTick()      ルーレット回転中のカチカチ音
+        //   playGachaReveal(i)   カード確定音（カードごとに少し音程を変える）
+        //   playGachaComplete()  全カード確定後のファンファーレ
+        // ================================================================
+        function playGachaTick() {
+            if (!seEnabled) return;
+            const t = audioCtx.currentTime;
+            // カチッ：短いクリック音（木琴的）
+            const osc = audioCtx.createOscillator();
+            const g   = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1100, t);
+            osc.frequency.exponentialRampToValueAtTime(700, t + 0.03);
+            g.gain.setValueAtTime(0.12, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+            osc.connect(g); g.connect(masterGain);
+            osc.start(t); osc.stop(t + 0.05);
+        }
+
+        function playGachaReveal(cardIdx) {
+            if (!seEnabled) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+            // カードごとに音程をずらす（自然なバリエーション）
+            const baseFreqs = [523.3, 587.3, 659.3, 783.9]; // C5 D5 E5 G5
+            const freq = baseFreqs[cardIdx] || 523.3;
+            // ポップ感のある「ポン！」
+            const osc = audioCtx.createOscillator();
+            const g   = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq * 1.5, t);
+            osc.frequency.exponentialRampToValueAtTime(freq, t + 0.06);
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.32, t + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+            osc.connect(g); g.connect(masterGain);
+            osc.start(t); osc.stop(t + 0.24);
+            // 倍音（少し明るく）
+            const osc2 = audioCtx.createOscillator();
+            const g2   = audioCtx.createGain();
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(freq * 2, t);
+            g2.gain.setValueAtTime(0.10, t);
+            g2.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+            osc2.connect(g2); g2.connect(masterGain);
+            osc2.start(t); osc2.stop(t + 0.16);
+        }
+
+        function playGachaComplete() {
+            if (!seEnabled) return;
+            resumeAudio();
+            const t = audioCtx.currentTime;
+            // C5→E5→G5→C6 の短いアルペジオ + 最後に和音でまとめる
+            const arp = [523.3, 659.3, 783.9, 1046.5];
+            arp.forEach((freq, i) => {
+                const at = t + i * 0.10;
+                const osc = audioCtx.createOscillator();
+                const g   = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.value = freq;
+                g.gain.setValueAtTime(0, at);
+                g.gain.linearRampToValueAtTime(0.22, at + 0.012);
+                g.gain.exponentialRampToValueAtTime(0.001, at + 0.30);
+                osc.connect(g); g.connect(masterGain);
+                osc.start(at); osc.stop(at + 0.32);
+            });
+            // 最後に軽い和音シマー
+            const shimT = t + 0.38;
+            [523.3, 659.3, 783.9].forEach((freq) => {
+                const osc = audioCtx.createOscillator();
+                const g   = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                g.gain.setValueAtTime(0.10, shimT);
+                g.gain.exponentialRampToValueAtTime(0.001, shimT + 0.5);
+                osc.connect(g); g.connect(masterGain);
+                osc.start(shimT); osc.stop(shimT + 0.52);
+            });
+        }
+
         // デスアイテム発動音（ブワーン＋ハッハッハッハ）
         function playDeathSound() {
             if (!seEnabled) return;
@@ -8506,6 +8621,7 @@
             startBtn.addEventListener('click', function() {
                 startBtn.disabled = true;
                 burstSparkles();
+                if (typeof playStartBtnSound === 'function') playStartBtnSound();
                 // ビャッとオープニング消去 → ガチャ画面へ
                 setTimeout(() => {
                     // ガチャ画面を先に起動してからオープニングをフェードアウト
@@ -8595,6 +8711,7 @@
                         slot.textContent = t.icon;
                         name.textContent = t.name;
                         slot.style.transform = `scale(${1 + Math.sin(frame * 0.9) * 0.08})`;
+                        if (frame % 3 === 0 && typeof playGachaTick === 'function') playGachaTick();
                         frame++;
                     }, 60);
                     intervals.push(iv);
@@ -8610,6 +8727,7 @@
                     slot.style.transform = 'scale(1)';
                     name.textContent = pick.name;
                     cards[cardIdx].classList.add('revealed');
+                    if (typeof playGachaReveal === 'function') playGachaReveal(cardIdx);
                     // ポップ
                     cards[cardIdx].classList.remove('pop');
                     void cards[cardIdx].offsetWidth;
@@ -8631,6 +8749,7 @@
                 const totalTime = Math.max(...START_DELAY) + Math.max(...ROULETTE_DUR);
                 setTimeout(() => {
                     msgEl.classList.add('show');
+                    if (typeof playGachaComplete === 'function') playGachaComplete();
                     setTimeout(() => {
                         screen.classList.remove('active');
                         onComplete();
