@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="放課後化学反応">
+    <meta name="apple-mobile-web-app-title" content="くりーむそーだ">
     <meta name="application-name" content="monsss">
     <title>くりーむそーだ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2075,14 +2075,23 @@
 
     <script>
 
-        // iOSのvh問題対策: 実際の表示高さをCSS変数にセット
+        // iOSのvh問題対策: Visual Viewport APIで正確な表示高さを取得
+        function getVisibleHeight() {
+            // Visual Viewport API対応（iOS Safari 13+, Chrome 61+）
+            if (window.visualViewport) return window.visualViewport.height;
+            return window.innerHeight;
+        }
         function setVh() {
-            const vh = window.innerHeight * 0.01;
+            const vh = getVisibleHeight() * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
         }
         setVh();
         window.addEventListener('resize', setVh);
         window.addEventListener('orientationchange', () => setTimeout(setVh, 150));
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', setVh);
+            window.visualViewport.addEventListener('scroll', setVh);
+        }
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -2273,15 +2282,26 @@
             const container = document.querySelector('.canvas-container');
             const dpr = window.devicePixelRatio || 1;
 
-            // コンテナの実際の幅を使う（PCのフレーム内でも正しく動作）
+            // コンテナの実際の幅
             const availableWidth = container.clientWidth || container.offsetWidth || window.innerWidth;
-            const aspectRatio = 8 / 9;
-            let displayWidth = availableWidth;
-            let displayHeight = displayWidth / aspectRatio;
+            const aspectRatio = 8 / 9; // canvas width/height比
 
-            canvas.width = BASE_WIDTH * dpr;
+            // ── 高さ制約を計算（縦が小さい端末対応）──
+            const totalH = getVisibleHeight();
+            const monsst  = document.getElementById('monsst-bar');
+            const hpPanel = document.querySelector('.hp-panel');
+            // 他UIパーツの合計高さ（まだ未描画なら実測値 or 推定値）
+            const otherH = (monsst  ? monsst.offsetHeight  : 68)
+                         + (hpPanel ? hpPanel.offsetHeight : 125);
+            const maxCanvasH = totalH - otherH;
+
+            // 幅基準の高さ vs 高さ制約のどちらか小さい方を採用
+            let displayHeight = Math.min(availableWidth / aspectRatio, maxCanvasH);
+            let displayWidth  = displayHeight * aspectRatio;
+
+            canvas.width  = BASE_WIDTH  * dpr;
             canvas.height = BASE_HEIGHT * dpr;
-            canvas.style.width = displayWidth + 'px';
+            canvas.style.width  = displayWidth  + 'px';
             canvas.style.height = displayHeight + 'px';
 
             // containerをcanvasの高さにぴったり合わせる（余白なし）
